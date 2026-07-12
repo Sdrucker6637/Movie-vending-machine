@@ -1068,12 +1068,14 @@ function renderWatchBadges(providers) {
   let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
   items.slice(0, 6).forEach((it) => {
     let cls, suffix;
-    if (it.owned && it.cat === "free") {
+    if (it.owned && it.cat !== "paid") {
+      // Already covered by a service you have, at no extra cost.
       cls = "free";
-      suffix = " · Free";
-    } else if (it.owned) {
+      suffix = it.cat === "free" ? " · Free" : " · Included";
+    } else if (it.owned && it.cat === "paid") {
+      // You have the account, but this specific title still costs extra.
       cls = "sub";
-      suffix = it.cat === "paid" ? " · Rent/Buy" : " · Yours";
+      suffix = " · Rent/Buy";
     } else {
       cls = "";
       suffix = it.cat === "free" ? " · Free" : it.cat === "paid" ? " · Rent/Buy" : "";

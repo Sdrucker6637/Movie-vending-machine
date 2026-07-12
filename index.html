@@ -457,6 +457,37 @@
     cursor: pointer;
     margin-bottom: 8px;
   }
+  .service-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 14px;
+  }
+  .service-row input {
+    width: auto;
+    margin: 0;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #2e7d4f;
+    color: white;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 8px 5px 10px;
+    border-radius: 20px;
+  }
+  .chip button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
 </style>
 </head>
 <body>
@@ -498,6 +529,33 @@
     <div class="dialog-buttons">
       <button class="btn-cancel" id="keyCancel">Cancel</button>
       <button class="btn-primary" id="keySave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="settingsOverlay">
+  <div class="dialog" style="max-height: 85vh; overflow-y: auto;">
+    <h2>Settings</h2>
+
+    <div class="curated-field">
+      <label>TMDB Connection</label>
+      <p style="margin:0 0 8px;" id="keyStatusText">Not connected</p>
+      <button class="btn-cancel" id="changeKeyBtn" style="width:100%;">Change API key</button>
+    </div>
+
+    <div class="curated-field">
+      <label>My Streaming Services</label>
+      <p style="margin:0 0 8px; font-size:12px; color:#888;">Check what you already subscribe to — those will show up green instead of blue.</p>
+      <div id="serviceChecklist"></div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <input type="text" id="customServiceInput" placeholder="Add another service" autocomplete="off" style="margin-bottom:0;">
+        <button class="btn-cancel" id="addCustomServiceBtn" style="flex:0 0 auto; padding:9px 14px;">Add</button>
+      </div>
+      <div class="watch-badges" id="customServiceChips" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="dialog-buttons">
+      <button class="btn-primary" id="settingsDone" style="width:100%;">Done</button>
     </div>
   </div>
 </div>
@@ -626,9 +684,103 @@ function ensureTmdbKey() {
   });
 }
 
-document.getElementById("settingsBtn").onclick = async () => {
+// --- "My streaming services" (which providers show green) ---
+const MY_SERVICES_STORAGE = "my-streaming-services";
+const COMMON_PROVIDERS = [
+  "Netflix", "Amazon Prime Video", "Max", "Disney Plus", "Hulu",
+  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus"
+];
+
+function getMyServices() {
+  try {
+    const raw = localStorage.getItem(MY_SERVICES_STORAGE);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveMyServices(list) {
+  localStorage.setItem(MY_SERVICES_STORAGE, JSON.stringify(list));
+}
+
+function ownsProvider(name) {
+  const mine = getMyServices();
+  const lower = name.toLowerCase();
+  return mine.some((s) => lower.includes(s.toLowerCase()) || s.toLowerCase().includes(lower));
+}
+
+// --- Settings panel ---
+const settingsOverlay = document.getElementById("settingsOverlay");
+const keyStatusText = document.getElementById("keyStatusText");
+const changeKeyBtn = document.getElementById("changeKeyBtn");
+const serviceChecklist = document.getElementById("serviceChecklist");
+const customServiceInput = document.getElementById("customServiceInput");
+const addCustomServiceBtn = document.getElementById("addCustomServiceBtn");
+const customServiceChips = document.getElementById("customServiceChips");
+const settingsDone = document.getElementById("settingsDone");
+
+function renderSettingsPanel() {
+  keyStatusText.textContent = getStoredKey() ? "Connected" : "Not connected";
+
+  const mine = getMyServices();
+  serviceChecklist.innerHTML = "";
+  COMMON_PROVIDERS.forEach((name) => {
+    const row = document.createElement("label");
+    row.className = "service-row";
+    const checked = mine.includes(name);
+    row.innerHTML = '<input type="checkbox" data-name="' + name + '"' + (checked ? " checked" : "") + '> ' + name;
+    row.querySelector("input").onchange = (ev) => {
+      let list = getMyServices();
+      if (ev.target.checked) {
+        if (!list.includes(name)) list.push(name);
+      } else {
+        list = list.filter((n) => n !== name);
+      }
+      saveMyServices(list);
+    };
+    serviceChecklist.appendChild(row);
+  });
+
+  const custom = mine.filter((n) => !COMMON_PROVIDERS.includes(n));
+  customServiceChips.innerHTML = "";
+  custom.forEach((name) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.innerHTML = name + ' <button aria-label="Remove">✕</button>';
+    chip.querySelector("button").onclick = () => {
+      saveMyServices(getMyServices().filter((n) => n !== name));
+      renderSettingsPanel();
+    };
+    customServiceChips.appendChild(chip);
+  });
+}
+
+addCustomServiceBtn.onclick = () => {
+  const v = customServiceInput.value.trim();
+  if (!v) return;
+  const list = getMyServices();
+  if (!list.includes(v)) {
+    list.push(v);
+    saveMyServices(list);
+  }
+  customServiceInput.value = "";
+  renderSettingsPanel();
+};
+
+changeKeyBtn.onclick = async () => {
   localStorage.removeItem(TMDB_KEY_STORAGE);
   await ensureTmdbKey();
+  renderSettingsPanel();
+};
+
+settingsDone.onclick = () => {
+  settingsOverlay.classList.add("hidden");
+};
+
+document.getElementById("settingsBtn").onclick = () => {
+  renderSettingsPanel();
+  settingsOverlay.classList.remove("hidden");
 };
 
 function mapTmdbResult(m) {
@@ -835,10 +987,14 @@ function renderWatchBadges(providers) {
     return '<div class="watch-status">Not available to stream in the US right now.</div>';
   }
 
+  const owned = sub.filter(ownsProvider);
+  const notOwned = sub.filter((n) => !ownsProvider(n));
+
   let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
   free.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Free</span>'; });
-  sub.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
-  if (!free.length && !sub.length) {
+  owned.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Yours</span>'; });
+  notOwned.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
+  if (!free.length && !owned.length && !notOwned.length) {
     const paid = [...new Set([...rent, ...buy])];
     paid.slice(0, 4).forEach((name) => { html += '<span class="watch-badge">' + name + ' · Rent/Buy</span>'; });
   }

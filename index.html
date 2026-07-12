@@ -325,6 +325,41 @@
     color: var(--danger);
     text-decoration: underline;
   }
+  .ssynopsis {
+    font-size: 12.5px;
+    color: #555;
+    line-height: 1.4;
+    text-align: left;
+    margin: 0 0 12px;
+    max-height: 4.2em;
+    overflow-y: auto;
+  }
+  .trailer-btn {
+    display: inline-block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--danger);
+    background: none;
+    border: 1px solid var(--danger);
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .trailer-embed {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+  }
+  .trailer-embed iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
 </style>
 </head>
 <body>
@@ -471,10 +506,31 @@ document.getElementById("settingsBtn").onclick = async () => {
 
 function mapTmdbResult(m) {
   return {
+    id: m.id,
     title: m.title,
     year: (m.release_date || "").slice(0, 4),
-    poster: m.poster_path ? TMDB_IMG + m.poster_path : null
+    poster: m.poster_path ? TMDB_IMG + m.poster_path : null,
+    overview: m.overview || ""
   };
+}
+
+async function fetchTrailerKey(id) {
+  const key = await ensureTmdbKey();
+  if (!key || !id) return null;
+  try {
+    const url = "https://api.themoviedb.org/3/movie/" + id + "/videos?api_key=" + key;
+    const r = await fetch(url);
+    const data = await r.json();
+    const vids = data.results || [];
+    const pick =
+      vids.find((v) => v.site === "YouTube" && v.type === "Trailer" && v.official) ||
+      vids.find((v) => v.site === "YouTube" && v.type === "Trailer") ||
+      vids.find((v) => v.site === "YouTube");
+    return pick ? pick.key : null;
+  } catch (e) {
+    console.error("Trailer fetch failed", e);
+    return null;
+  }
 }
 
 async function fetchPoster(title) {
@@ -696,10 +752,33 @@ function showMovieSearch(title, message) {
           return;
         }
         currentPick = pick;
+        const synopsis = pick.overview
+          ? pick.overview.length > 220 ? pick.overview.slice(0, 220) + "…" : pick.overview
+          : "No synopsis available.";
         suggestionCard.innerHTML =
           (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
           '<div class="stitle">' + pick.title + '</div>' +
-          '<div class="syear">' + pick.year + '</div>';
+          '<div class="syear">' + pick.year + '</div>' +
+          '<div class="ssynopsis">' + synopsis + '</div>' +
+          '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>';
+
+        document.getElementById("trailerBtn").onclick = async (ev) => {
+          const btn = ev.target;
+          btn.textContent = "Loading…";
+          btn.disabled = true;
+          const trailerKey = await fetchTrailerKey(pick.id);
+          if (trailerKey && currentPick === pick) {
+            const embed = document.createElement("div");
+            embed.className = "trailer-embed";
+            embed.innerHTML =
+              '<iframe src="https://www.youtube.com/embed/' + trailerKey +
+              '?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+            btn.replaceWith(embed);
+          } else {
+            btn.textContent = "No trailer found";
+            btn.disabled = true;
+          }
+        };
       } catch (e) {
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
         currentPick = null;

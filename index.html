@@ -593,7 +593,12 @@
         </div>
         <div class="curated-field">
           <label>Vibe</label>
-          <select id="curatedVibe"><option value="">Any</option></select>
+          <input type="text" id="curatedVibe" list="vibeOptions" placeholder="e.g. Feel-good, dark, mind-bending…" autocomplete="off">
+          <datalist id="vibeOptions"></datalist>
+        </div>
+        <div class="curated-field">
+          <label>Plot / themes</label>
+          <input type="text" id="curatedThemes" placeholder="e.g. coming of age, road trip" autocomplete="off">
         </div>
         <div class="curated-field">
           <label>Decade</label>
@@ -607,10 +612,12 @@
           <label>Actor</label>
           <input type="text" id="curatedActor" placeholder="e.g. Denzel Washington" autocomplete="off">
         </div>
-        <button class="btn-primary" id="curatedSubmit" style="width:100%; margin-bottom:10px;">Find a film</button>
+        <div class="dialog-buttons">
+          <button class="btn-primary" id="curatedSubmit">Find a film</button>
+        </div>
       </div>
 
-      <button class="edit-filters-btn hidden-block" id="editFiltersBtn">Edit filters</button>
+      <button class="edit-filters-btn hidden-block" id="editFiltersBtn">✎ Edit filters and search again</button>
       <div class="suggestion-card" id="suggestionCard">
         <div class="search-status" id="suggestionStatus">Finding something good&hellip;</div>
       </div>
@@ -690,7 +697,7 @@ function ensureTmdbKey() {
 const MY_SERVICES_STORAGE = "my-streaming-services";
 const COMMON_PROVIDERS = [
   "Netflix", "Amazon Prime Video", "Max", "Disney Plus", "Hulu",
-  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus",
+  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus", "YouTube",
   "Tubi", "Pluto TV", "The Roku Channel", "Freevee", "Kanopy", "Crackle"
 ];
 
@@ -929,6 +936,19 @@ async function fetchPersonId(name) {
   }
 }
 
+async function resolveKeywordId(phrase) {
+  const key = await ensureTmdbKey();
+  if (!key || !phrase || !phrase.trim()) return null;
+  try {
+    const url = "https://api.themoviedb.org/3/search/keyword?api_key=" + key + "&query=" + encodeURIComponent(phrase.trim());
+    const r = await fetch(url);
+    const data = await r.json();
+    return data.results && data.results.length > 0 ? data.results[0].id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Builds a discover query from whatever survey fields were filled in.
 // Every field is optional; an all-empty filter set behaves like "popular".
 async function fetchCuratedMovie(filters) {
@@ -936,29 +956,57 @@ async function fetchCuratedMovie(filters) {
   if (!key) return null;
 
   const params = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=30", "include_adult=false"];
+  const keywordIds = [];
 
   if (filters.genre) {
     params.push("with_genres=" + filters.genre);
   } else if (filters.vibe) {
-    const vibe = VIBES.find((v) => v.label === filters.vibe);
-    if (vibe) params.push("with_genres=" + vibe.genres.join("|"));
+    const vibe = VIBES.find((v) => v.label.toLowerCase() === filters.vibe.toLowerCase());
+    if (vibe) {
+      params.push("with_genres=" + vibe.genres.join("|"));
+    } else {
+      // Not one of the presets - try it as a free-text keyword instead.
+      const kwId = await resolveKeywordId(filters.vibe);
+      if (kwId) keywordIds.push(kwId);
+    }
   }
+
+  if (filters.themes) {
+    const phrases = filters.themes.split(",").map((s) => s.trim()).filter(Boolean);
+    const resolved = await Promise.all(phrases.map(resolveKeywordId));
+    resolved.forEach((id) => { if (id) keywordIds.push(id); });
+  }
+
+  if (keywordIds.length) {
+    params.push("with_keywords=" + [...new Set(keywordIds)].join("|"));
+  }
+
+  // with_cast/with_crew are more precise than with_people, which also
+  // counts documentary interview appearances, archive footage, etc.
+  const castIds = [];
+  const crewIds = [];
+  if (filters.director) {
+    const id = await fetchPersonId(filters.director);
+    if (id) crewIds.push(id);
+  }
+  if (filters.actor) {
+    const id = await fetchPersonId(filters.actor);
+    if (id) castIds.push(id);
+  }
+  if (castIds.length) params.push("with_cast=" + castIds.join(","));
+  if (crewIds.length) params.push("with_crew=" + crewIds.join(","));
 
   if (filters.decade) {
     const d = DECADES.find((x) => x.label === filters.decade);
     if (d) params.push("primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end);
+  } else if (!castIds.length && !crewIds.length) {
+    // No decade chosen and no person filter - spread across eras instead of
+    // defaulting to whatever's currently popular (skews toward new releases).
+    // Skipped when a director/actor is set, since forcing a random decade
+    // onto someone's filmography can wrongly rule out their actual work.
+    const d = DECADES[Math.floor(Math.random() * DECADES.length)];
+    params.push("primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end);
   }
-
-  const peopleIds = [];
-  if (filters.director) {
-    const id = await fetchPersonId(filters.director);
-    if (id) peopleIds.push(id);
-  }
-  if (filters.actor) {
-    const id = await fetchPersonId(filters.actor);
-    if (id) peopleIds.push(id);
-  }
-  if (peopleIds.length) params.push("with_people=" + peopleIds.join(","));
 
   const page = Math.floor(Math.random() * 3) + 1;
   params.push("page=" + page);
@@ -1017,12 +1065,19 @@ function renderWatchBadges(providers) {
   const items = [...byName.entries()].map(([name, cat]) => ({ name, cat, owned: ownsProvider(name) }));
   items.sort((a, b) => (b.owned - a.owned) || (rank[a.cat] - rank[b.cat]));
 
-  const labelFor = { free: " · Free", sub: "", paid: " · Rent/Buy" };
-
   let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
   items.slice(0, 6).forEach((it) => {
-    const cls = it.owned ? "free" : (it.cat === "sub" ? "sub" : "");
-    const suffix = it.owned && it.cat === "sub" ? " · Yours" : labelFor[it.cat];
+    let cls, suffix;
+    if (it.owned && it.cat === "free") {
+      cls = "free";
+      suffix = " · Free";
+    } else if (it.owned) {
+      cls = "sub";
+      suffix = it.cat === "paid" ? " · Rent/Buy" : " · Yours";
+    } else {
+      cls = "";
+      suffix = it.cat === "free" ? " · Free" : it.cat === "paid" ? " · Rent/Buy" : "";
+    }
     html += '<span class="watch-badge ' + cls + '">' + it.name + suffix + '</span>';
   });
   html += '</div>';
@@ -1093,7 +1148,9 @@ const modeIndie = document.getElementById("modeIndie");
 const modeCurated = document.getElementById("modeCurated");
 const curatedForm = document.getElementById("curatedForm");
 const curatedGenreSel = document.getElementById("curatedGenre");
-const curatedVibeSel = document.getElementById("curatedVibe");
+const curatedVibeInput = document.getElementById("curatedVibe");
+const vibeOptions = document.getElementById("vibeOptions");
+const curatedThemesInput = document.getElementById("curatedThemes");
 const curatedDecadeSel = document.getElementById("curatedDecade");
 const curatedDirectorInput = document.getElementById("curatedDirector");
 const curatedActorInput = document.getElementById("curatedActor");
@@ -1109,12 +1166,11 @@ function populateCuratedOptions() {
       curatedGenreSel.appendChild(opt);
     });
   }
-  if (curatedVibeSel.options.length <= 1) {
+  if (vibeOptions.options.length === 0) {
     VIBES.forEach((v) => {
       const opt = document.createElement("option");
       opt.value = v.label;
-      opt.textContent = v.label;
-      curatedVibeSel.appendChild(opt);
+      vibeOptions.appendChild(opt);
     });
   }
   if (curatedDecadeSel.options.length <= 1) {
@@ -1174,18 +1230,25 @@ function showMovieSearch(title, message) {
 
     let debounceTimer = null;
     let currentPick = null; // {title, poster, id} if suggestion chosen or a top-movie picked
+    let lastCuratedFilters = null;
+
+    function resetCuratedForm() {
+      curatedDirectorInput.value = "";
+      curatedActorInput.value = "";
+      curatedGenreSel.value = "";
+      curatedVibeInput.value = "";
+      curatedThemesInput.value = "";
+      curatedDecadeSel.value = "";
+      lastCuratedFilters = null;
+    }
+
     modePopular.classList.add("active");
     modeIndie.classList.remove("active");
     modeCurated.classList.remove("active");
     curatedForm.classList.add("hidden-block");
     editFiltersBtn.classList.add("hidden-block");
     resultButtons.classList.remove("hidden-block");
-    curatedDirectorInput.value = "";
-    curatedActorInput.value = "";
-    curatedGenreSel.value = "";
-    curatedVibeSel.value = "";
-    curatedDecadeSel.value = "";
-    let lastCuratedFilters = null;
+    resetCuratedForm();
 
     const finish = (result) => {
       inputOverlay.classList.add("hidden");
@@ -1326,7 +1389,8 @@ function showMovieSearch(title, message) {
     function readCuratedFilters() {
       return {
         genre: curatedGenreSel.value,
-        vibe: curatedVibeSel.value,
+        vibe: curatedVibeInput.value.trim(),
+        themes: curatedThemesInput.value.trim(),
         decade: curatedDecadeSel.value,
         director: curatedDirectorInput.value,
         actor: curatedActorInput.value
@@ -1376,6 +1440,7 @@ function showMovieSearch(title, message) {
       modeCurated.classList.add("active");
       modePopular.classList.remove("active");
       modeIndie.classList.remove("active");
+      resetCuratedForm();
       curatedForm.classList.remove("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.add("hidden-block");
@@ -1387,10 +1452,15 @@ function showMovieSearch(title, message) {
       lastCuratedFilters = readCuratedFilters();
       runCuratedSearch(lastCuratedFilters);
     };
+    // Lets you tweak your answers and search again without leaving curated
+    // mode or losing your place - the filter values are still in the form.
     editFiltersBtn.onclick = () => {
+      suggestionCard.innerHTML = "";
       curatedForm.classList.remove("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.add("hidden-block");
+      const dialogEl = curatedForm.closest(".dialog");
+      if (dialogEl) dialogEl.scrollTop = 0;
     };
 
     surpriseBtn.onclick = async () => {

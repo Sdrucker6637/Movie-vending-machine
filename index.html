@@ -545,7 +545,7 @@
 
     <div class="curated-field">
       <label>My Streaming Services</label>
-      <p style="margin:0 0 8px; font-size:12px; color:#888;">Check what you already subscribe to — those will show up green instead of blue.</p>
+      <p style="margin:0 0 8px; font-size:12px; color:#888;">Check anything you actually have access to — paid or free. Only checked ones show up green; nothing is assumed.</p>
       <div id="serviceChecklist"></div>
       <div style="display:flex; gap:6px; margin-top:8px;">
         <input type="text" id="customServiceInput" placeholder="Add another service" autocomplete="off" style="margin-bottom:0;">
@@ -685,10 +685,13 @@ function ensureTmdbKey() {
 }
 
 // --- "My streaming services" (which providers show green) ---
+// Nothing is checked by default - a provider only turns green once you
+// explicitly confirm you actually have access to it, paid or free.
 const MY_SERVICES_STORAGE = "my-streaming-services";
 const COMMON_PROVIDERS = [
   "Netflix", "Amazon Prime Video", "Max", "Disney Plus", "Hulu",
-  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus"
+  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus",
+  "Tubi", "Pluto TV", "The Roku Channel", "Freevee", "Kanopy", "Crackle"
 ];
 
 function getMyServices() {
@@ -982,21 +985,31 @@ function renderWatchBadges(providers) {
   const sub = (providers.flatrate || []).map((p) => p.provider_name);
   const rent = (providers.rent || []).map((p) => p.provider_name);
   const buy = (providers.buy || []).map((p) => p.provider_name);
+  const paid = [...new Set([...rent, ...buy])];
 
-  if (!free.length && !sub.length && !rent.length && !buy.length) {
+  if (!free.length && !sub.length && !paid.length) {
     return '<div class="watch-status">Not available to stream in the US right now.</div>';
   }
 
-  const owned = sub.filter(ownsProvider);
-  const notOwned = sub.filter((n) => !ownsProvider(n));
+  const ownedFree = free.filter(ownsProvider);
+  const ownedSub = sub.filter(ownsProvider);
+  const ownedPaid = paid.filter(ownsProvider);
+  const anyOwned = ownedFree.length || ownedSub.length || ownedPaid.length;
 
   let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
-  free.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Free</span>'; });
-  owned.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Yours</span>'; });
-  notOwned.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
-  if (!free.length && !owned.length && !notOwned.length) {
-    const paid = [...new Set([...rent, ...buy])];
-    paid.slice(0, 4).forEach((name) => { html += '<span class="watch-badge">' + name + ' · Rent/Buy</span>'; });
+  ownedFree.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Free</span>'; });
+  ownedSub.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Yours</span>'; });
+  ownedPaid.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Rent/Buy</span>'; });
+
+  if (!anyOwned) {
+    // Nothing here matches your checked services - show what exists, neutrally,
+    // so you still know it's out there without implying you can watch it free.
+    const others = [...new Set([...free, ...sub])].slice(0, 4);
+    if (others.length) {
+      others.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
+    } else {
+      paid.slice(0, 4).forEach((name) => { html += '<span class="watch-badge">' + name + ' · Rent/Buy</span>'; });
+    }
   }
   html += '</div>';
   return html;

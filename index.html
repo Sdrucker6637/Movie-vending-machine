@@ -307,11 +307,11 @@
   }
   .mode-btn {
     flex: 1;
-    padding: 8px;
+    padding: 8px 4px;
     border: 1px solid #d8d2c4;
     background: transparent;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: 11px;
     font-weight: 600;
     color: #666;
     cursor: pointer;
@@ -360,6 +360,103 @@
     height: 100%;
     border: none;
   }
+  .synopsis-toggle {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--danger);
+    background: none;
+    border: none;
+    padding: 0 0 10px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .watch-label {
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #999;
+    text-align: left;
+    margin-bottom: 6px;
+  }
+  .watch-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .watch-badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: #e4e0d5;
+    color: #444;
+  }
+  .watch-badge.free {
+    background: #2e7d4f;
+    color: white;
+  }
+  .watch-badge.sub {
+    background: #33445c;
+    color: white;
+  }
+  .watch-status {
+    font-size: 12px;
+    color: #888;
+    text-align: left;
+    margin-bottom: 12px;
+  }
+  .confirm-poster {
+    width: 90px;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+  .curated-form {
+    text-align: left;
+  }
+  .curated-field {
+    margin-bottom: 12px;
+  }
+  .curated-field label {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .curated-field select,
+  .curated-field input {
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: white;
+  }
+  .curated-hint {
+    font-size: 11.5px;
+    color: #999;
+    margin: -4px 0 14px;
+  }
+  .edit-filters-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 11.5px;
+    color: #888;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -381,6 +478,8 @@
 <div class="overlay hidden" id="confirmOverlay">
   <div class="dialog">
     <h2 id="confirmTitle">Remove movie?</h2>
+    <img id="confirmPoster" class="confirm-poster hidden-block" alt="">
+    <div id="confirmWatchArea"></div>
     <p id="confirmText"></p>
     <div class="dialog-buttons">
       <button class="btn-cancel" id="confirmCancel">Cancel</button>
@@ -424,12 +523,40 @@
       <h2>Surprise pick</h2>
       <div class="mode-toggle">
         <button class="mode-btn active" id="modePopular">Popular</button>
-        <button class="mode-btn" id="modeIndie">Indie / obscure</button>
+        <button class="mode-btn" id="modeIndie">Indie/obscure</button>
+        <button class="mode-btn" id="modeCurated">Curated</button>
       </div>
+
+      <div id="curatedForm" class="curated-form hidden-block">
+        <div class="curated-hint">Answer as few or as many as you like.</div>
+        <div class="curated-field">
+          <label>Genre</label>
+          <select id="curatedGenre"><option value="">Any</option></select>
+        </div>
+        <div class="curated-field">
+          <label>Vibe</label>
+          <select id="curatedVibe"><option value="">Any</option></select>
+        </div>
+        <div class="curated-field">
+          <label>Decade</label>
+          <select id="curatedDecade"><option value="">Any</option></select>
+        </div>
+        <div class="curated-field">
+          <label>Director</label>
+          <input type="text" id="curatedDirector" placeholder="e.g. Greta Gerwig" autocomplete="off">
+        </div>
+        <div class="curated-field">
+          <label>Actor</label>
+          <input type="text" id="curatedActor" placeholder="e.g. Denzel Washington" autocomplete="off">
+        </div>
+        <button class="btn-primary" id="curatedSubmit" style="width:100%; margin-bottom:10px;">Find a film</button>
+      </div>
+
+      <button class="edit-filters-btn hidden-block" id="editFiltersBtn">Edit filters</button>
       <div class="suggestion-card" id="suggestionCard">
         <div class="search-status" id="suggestionStatus">Finding something good&hellip;</div>
       </div>
-      <div class="dialog-buttons">
+      <div class="dialog-buttons" id="resultButtons">
         <button class="btn-cancel" id="surpriseAnother">Try another</button>
         <button class="btn-primary" id="surpriseUse">Use this</button>
       </div>
@@ -533,20 +660,21 @@ async function fetchTrailerKey(id) {
   }
 }
 
-async function fetchPoster(title) {
+async function fetchMovieMeta(title) {
   const key = await ensureTmdbKey();
-  if (!key) return null;
+  if (!key) return { poster: null, id: null };
   try {
     const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(title);
     const r = await fetch(url);
     const data = await r.json();
     if (data.results && data.results.length > 0) {
-      return mapTmdbResult(data.results[0]).poster;
+      const m = mapTmdbResult(data.results[0]);
+      return { poster: m.poster, id: m.id };
     }
   } catch (e) {
     console.error("Poster fetch failed", e);
   }
-  return null;
+  return { poster: null, id: null };
 }
 
 async function searchMovies(query) {
@@ -558,20 +686,57 @@ async function searchMovies(query) {
   return (data.results || []).slice(0, 6).map(mapTmdbResult);
 }
 
-// mode: "popular" uses TMDB's popular list. "indie" uses discover filtered
-// toward well-reviewed but low-vote-count (i.e. less mainstream) titles.
+// Decades to sample from so results aren't dominated by whatever's
+// currently trending. Weighted toward having classics represented.
+const DECADES = [
+  { label: "1950s", start: "1950-01-01", end: "1959-12-31" },
+  { label: "1960s", start: "1960-01-01", end: "1969-12-31" },
+  { label: "1970s", start: "1970-01-01", end: "1979-12-31" },
+  { label: "1980s", start: "1980-01-01", end: "1989-12-31" },
+  { label: "1990s", start: "1990-01-01", end: "1999-12-31" },
+  { label: "2000s", start: "2000-01-01", end: "2009-12-31" },
+  { label: "2010s", start: "2010-01-01", end: "2019-12-31" },
+  { label: "2020s", start: "2020-01-01", end: "2029-12-31" }
+];
+
+const GENRES = [
+  { id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" },
+  { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 99, name: "Documentary" },
+  { id: 18, name: "Drama" }, { id: 10751, name: "Family" }, { id: 14, name: "Fantasy" },
+  { id: 36, name: "History" }, { id: 27, name: "Horror" }, { id: 10402, name: "Music" },
+  { id: 9648, name: "Mystery" }, { id: 10749, name: "Romance" }, { id: 878, name: "Science Fiction" },
+  { id: 53, name: "Thriller" }, { id: 10752, name: "War" }, { id: 37, name: "Western" }
+];
+
+const VIBES = [
+  { label: "Feel-good", genres: [35, 10751] },
+  { label: "Dark & intense", genres: [27, 53, 80] },
+  { label: "Mind-bending", genres: [878, 9648] },
+  { label: "Heartfelt / tearjerker", genres: [18, 10749] },
+  { label: "Action-packed", genres: [28, 12] },
+  { label: "Just funny", genres: [35] }
+];
+
+// mode: "popular" pulls TMDB's popularity ranking but within a randomly
+// chosen decade, so it isn't dominated by whatever's trending right now.
+// "indie" filters toward well-reviewed but low-vote-count titles.
 async function fetchRandomMovie(mode) {
   const key = await ensureTmdbKey();
   if (!key) return null;
-  const page = Math.floor(Math.random() * 20) + 1;
+  const decade = DECADES[Math.floor(Math.random() * DECADES.length)];
+  const page = Math.floor(Math.random() * 5) + 1;
   let url;
   if (mode === "indie") {
     url = "https://api.themoviedb.org/3/discover/movie?api_key=" + key +
       "&sort_by=vote_average.desc&vote_count.gte=20&vote_count.lte=300" +
-      "&vote_average.gte=6&include_adult=false&page=" + page;
+      "&vote_average.gte=6&include_adult=false" +
+      "&primary_release_date.gte=" + decade.start + "&primary_release_date.lte=" + decade.end +
+      "&page=" + page;
   } else {
-    url = "https://api.themoviedb.org/3/movie/popular?api_key=" + key +
-      "&include_adult=false&page=" + page;
+    url = "https://api.themoviedb.org/3/discover/movie?api_key=" + key +
+      "&sort_by=popularity.desc&vote_count.gte=100&include_adult=false" +
+      "&primary_release_date.gte=" + decade.start + "&primary_release_date.lte=" + decade.end +
+      "&page=" + page;
   }
   const r = await fetch(url);
   const data = await r.json();
@@ -579,6 +744,106 @@ async function fetchRandomMovie(mode) {
   if (results.length === 0) return null;
   const pick = results[Math.floor(Math.random() * results.length)];
   return mapTmdbResult(pick);
+}
+
+async function fetchPersonId(name) {
+  const key = await ensureTmdbKey();
+  if (!key || !name || !name.trim()) return null;
+  try {
+    const url = "https://api.themoviedb.org/3/search/person?api_key=" + key + "&query=" + encodeURIComponent(name.trim());
+    const r = await fetch(url);
+    const data = await r.json();
+    return data.results && data.results.length > 0 ? data.results[0].id : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Builds a discover query from whatever survey fields were filled in.
+// Every field is optional; an all-empty filter set behaves like "popular".
+async function fetchCuratedMovie(filters) {
+  const key = await ensureTmdbKey();
+  if (!key) return null;
+
+  const params = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=30", "include_adult=false"];
+
+  if (filters.genre) {
+    params.push("with_genres=" + filters.genre);
+  } else if (filters.vibe) {
+    const vibe = VIBES.find((v) => v.label === filters.vibe);
+    if (vibe) params.push("with_genres=" + vibe.genres.join("|"));
+  }
+
+  if (filters.decade) {
+    const d = DECADES.find((x) => x.label === filters.decade);
+    if (d) params.push("primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end);
+  }
+
+  const peopleIds = [];
+  if (filters.director) {
+    const id = await fetchPersonId(filters.director);
+    if (id) peopleIds.push(id);
+  }
+  if (filters.actor) {
+    const id = await fetchPersonId(filters.actor);
+    if (id) peopleIds.push(id);
+  }
+  if (peopleIds.length) params.push("with_people=" + peopleIds.join(","));
+
+  const page = Math.floor(Math.random() * 3) + 1;
+  params.push("page=" + page);
+
+  const url = "https://api.themoviedb.org/3/discover/movie?" + params.join("&");
+  const r = await fetch(url);
+  const data = await r.json();
+  let results = (data.results || []).filter((m) => m.poster_path);
+  if (results.length === 0 && page !== 1) {
+    // fall back to page 1 if the random page came up empty
+    const url1 = "https://api.themoviedb.org/3/discover/movie?" + params.filter((p) => !p.startsWith("page=")).join("&") + "&page=1";
+    const r1 = await fetch(url1);
+    const data1 = await r1.json();
+    results = (data1.results || []).filter((m) => m.poster_path);
+  }
+  if (results.length === 0) return null;
+  const pick = results[Math.floor(Math.random() * results.length)];
+  return mapTmdbResult(pick);
+}
+
+async function fetchWatchProviders(id) {
+  const key = await ensureTmdbKey();
+  if (!key || !id) return null;
+  try {
+    const url = "https://api.themoviedb.org/3/movie/" + id + "/watch/providers?api_key=" + key;
+    const r = await fetch(url);
+    const data = await r.json();
+    return (data.results && data.results.US) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderWatchBadges(providers) {
+  if (!providers) {
+    return '<div class="watch-status">Not available to stream in the US right now.</div>';
+  }
+  const free = (providers.free || providers.ads || []).map((p) => p.provider_name);
+  const sub = (providers.flatrate || []).map((p) => p.provider_name);
+  const rent = (providers.rent || []).map((p) => p.provider_name);
+  const buy = (providers.buy || []).map((p) => p.provider_name);
+
+  if (!free.length && !sub.length && !rent.length && !buy.length) {
+    return '<div class="watch-status">Not available to stream in the US right now.</div>';
+  }
+
+  let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
+  free.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Free</span>'; });
+  sub.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
+  if (!free.length && !sub.length) {
+    const paid = [...new Set([...rent, ...buy])];
+    paid.slice(0, 4).forEach((name) => { html += '<span class="watch-badge">' + name + ' · Rent/Buy</span>'; });
+  }
+  html += '</div>';
+  return html;
 }
 
 function render() {
@@ -621,6 +886,8 @@ const confirmOverlay = document.getElementById("confirmOverlay");
 const confirmText = document.getElementById("confirmText");
 const confirmOk = document.getElementById("confirmOk");
 const confirmCancel = document.getElementById("confirmCancel");
+const confirmPoster = document.getElementById("confirmPoster");
+const confirmWatchArea = document.getElementById("confirmWatchArea");
 
 const inputOverlay = document.getElementById("inputOverlay");
 const inputTitle = document.getElementById("inputTitle");
@@ -637,13 +904,67 @@ const suggestionCard = document.getElementById("suggestionCard");
 const surpriseAnother = document.getElementById("surpriseAnother");
 const surpriseUse = document.getElementById("surpriseUse");
 const surpriseBack = document.getElementById("surpriseBack");
+const resultButtons = document.getElementById("resultButtons");
 const modePopular = document.getElementById("modePopular");
 const modeIndie = document.getElementById("modeIndie");
+const modeCurated = document.getElementById("modeCurated");
+const curatedForm = document.getElementById("curatedForm");
+const curatedGenreSel = document.getElementById("curatedGenre");
+const curatedVibeSel = document.getElementById("curatedVibe");
+const curatedDecadeSel = document.getElementById("curatedDecade");
+const curatedDirectorInput = document.getElementById("curatedDirector");
+const curatedActorInput = document.getElementById("curatedActor");
+const curatedSubmit = document.getElementById("curatedSubmit");
+const editFiltersBtn = document.getElementById("editFiltersBtn");
 
-function showConfirm(message) {
+function populateCuratedOptions() {
+  if (curatedGenreSel.options.length <= 1) {
+    GENRES.forEach((g) => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = g.name;
+      curatedGenreSel.appendChild(opt);
+    });
+  }
+  if (curatedVibeSel.options.length <= 1) {
+    VIBES.forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v.label;
+      opt.textContent = v.label;
+      curatedVibeSel.appendChild(opt);
+    });
+  }
+  if (curatedDecadeSel.options.length <= 1) {
+    DECADES.slice().reverse().forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d.label;
+      opt.textContent = d.label;
+      curatedDecadeSel.appendChild(opt);
+    });
+  }
+}
+populateCuratedOptions();
+
+function showConfirm(movie, message) {
   return new Promise((resolve) => {
     confirmText.textContent = message;
+    if (movie && movie.poster) {
+      confirmPoster.src = movie.poster;
+      confirmPoster.classList.remove("hidden-block");
+    } else {
+      confirmPoster.classList.add("hidden-block");
+    }
+    confirmWatchArea.innerHTML = '<div class="watch-status">Checking where to watch&hellip;</div>';
     confirmOverlay.classList.remove("hidden");
+
+    if (movie && movie.id) {
+      fetchWatchProviders(movie.id).then((providers) => {
+        confirmWatchArea.innerHTML = renderWatchBadges(providers);
+      });
+    } else {
+      confirmWatchArea.innerHTML = "";
+    }
+
     const cleanup = (result) => {
       confirmOverlay.classList.add("hidden");
       confirmOk.onclick = null;
@@ -669,9 +990,19 @@ function showMovieSearch(title, message) {
     setTimeout(() => inputField.focus(), 50);
 
     let debounceTimer = null;
-    let currentPick = null; // {title, poster} if suggestion chosen or a top-movie picked
+    let currentPick = null; // {title, poster, id} if suggestion chosen or a top-movie picked
     modePopular.classList.add("active");
     modeIndie.classList.remove("active");
+    modeCurated.classList.remove("active");
+    curatedForm.classList.add("hidden-block");
+    editFiltersBtn.classList.add("hidden-block");
+    resultButtons.classList.remove("hidden-block");
+    curatedDirectorInput.value = "";
+    curatedActorInput.value = "";
+    curatedGenreSel.value = "";
+    curatedVibeSel.value = "";
+    curatedDecadeSel.value = "";
+    let lastCuratedFilters = null;
 
     const finish = (result) => {
       inputOverlay.classList.add("hidden");
@@ -685,6 +1016,9 @@ function showMovieSearch(title, message) {
       surpriseBack.onclick = null;
       modePopular.onclick = null;
       modeIndie.onclick = null;
+      modeCurated.onclick = null;
+      curatedSubmit.onclick = null;
+      editFiltersBtn.onclick = null;
       clearTimeout(debounceTimer);
       resolve(result);
     };
@@ -714,7 +1048,7 @@ function showMovieSearch(title, message) {
             '<img src="' + m.poster + '" alt="">' +
             '<div><div class="rtitle">' + m.title + '</div>' +
             '<div class="ryear">' + m.year + '</div></div>';
-          row.onclick = () => finish({ title: m.title, poster: m.poster });
+          row.onclick = () => finish({ title: m.title, poster: m.poster, id: m.id });
           searchResults.appendChild(row);
         });
         searchResults.classList.remove("hidden-block");
@@ -742,46 +1076,95 @@ function showMovieSearch(title, message) {
 
     let currentMode = "popular";
 
+    function renderPick(pick) {
+      currentPick = pick;
+      const full = pick.overview || "No synopsis available.";
+      const short = full.length > 140 ? full.slice(0, 140) + "…" : full;
+      const needsToggle = full.length > 140;
+
+      suggestionCard.innerHTML =
+        (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
+        '<div class="stitle">' + pick.title + '</div>' +
+        '<div class="syear">' + pick.year + '</div>' +
+        '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
+        (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
+        '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
+        '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
+
+      if (needsToggle) {
+        let expanded = false;
+        document.getElementById("synopsisToggle").onclick = (ev) => {
+          expanded = !expanded;
+          document.getElementById("synopsisText").textContent = expanded ? full : short;
+          ev.target.textContent = expanded ? "Show less" : "Read more";
+        };
+      }
+
+      document.getElementById("trailerBtn").onclick = async (ev) => {
+        const btn = ev.target;
+        btn.textContent = "Loading…";
+        btn.disabled = true;
+        const trailerKey = await fetchTrailerKey(pick.id);
+        if (trailerKey && currentPick === pick) {
+          const embed = document.createElement("div");
+          embed.className = "trailer-embed";
+          embed.innerHTML =
+            '<iframe src="https://www.youtube.com/embed/' + trailerKey +
+            '?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+          btn.replaceWith(embed);
+        } else {
+          btn.textContent = "No trailer found";
+          btn.disabled = true;
+        }
+      };
+
+      fetchWatchProviders(pick.id).then((providers) => {
+        if (currentPick === pick) {
+          document.getElementById("watchArea").innerHTML = renderWatchBadges(providers);
+        }
+      });
+    }
+
     async function loadSuggestion() {
       suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
+      currentPick = null;
       try {
         const pick = await fetchRandomMovie(currentMode);
         if (!pick) {
           suggestionCard.innerHTML = '<div class="search-status">No luck — try again.</div>';
-          currentPick = null;
           return;
         }
-        currentPick = pick;
-        const synopsis = pick.overview
-          ? pick.overview.length > 220 ? pick.overview.slice(0, 220) + "…" : pick.overview
-          : "No synopsis available.";
-        suggestionCard.innerHTML =
-          (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
-          '<div class="stitle">' + pick.title + '</div>' +
-          '<div class="syear">' + pick.year + '</div>' +
-          '<div class="ssynopsis">' + synopsis + '</div>' +
-          '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>';
-
-        document.getElementById("trailerBtn").onclick = async (ev) => {
-          const btn = ev.target;
-          btn.textContent = "Loading…";
-          btn.disabled = true;
-          const trailerKey = await fetchTrailerKey(pick.id);
-          if (trailerKey && currentPick === pick) {
-            const embed = document.createElement("div");
-            embed.className = "trailer-embed";
-            embed.innerHTML =
-              '<iframe src="https://www.youtube.com/embed/' + trailerKey +
-              '?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
-            btn.replaceWith(embed);
-          } else {
-            btn.textContent = "No trailer found";
-            btn.disabled = true;
-          }
-        };
+        renderPick(pick);
       } catch (e) {
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-        currentPick = null;
+      }
+    }
+
+    function readCuratedFilters() {
+      return {
+        genre: curatedGenreSel.value,
+        vibe: curatedVibeSel.value,
+        decade: curatedDecadeSel.value,
+        director: curatedDirectorInput.value,
+        actor: curatedActorInput.value
+      };
+    }
+
+    async function runCuratedSearch(filters) {
+      suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
+      currentPick = null;
+      curatedForm.classList.add("hidden-block");
+      editFiltersBtn.classList.remove("hidden-block");
+      resultButtons.classList.remove("hidden-block");
+      try {
+        const pick = await fetchCuratedMovie(filters);
+        if (!pick) {
+          suggestionCard.innerHTML = '<div class="search-status">No matches for that combo — try loosening a filter.</div>';
+          return;
+        }
+        renderPick(pick);
+      } catch (e) {
+        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
       }
     }
 
@@ -789,13 +1172,42 @@ function showMovieSearch(title, message) {
       currentMode = "popular";
       modePopular.classList.add("active");
       modeIndie.classList.remove("active");
+      modeCurated.classList.remove("active");
+      curatedForm.classList.add("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.remove("hidden-block");
       loadSuggestion();
     };
     modeIndie.onclick = () => {
       currentMode = "indie";
       modeIndie.classList.add("active");
       modePopular.classList.remove("active");
+      modeCurated.classList.remove("active");
+      curatedForm.classList.add("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.remove("hidden-block");
       loadSuggestion();
+    };
+    modeCurated.onclick = () => {
+      currentMode = "curated";
+      modeCurated.classList.add("active");
+      modePopular.classList.remove("active");
+      modeIndie.classList.remove("active");
+      curatedForm.classList.remove("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.add("hidden-block");
+      suggestionCard.innerHTML = '<div class="search-status">Answer as many or as few as you like, then tap Find a film.</div>';
+      currentPick = null;
+    };
+
+    curatedSubmit.onclick = () => {
+      lastCuratedFilters = readCuratedFilters();
+      runCuratedSearch(lastCuratedFilters);
+    };
+    editFiltersBtn.onclick = () => {
+      curatedForm.classList.remove("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.add("hidden-block");
     };
 
     surpriseBtn.onclick = async () => {
@@ -805,9 +1217,15 @@ function showMovieSearch(title, message) {
       surpriseView.classList.remove("hidden-block");
       loadSuggestion();
     };
-    surpriseAnother.onclick = () => loadSuggestion();
+    surpriseAnother.onclick = () => {
+      if (currentMode === "curated" && lastCuratedFilters) {
+        runCuratedSearch(lastCuratedFilters);
+      } else {
+        loadSuggestion();
+      }
+    };
     surpriseUse.onclick = () => {
-      if (currentPick) finish({ title: currentPick.title, poster: currentPick.poster });
+      if (currentPick) finish({ title: currentPick.title, poster: currentPick.poster, id: currentPick.id });
     };
     surpriseBack.onclick = () => {
       surpriseView.classList.add("hidden-block");
@@ -819,7 +1237,16 @@ function showMovieSearch(title, message) {
 async function handleSlotClick(i) {
   const current = slots[i];
   if (current) {
-    const ok = await showConfirm('Remove "' + current.title + '" from slot ' + (i + 1) + "?");
+    // Legacy slots saved before we tracked TMDB ids won't have one yet — resolve it once.
+    if (!current.id) {
+      const meta = await fetchMovieMeta(current.title);
+      if (meta.id) {
+        current.id = meta.id;
+        if (!current.poster) current.poster = meta.poster;
+        saveSlots();
+      }
+    }
+    const ok = await showConfirm(current, 'Remove "' + current.title + '" from slot ' + (i + 1) + "?");
     if (!ok) return;
     slots[i] = null;
     render();
@@ -832,14 +1259,15 @@ async function handleSlotClick(i) {
   );
   if (!picked) return;
 
-  slots[i] = { title: picked.title, poster: picked.poster };
+  slots[i] = { title: picked.title, poster: picked.poster, id: picked.id || null };
   render();
   saveSlots();
 
-  if (!picked.poster) {
-    const poster = await fetchPoster(picked.title);
+  if (!picked.poster || !picked.id) {
+    const meta = await fetchMovieMeta(picked.title);
     if (slots[i] && slots[i].title === picked.title) {
-      slots[i].poster = poster;
+      slots[i].poster = slots[i].poster || meta.poster;
+      slots[i].id = slots[i].id || meta.id;
       render();
       saveSlots();
     }

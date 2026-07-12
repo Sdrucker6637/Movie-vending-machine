@@ -707,10 +707,25 @@ function saveMyServices(list) {
   localStorage.setItem(MY_SERVICES_STORAGE, JSON.stringify(list));
 }
 
+// TMDB/JustWatch sometimes lists the same account under a different name
+// depending on whether it's a subscription or a purchase (e.g. buying a
+// movie through Amazon shows up as "Amazon Video", not "Amazon Prime Video").
+const PROVIDER_ALIASES = {
+  "Amazon Prime Video": ["Amazon Video"],
+  "Apple TV Plus": ["Apple TV"],
+  "Max": ["HBO Max"],
+  "Disney Plus": ["Disney+"]
+};
+
 function ownsProvider(name) {
   const mine = getMyServices();
   const lower = name.toLowerCase();
-  return mine.some((s) => lower.includes(s.toLowerCase()) || s.toLowerCase().includes(lower));
+  return mine.some((s) => {
+    const sLower = s.toLowerCase();
+    if (lower.includes(sLower) || sLower.includes(lower)) return true;
+    const aliases = PROVIDER_ALIASES[s] || [];
+    return aliases.some((a) => lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower));
+  });
 }
 
 // --- Settings panel ---
@@ -991,26 +1006,25 @@ function renderWatchBadges(providers) {
     return '<div class="watch-status">Not available to stream in the US right now.</div>';
   }
 
-  const ownedFree = free.filter(ownsProvider);
-  const ownedSub = sub.filter(ownsProvider);
-  const ownedPaid = paid.filter(ownsProvider);
-  const anyOwned = ownedFree.length || ownedSub.length || ownedPaid.length;
+  // Every provider gets shown; a name that appears in more than one category
+  // keeps the best one (free beats subscription beats rent/buy).
+  const byName = new Map();
+  free.forEach((n) => { if (!byName.has(n)) byName.set(n, "free"); });
+  sub.forEach((n) => { if (!byName.has(n)) byName.set(n, "sub"); });
+  paid.forEach((n) => { if (!byName.has(n)) byName.set(n, "paid"); });
+
+  const rank = { free: 0, sub: 1, paid: 2 };
+  const items = [...byName.entries()].map(([name, cat]) => ({ name, cat, owned: ownsProvider(name) }));
+  items.sort((a, b) => (b.owned - a.owned) || (rank[a.cat] - rank[b.cat]));
+
+  const labelFor = { free: " · Free", sub: "", paid: " · Rent/Buy" };
 
   let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
-  ownedFree.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Free</span>'; });
-  ownedSub.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Yours</span>'; });
-  ownedPaid.forEach((name) => { html += '<span class="watch-badge free">' + name + ' · Rent/Buy</span>'; });
-
-  if (!anyOwned) {
-    // Nothing here matches your checked services - show what exists, neutrally,
-    // so you still know it's out there without implying you can watch it free.
-    const others = [...new Set([...free, ...sub])].slice(0, 4);
-    if (others.length) {
-      others.forEach((name) => { html += '<span class="watch-badge sub">' + name + '</span>'; });
-    } else {
-      paid.slice(0, 4).forEach((name) => { html += '<span class="watch-badge">' + name + ' · Rent/Buy</span>'; });
-    }
-  }
+  items.slice(0, 6).forEach((it) => {
+    const cls = it.owned ? "free" : (it.cat === "sub" ? "sub" : "");
+    const suffix = it.owned && it.cat === "sub" ? " · Yours" : labelFor[it.cat];
+    html += '<span class="watch-badge ' + cls + '">' + it.name + suffix + '</span>';
+  });
   html += '</div>';
   return html;
 }

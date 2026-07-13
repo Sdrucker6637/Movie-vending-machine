@@ -301,12 +301,12 @@
     padding: 6px;
   }
   .mode-toggle {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
     margin-bottom: 14px;
   }
   .mode-btn {
-    flex: 1;
     padding: 8px 4px;
     border: 1px solid #d8d2c4;
     background: transparent;
@@ -583,6 +583,23 @@
         <button class="mode-btn active" id="modePopular">Popular</button>
         <button class="mode-btn" id="modeIndie">Indie/obscure</button>
         <button class="mode-btn" id="modeCurated">Curated</button>
+        <button class="mode-btn" id="modeSimilar">Similar to&hellip;</button>
+      </div>
+
+      <div id="similarForm" class="curated-form hidden-block">
+        <div class="curated-hint">Search for a movie you like — we'll suggest something similar.</div>
+        <div class="curated-field">
+          <label>Runtime</label>
+          <select id="similarRuntime">
+            <option value="">Any length</option>
+            <option value="short">Under 90 min</option>
+            <option value="medium">90–120 min</option>
+            <option value="long">Over 120 min</option>
+          </select>
+        </div>
+        <input type="text" id="similarSearchInput" placeholder="Search for a movie" autocomplete="off">
+        <div class="search-status hidden-block" id="similarSearchStatus"></div>
+        <div class="search-results hidden-block" id="similarSearchResults"></div>
       </div>
 
       <div id="curatedForm" class="curated-form hidden-block">
@@ -603,6 +620,15 @@
         <div class="curated-field">
           <label>Decade</label>
           <select id="curatedDecade"><option value="">Any</option></select>
+        </div>
+        <div class="curated-field">
+          <label>Runtime</label>
+          <select id="curatedRuntime">
+            <option value="">Any length</option>
+            <option value="short">Under 90 min</option>
+            <option value="medium">90–120 min</option>
+            <option value="long">Over 120 min</option>
+          </select>
         </div>
         <div class="curated-field">
           <label>Director</label>
@@ -891,8 +917,26 @@ const VIBES = [
   { label: "Mind-bending", genres: [878, 9648] },
   { label: "Heartfelt / tearjerker", genres: [18, 10749] },
   { label: "Action-packed", genres: [28, 12] },
-  { label: "Just funny", genres: [35] }
+  { label: "Just funny", genres: [35] },
+  { label: "Trippy / psychedelic", genres: [878, 16] },
+  { label: "Cute / wholesome", genres: [10751, 16] },
+  { label: "Cozy", genres: [10751, 10749] },
+  { label: "Quirky", genres: [35, 18] },
+  { label: "Epic", genres: [12, 28] },
+  { label: "Suspenseful", genres: [53, 9648] }
 ];
+
+// Matches loosely - "trippy" should hit "Trippy / psychedelic", "cute"
+// should hit "Cute / wholesome", etc. Splits each label on "/" so a typed
+// word matching either half of a combined label still counts.
+function findVibePreset(text) {
+  const lower = text.trim().toLowerCase();
+  if (!lower) return null;
+  return VIBES.find((v) => {
+    const parts = v.label.toLowerCase().split("/").map((s) => s.trim());
+    return parts.some((p) => p.includes(lower) || lower.includes(p));
+  });
+}
 
 // mode: "popular" pulls TMDB's popularity ranking but within a randomly
 // chosen decade, so it isn't dominated by whatever's trending right now.
@@ -955,15 +999,23 @@ async function fetchCuratedMovie(filters) {
   const key = await ensureTmdbKey();
   if (!key) return null;
 
-  const params = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=30", "include_adult=false"];
+  const baseParams = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=10", "include_adult=false"];
   const keywordIds = [];
 
+  if (filters.runtime === "short") {
+    baseParams.push("with_runtime.lte=90");
+  } else if (filters.runtime === "medium") {
+    baseParams.push("with_runtime.gte=90", "with_runtime.lte=120");
+  } else if (filters.runtime === "long") {
+    baseParams.push("with_runtime.gte=120");
+  }
+
   if (filters.genre) {
-    params.push("with_genres=" + filters.genre);
+    baseParams.push("with_genres=" + filters.genre);
   } else if (filters.vibe) {
-    const vibe = VIBES.find((v) => v.label.toLowerCase() === filters.vibe.toLowerCase());
+    const vibe = findVibePreset(filters.vibe);
     if (vibe) {
-      params.push("with_genres=" + vibe.genres.join("|"));
+      baseParams.push("with_genres=" + vibe.genres.join("|"));
     } else {
       // Not one of the presets - try it as a free-text keyword instead.
       const kwId = await resolveKeywordId(filters.vibe);
@@ -978,7 +1030,7 @@ async function fetchCuratedMovie(filters) {
   }
 
   if (keywordIds.length) {
-    params.push("with_keywords=" + [...new Set(keywordIds)].join("|"));
+    baseParams.push("with_keywords=" + [...new Set(keywordIds)].join("|"));
   }
 
   // with_cast/with_crew are more precise than with_people, which also
@@ -993,38 +1045,124 @@ async function fetchCuratedMovie(filters) {
     const id = await fetchPersonId(filters.actor);
     if (id) castIds.push(id);
   }
-  if (castIds.length) params.push("with_cast=" + castIds.join(","));
-  if (crewIds.length) params.push("with_crew=" + crewIds.join(","));
+  if (castIds.length) baseParams.push("with_cast=" + castIds.join(","));
+  if (crewIds.length) baseParams.push("with_crew=" + crewIds.join(","));
+
+  async function tryDiscover(extraParams) {
+    const url = "https://api.themoviedb.org/3/discover/movie?" + baseParams.concat(extraParams).join("&");
+    const r = await fetch(url);
+    const data = await r.json();
+    return (data.results || []).filter((m) => m.poster_path);
+  }
+
+  let results = [];
 
   if (filters.decade) {
+    // User picked a specific decade - respect it, just try a couple of pages.
     const d = DECADES.find((x) => x.label === filters.decade);
-    if (d) params.push("primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end);
-  } else if (!castIds.length && !crewIds.length) {
-    // No decade chosen and no person filter - spread across eras instead of
-    // defaulting to whatever's currently popular (skews toward new releases).
-    // Skipped when a director/actor is set, since forcing a random decade
-    // onto someone's filmography can wrongly rule out their actual work.
-    const d = DECADES[Math.floor(Math.random() * DECADES.length)];
-    params.push("primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end);
+    const dateParams = ["primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end];
+    results = await tryDiscover([...dateParams, "page=" + (Math.floor(Math.random() * 3) + 1)]);
+    if (results.length === 0) results = await tryDiscover([...dateParams, "page=1"]);
+  } else if (castIds.length || crewIds.length) {
+    // Person filters are inherently period-limited - don't add a decade
+    // constraint on top, it could wrongly rule out their actual work.
+    results = await tryDiscover(["page=" + (Math.floor(Math.random() * 3) + 1)]);
+    if (results.length === 0) results = await tryDiscover(["page=1"]);
+  } else {
+    // No decade specified - try a few different random decades so results
+    // aren't dominated by new releases, but don't let bad luck on one
+    // random decade cause a false "nothing found".
+    const shuffled = DECADES.slice().sort(() => Math.random() - 0.5);
+    for (const d of shuffled.slice(0, 3)) {
+      results = await tryDiscover([
+        "primary_release_date.gte=" + d.start,
+        "primary_release_date.lte=" + d.end,
+        "page=" + (Math.floor(Math.random() * 2) + 1)
+      ]);
+      if (results.length) break;
+    }
+    if (results.length === 0) {
+      results = await tryDiscover(["page=1"]);
+    }
   }
 
-  const page = Math.floor(Math.random() * 3) + 1;
-  params.push("page=" + page);
-
-  const url = "https://api.themoviedb.org/3/discover/movie?" + params.join("&");
-  const r = await fetch(url);
-  const data = await r.json();
-  let results = (data.results || []).filter((m) => m.poster_path);
-  if (results.length === 0 && page !== 1) {
-    // fall back to page 1 if the random page came up empty
-    const url1 = "https://api.themoviedb.org/3/discover/movie?" + params.filter((p) => !p.startsWith("page=")).join("&") + "&page=1";
-    const r1 = await fetch(url1);
-    const data1 = await r1.json();
-    results = (data1.results || []).filter((m) => m.poster_path);
+  if (results.length === 0 && keywordIds.length) {
+    // Last resort: the vibe/theme text may not have matched TMDB's keyword
+    // vocabulary well - retry with everything except the keyword filter
+    // rather than reporting "nothing found" over a single unmatched word.
+    const withoutKeywords = baseParams.filter((p) => !p.startsWith("with_keywords="));
+    const url = "https://api.themoviedb.org/3/discover/movie?" + withoutKeywords.join("&") + "&page=1";
+    const r = await fetch(url);
+    const data = await r.json();
+    results = (data.results || []).filter((m) => m.poster_path);
   }
+
+  if (results.length === 0 && filters.runtime) {
+    // Still nothing - the runtime bucket may just be too narrow for the
+    // rest of the combo. Drop it rather than reporting a false zero.
+    const withoutRuntime = baseParams.filter((p) => !p.startsWith("with_runtime"));
+    const url = "https://api.themoviedb.org/3/discover/movie?" + withoutRuntime.join("&") + "&page=1";
+    const r = await fetch(url);
+    const data = await r.json();
+    results = (data.results || []).filter((m) => m.poster_path);
+  }
+
   if (results.length === 0) return null;
   const pick = results[Math.floor(Math.random() * results.length)];
   return mapTmdbResult(pick);
+}
+
+function runtimeRangeFor(bucket) {
+  if (bucket === "short") return [0, 90];
+  if (bucket === "medium") return [90, 120];
+  if (bucket === "long") return [120, 999];
+  return null;
+}
+
+async function fetchSimilarMovies(id, runtimeFilter) {
+  const key = await ensureTmdbKey();
+  if (!key || !id) return [];
+  try {
+    const url = "https://api.themoviedb.org/3/movie/" + id + "/recommendations?api_key=" + key + "&page=1";
+    const r = await fetch(url);
+    const data = await r.json();
+    let results = (data.results || []).filter((m) => m.poster_path);
+    if (results.length === 0) {
+      // "recommendations" is usually better quality but sparser than "similar" -
+      // fall back to "similar" if there was nothing to recommend.
+      const url2 = "https://api.themoviedb.org/3/movie/" + id + "/similar?api_key=" + key + "&page=1";
+      const r2 = await fetch(url2);
+      const data2 = await r2.json();
+      results = (data2.results || []).filter((m) => m.poster_path);
+    }
+    let mapped = results.map(mapTmdbResult);
+
+    const range = runtimeRangeFor(runtimeFilter);
+    if (range) {
+      // Recommendation/similar results don't include runtime - it only
+      // comes from the movie detail endpoint, so check a capped, shuffled
+      // sample in parallel rather than every result one at a time.
+      const [min, max] = range;
+      const sample = mapped.slice().sort(() => Math.random() - 0.5).slice(0, 15);
+      const withRuntime = await Promise.all(sample.map(async (m) => {
+        try {
+          const rr = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
+          const d = await rr.json();
+          return { ...m, runtime: d.runtime };
+        } catch (e) {
+          return { ...m, runtime: null };
+        }
+      }));
+      const filtered = withRuntime.filter((m) => m.runtime && m.runtime >= min && m.runtime <= max);
+      // If the runtime bucket ruled out everything, fall back to the
+      // unfiltered list rather than reporting a false "nothing similar".
+      mapped = filtered.length ? filtered : mapped;
+    }
+
+    return mapped;
+  } catch (e) {
+    return [];
+  }
 }
 
 async function fetchWatchProviders(id) {
@@ -1154,10 +1292,17 @@ const curatedVibeInput = document.getElementById("curatedVibe");
 const vibeOptions = document.getElementById("vibeOptions");
 const curatedThemesInput = document.getElementById("curatedThemes");
 const curatedDecadeSel = document.getElementById("curatedDecade");
+const curatedRuntimeSel = document.getElementById("curatedRuntime");
 const curatedDirectorInput = document.getElementById("curatedDirector");
 const curatedActorInput = document.getElementById("curatedActor");
 const curatedSubmit = document.getElementById("curatedSubmit");
 const editFiltersBtn = document.getElementById("editFiltersBtn");
+const modeSimilar = document.getElementById("modeSimilar");
+const similarForm = document.getElementById("similarForm");
+const similarSearchInput = document.getElementById("similarSearchInput");
+const similarSearchStatus = document.getElementById("similarSearchStatus");
+const similarSearchResults = document.getElementById("similarSearchResults");
+const similarRuntimeSel = document.getElementById("similarRuntime");
 
 function populateCuratedOptions() {
   if (curatedGenreSel.options.length <= 1) {
@@ -1231,8 +1376,12 @@ function showMovieSearch(title, message) {
     setTimeout(() => inputField.focus(), 50);
 
     let debounceTimer = null;
+    let similarDebounceTimer = null;
     let currentPick = null; // {title, poster, id} if suggestion chosen or a top-movie picked
     let lastCuratedFilters = null;
+    let lastSimilarBaseId = null;
+    let lastSimilarTitle = null;
+    let lastSimilarRuntime = null;
 
     function resetCuratedForm() {
       curatedDirectorInput.value = "";
@@ -1241,16 +1390,31 @@ function showMovieSearch(title, message) {
       curatedVibeInput.value = "";
       curatedThemesInput.value = "";
       curatedDecadeSel.value = "";
+      curatedRuntimeSel.value = "";
       lastCuratedFilters = null;
+    }
+
+    function resetSimilarForm() {
+      similarSearchInput.value = "";
+      similarRuntimeSel.value = "";
+      similarSearchResults.innerHTML = "";
+      similarSearchResults.classList.add("hidden-block");
+      similarSearchStatus.classList.add("hidden-block");
+      lastSimilarBaseId = null;
+      lastSimilarTitle = null;
+      lastSimilarRuntime = null;
     }
 
     modePopular.classList.add("active");
     modeIndie.classList.remove("active");
     modeCurated.classList.remove("active");
+    modeSimilar.classList.remove("active");
     curatedForm.classList.add("hidden-block");
+    similarForm.classList.add("hidden-block");
     editFiltersBtn.classList.add("hidden-block");
     resultButtons.classList.remove("hidden-block");
     resetCuratedForm();
+    resetSimilarForm();
 
     const finish = (result) => {
       inputOverlay.classList.add("hidden");
@@ -1265,9 +1429,12 @@ function showMovieSearch(title, message) {
       modePopular.onclick = null;
       modeIndie.onclick = null;
       modeCurated.onclick = null;
+      modeSimilar.onclick = null;
       curatedSubmit.onclick = null;
       editFiltersBtn.onclick = null;
+      if (similarSearchInput) similarSearchInput.oninput = null;
       clearTimeout(debounceTimer);
+      clearTimeout(similarDebounceTimer);
       resolve(result);
     };
 
@@ -1394,6 +1561,7 @@ function showMovieSearch(title, message) {
         vibe: curatedVibeInput.value.trim(),
         themes: curatedThemesInput.value.trim(),
         decade: curatedDecadeSel.value,
+        runtime: curatedRuntimeSel.value,
         director: curatedDirectorInput.value,
         actor: curatedActorInput.value
       };
@@ -1403,6 +1571,7 @@ function showMovieSearch(title, message) {
       suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
       currentPick = null;
       curatedForm.classList.add("hidden-block");
+      editFiltersBtn.textContent = "✎ Edit filters and search again";
       editFiltersBtn.classList.remove("hidden-block");
       resultButtons.classList.remove("hidden-block");
       try {
@@ -1417,38 +1586,125 @@ function showMovieSearch(title, message) {
       }
     }
 
-    modePopular.onclick = () => {
+    async function runSimilarSearch(baseId, baseTitle, runtimeFilter) {
+      suggestionCard.innerHTML = '<div class="search-status">Finding something similar to "' + baseTitle + '"&hellip;</div>';
+      currentPick = null;
+      similarForm.classList.add("hidden-block");
+      lastSimilarBaseId = baseId;
+      lastSimilarTitle = baseTitle;
+      lastSimilarRuntime = runtimeFilter;
+      editFiltersBtn.textContent = "🔄 Pick a different movie";
+      editFiltersBtn.classList.remove("hidden-block");
+      resultButtons.classList.remove("hidden-block");
+      try {
+        const list = await fetchSimilarMovies(baseId, runtimeFilter);
+        if (!list.length) {
+          suggestionCard.innerHTML = '<div class="search-status">Couldn\'t find anything similar to that one.</div>';
+          return;
+        }
+        const pick = list[Math.floor(Math.random() * list.length)];
+        renderPick(pick);
+      } catch (e) {
+        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
+      }
+    }
+
+    similarSearchInput.oninput = () => {
+      clearTimeout(similarDebounceTimer);
+      similarDebounceTimer = setTimeout(async () => {
+        const q = similarSearchInput.value.trim();
+        if (!q || q.length < 2) {
+          similarSearchResults.classList.add("hidden-block");
+          similarSearchStatus.classList.add("hidden-block");
+          return;
+        }
+        similarSearchStatus.textContent = "Searching…";
+        similarSearchStatus.classList.remove("hidden-block");
+        similarSearchResults.classList.add("hidden-block");
+        try {
+          const results = await searchMovies(q);
+          similarSearchStatus.classList.add("hidden-block");
+          if (results.length === 0) {
+            similarSearchStatus.textContent = "No matches.";
+            similarSearchStatus.classList.remove("hidden-block");
+            return;
+          }
+          similarSearchResults.innerHTML = "";
+          results.forEach((m) => {
+            const row = document.createElement("div");
+            row.className = "result-row";
+            row.innerHTML =
+              '<img src="' + m.poster + '" alt="">' +
+              '<div><div class="rtitle">' + m.title + '</div>' +
+              '<div class="ryear">' + m.year + '</div></div>';
+            row.onclick = () => runSimilarSearch(m.id, m.title, similarRuntimeSel.value);
+            similarSearchResults.appendChild(row);
+          });
+          similarSearchResults.classList.remove("hidden-block");
+        } catch (e) {
+          similarSearchStatus.textContent = "Search failed — check your connection.";
+          similarSearchStatus.classList.remove("hidden-block");
+        }
+      }, 350);
+    };
+
+    function enterPopular() {
       currentMode = "popular";
       modePopular.classList.add("active");
       modeIndie.classList.remove("active");
       modeCurated.classList.remove("active");
+      modeSimilar.classList.remove("active");
       curatedForm.classList.add("hidden-block");
+      similarForm.classList.add("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.remove("hidden-block");
       loadSuggestion();
-    };
-    modeIndie.onclick = () => {
+    }
+    function enterIndie() {
       currentMode = "indie";
       modeIndie.classList.add("active");
       modePopular.classList.remove("active");
       modeCurated.classList.remove("active");
+      modeSimilar.classList.remove("active");
       curatedForm.classList.add("hidden-block");
+      similarForm.classList.add("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.remove("hidden-block");
       loadSuggestion();
-    };
-    modeCurated.onclick = () => {
+    }
+    function enterCurated() {
       currentMode = "curated";
       modeCurated.classList.add("active");
       modePopular.classList.remove("active");
       modeIndie.classList.remove("active");
+      modeSimilar.classList.remove("active");
+      similarForm.classList.add("hidden-block");
       resetCuratedForm();
       curatedForm.classList.remove("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.add("hidden-block");
       suggestionCard.innerHTML = '<div class="search-status">Answer as many or as few as you like, then tap Find a film.</div>';
       currentPick = null;
-    };
+    }
+    function enterSimilar() {
+      currentMode = "similar";
+      modeSimilar.classList.add("active");
+      modePopular.classList.remove("active");
+      modeIndie.classList.remove("active");
+      modeCurated.classList.remove("active");
+      curatedForm.classList.add("hidden-block");
+      resetSimilarForm();
+      similarForm.classList.remove("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.add("hidden-block");
+      suggestionCard.innerHTML = '<div class="search-status">Search for a movie you like below.</div>';
+      currentPick = null;
+    }
+
+    modePopular.onclick = enterPopular;
+    modeIndie.onclick = enterIndie;
+    modeCurated.onclick = enterCurated;
+    modeSimilar.onclick = enterSimilar;
 
     curatedSubmit.onclick = () => {
       lastCuratedFilters = readCuratedFilters();
@@ -1458,9 +1714,13 @@ function showMovieSearch(title, message) {
     // mode or losing your place - the filter values are still in the form.
     editFiltersBtn.onclick = () => {
       suggestionCard.innerHTML = "";
-      curatedForm.classList.remove("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
       resultButtons.classList.add("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      if (currentMode === "similar") {
+        similarForm.classList.remove("hidden-block");
+      } else {
+        curatedForm.classList.remove("hidden-block");
+      }
       const dialogEl = curatedForm.closest(".dialog");
       if (dialogEl) dialogEl.scrollTop = 0;
     };
@@ -1470,11 +1730,15 @@ function showMovieSearch(title, message) {
       if (!key) return;
       searchView.classList.add("hidden-block");
       surpriseView.classList.remove("hidden-block");
-      loadSuggestion();
+      // Always re-enter on a clean, known-good state rather than resuming
+      // whatever mode/leftover result was showing before "Back to search".
+      enterPopular();
     };
     surpriseAnother.onclick = () => {
       if (currentMode === "curated" && lastCuratedFilters) {
         runCuratedSearch(lastCuratedFilters);
+      } else if (currentMode === "similar" && lastSimilarBaseId) {
+        runSimilarSearch(lastSimilarBaseId, lastSimilarTitle, lastSimilarRuntime);
       } else {
         loadSuggestion();
       }

@@ -1268,6 +1268,17 @@ async function fetchCuratedMovie(filters) {
     resolved.forEach((id) => { if (id) keywordIds.push(id); });
   }
 
+  // If vibe/themes were the ONLY thing filled in and none of them resolved
+  // to anything real (no genre preset, no keyword, and Gemini already
+  // failed above), don't silently fall back to an unrelated popular movie -
+  // that's how a "cheesy bad" search ends up recommending Seven Samurai.
+  const vibeOrThemesGiven = filters.vibe || filters.themes;
+  const onlyVibeOrThemesGiven = vibeOrThemesGiven && !filters.genre && !filters.decade && !filters.director && !filters.actor;
+  const resolvedSomething = baseParams.some((p) => p.startsWith("with_genres=")) || keywordIds.length > 0;
+  if (onlyVibeOrThemesGiven && !resolvedSomething) {
+    return null;
+  }
+
   if (keywordIds.length) {
     baseParams.push("with_keywords=" + [...new Set(keywordIds)].join("|"));
   }
@@ -1856,7 +1867,7 @@ function showMovieSearch(title, message) {
       try {
         const pick = await fetchCuratedMovie(filters);
         if (!pick) {
-          suggestionCard.innerHTML = '<div class="search-status">No matches for that combo — try loosening a filter.</div>';
+          suggestionCard.innerHTML = '<div class="search-status">Couldn\'t match that to anything specific — try rephrasing the vibe/plot description, or pair it with a genre or decade.</div>';
           return;
         }
         renderPick(pick);

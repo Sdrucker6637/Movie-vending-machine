@@ -385,6 +385,16 @@
     gap: 6px;
     margin-bottom: 12px;
   }
+  .runtime-badge {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: #d8d2c4;
+    color: #444;
+    margin-bottom: 10px;
+  }
   .watch-badge {
     font-size: 11.5px;
     font-weight: 600;
@@ -510,7 +520,7 @@
   <div class="dialog">
     <h2 id="confirmTitle">Remove movie?</h2>
     <img id="confirmPoster" class="confirm-poster hidden-block" alt="">
-    <div id="confirmRuntime" class="watch-status hidden-block"></div>
+    <div id="confirmRuntime" class="runtime-badge hidden-block"></div>
     <div id="confirmWatchArea"></div>
     <p id="confirmText"></p>
     <div class="dialog-buttons">
@@ -751,14 +761,45 @@ const PROVIDER_ALIASES = {
   "Disney Plus": ["Disney+"]
 };
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whole-word containment, so a short name like "Max" doesn't accidentally
+// match inside an unrelated word like "Cinemax".
+function wordMatch(a, b) {
+  const lowerA = a.trim().toLowerCase();
+  const lowerB = b.trim().toLowerCase();
+  if (!lowerA || !lowerB) return false;
+  if (lowerA === lowerB) return true;
+  const reA = new RegExp("\\b" + escapeRegex(lowerA) + "\\b");
+  const reB = new RegExp("\\b" + escapeRegex(lowerB) + "\\b");
+  return reA.test(lowerB) || reB.test(lowerA);
+}
+
+// "___ Amazon Channel" / "___ Apple TV Channel" listings are separate
+// a-la-carte add-on subscriptions bundled through Amazon or Apple - having
+// the base service (or even the same channel through its own app) doesn't
+// mean you have this specific add-on. Same idea for "YouTube TV", which is
+// a completely different product from renting/buying on YouTube.
+function requiresExactMatch(name) {
+  return /\bchannel\b/i.test(name) || name.trim().toLowerCase() === "youtube tv";
+}
+
 function ownsProvider(name) {
   const mine = getMyServices();
-  const lower = name.toLowerCase();
+  const lower = name.trim().toLowerCase();
+
+  // An exact match (including one you added yourself, like a specific
+  // channel add-on) always counts, even for names that otherwise require
+  // an exact match below.
+  if (mine.some((s) => s.trim().toLowerCase() === lower)) return true;
+  if (requiresExactMatch(name)) return false;
+
   return mine.some((s) => {
-    const sLower = s.toLowerCase();
-    if (lower.includes(sLower) || sLower.includes(lower)) return true;
+    if (wordMatch(s, name)) return true;
     const aliases = PROVIDER_ALIASES[s] || [];
-    return aliases.some((a) => lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower));
+    return aliases.some((a) => wordMatch(a, name));
   });
 }
 
@@ -1377,7 +1418,7 @@ function showConfirm(movie, message) {
       fetchMovieRuntime(movie.id).then((minutes) => {
         const formatted = formatRuntime(minutes);
         if (formatted) {
-          confirmRuntimeEl.textContent = "⏱ " + formatted;
+          confirmRuntimeEl.textContent = formatted;
           confirmRuntimeEl.classList.remove("hidden-block");
         }
       });
@@ -1534,7 +1575,8 @@ function showMovieSearch(title, message) {
       suggestionCard.innerHTML =
         (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
         '<div class="stitle">' + pick.title + '</div>' +
-        '<div class="syear" id="pickMeta">' + pick.year + '</div>' +
+        '<div class="syear">' + pick.year + '</div>' +
+        '<div id="pickRuntime" class="runtime-badge hidden-block"></div>' +
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
@@ -1576,8 +1618,11 @@ function showMovieSearch(title, message) {
       fetchMovieRuntime(pick.id).then((minutes) => {
         const formatted = formatRuntime(minutes);
         if (currentPick === pick && formatted) {
-          const metaEl = document.getElementById("pickMeta");
-          if (metaEl) metaEl.textContent = pick.year + " · " + formatted;
+          const badgeEl = document.getElementById("pickRuntime");
+          if (badgeEl) {
+            badgeEl.textContent = formatted;
+            badgeEl.classList.remove("hidden-block");
+          }
         }
       });
     }

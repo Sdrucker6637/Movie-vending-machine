@@ -548,6 +548,20 @@
   </div>
 </div>
 
+<div class="overlay hidden" id="geminiKeyOverlay">
+  <div class="dialog">
+    <h2>Connect Gemini</h2>
+    <p>Paste your Gemini API key to power more abstract Vibe/Plot searches. Get a free one at
+      <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+    </p>
+    <input type="text" id="geminiKeyField" placeholder="Paste API key here" autocomplete="off">
+    <div class="dialog-buttons">
+      <button class="btn-cancel" id="geminiKeyCancel">Cancel</button>
+      <button class="btn-primary" id="geminiKeySave">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="settingsOverlay">
   <div class="dialog" style="max-height: 85vh; overflow-y: auto;">
     <h2>Settings</h2>
@@ -556,6 +570,13 @@
       <label>TMDB Connection</label>
       <p style="margin:0 0 8px;" id="keyStatusText">Not connected</p>
       <button class="btn-cancel" id="changeKeyBtn" style="width:100%;">Change API key</button>
+    </div>
+
+    <div class="curated-field">
+      <label>AI-Powered Vibe Search (optional)</label>
+      <p style="margin:0 0 8px; font-size:12px; color:#888;">Connect a free Gemini API key to make the Vibe and Plot/themes fields in Curated understand more abstract descriptions (get one at aistudio.google.com/apikey).</p>
+      <p style="margin:0 0 8px;" id="geminiKeyStatusText">Not connected</p>
+      <button class="btn-cancel" id="changeGeminiKeyBtn" style="width:100%;">Change Gemini key</button>
     </div>
 
     <div class="curated-field">
@@ -732,6 +753,98 @@ function ensureTmdbKey() {
   });
 }
 
+// --- Gemini API key management (optional, powers abstract vibe/theme search) ---
+const GEMINI_KEY_STORAGE = "gemini-api-key";
+
+function getStoredGeminiKey() {
+  return localStorage.getItem(GEMINI_KEY_STORAGE);
+}
+
+// Unlike the TMDB key, Gemini is optional - this never blocks with a modal
+// on its own. Curated mode calls this quietly and just skips the AI step
+// (falling back to plain TMDB keyword matching) if nothing's connected.
+function getGeminiKeyIfAny() {
+  return getStoredGeminiKey();
+}
+
+function promptForGeminiKey() {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("geminiKeyOverlay");
+    const field = document.getElementById("geminiKeyField");
+    const save = document.getElementById("geminiKeySave");
+    const cancel = document.getElementById("geminiKeyCancel");
+    field.value = "";
+    overlay.classList.remove("hidden");
+    setTimeout(() => field.focus(), 50);
+    const cleanup = (result) => {
+      overlay.classList.add("hidden");
+      save.onclick = null;
+      cancel.onclick = null;
+      resolve(result);
+    };
+    save.onclick = () => {
+      const v = field.value.trim();
+      if (!v) return;
+      localStorage.setItem(GEMINI_KEY_STORAGE, v);
+      cleanup(v);
+    };
+    cancel.onclick = () => cleanup(null);
+  });
+}
+
+// Asks Gemini for real movie titles matching a free-text vibe/theme
+// description. Returns [] on any failure so callers can fall back cleanly.
+async function fetchGeminiMovieSuggestions(description, count) {
+  const key = getGeminiKeyIfAny();
+  if (!key) return [];
+  const prompt =
+    "Suggest " + count + " real, existing movies that match this description: \"" + description + "\". " +
+    "Only suggest films you are confident actually exist. Prefer variety over obvious picks. " +
+    "Respond with ONLY a JSON array, no markdown formatting, no code fences, no extra text. " +
+    "Each item must be exactly: {\"title\": \"...\", \"year\": \"...\"}.";
+  try {
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const data = await r.json();
+    const text = data.candidates && data.candidates[0] && data.candidates[0].content &&
+      data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+      data.candidates[0].content.parts[0].text;
+    if (!text) return [];
+    const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("Gemini suggestion fetch failed", e);
+    return [];
+  }
+}
+
+// Looks up each Gemini-suggested title on TMDB (using the year as a
+// disambiguator) and keeps only the ones that actually resolve.
+async function resolveGeminiSuggestions(suggestions) {
+  const key = await ensureTmdbKey();
+  if (!key) return [];
+  const results = await Promise.all(suggestions.map(async (s) => {
+    try {
+      const query = s.year ? s.title + " " + s.year : s.title;
+      const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(query);
+      const r = await fetch(url);
+      const data = await r.json();
+      if (data.results && data.results.length > 0) {
+        return mapTmdbResult(data.results[0]);
+      }
+    } catch (e) {
+      // skip unresolved suggestions
+    }
+    return null;
+  }));
+  return results.filter(Boolean);
+}
+
 // --- "My streaming services" (which providers show green) ---
 // Nothing is checked by default - a provider only turns green once you
 // explicitly confirm you actually have access to it, paid or free.
@@ -816,9 +929,12 @@ const customServiceInput = document.getElementById("customServiceInput");
 const addCustomServiceBtn = document.getElementById("addCustomServiceBtn");
 const customServiceChips = document.getElementById("customServiceChips");
 const settingsDone = document.getElementById("settingsDone");
+const geminiKeyStatusText = document.getElementById("geminiKeyStatusText");
+const changeGeminiKeyBtn = document.getElementById("changeGeminiKeyBtn");
 
 function renderSettingsPanel() {
   keyStatusText.textContent = getStoredKey() ? "Connected" : "Not connected";
+  geminiKeyStatusText.textContent = getStoredGeminiKey() ? "Connected" : "Not connected";
 
   const mine = getMyServices();
   serviceChecklist.innerHTML = "";
@@ -868,6 +984,12 @@ addCustomServiceBtn.onclick = () => {
 changeKeyBtn.onclick = async () => {
   localStorage.removeItem(TMDB_KEY_STORAGE);
   await ensureTmdbKey();
+  renderSettingsPanel();
+};
+
+changeGeminiKeyBtn.onclick = async () => {
+  localStorage.removeItem(GEMINI_KEY_STORAGE);
+  await promptForGeminiKey();
   renderSettingsPanel();
 };
 
@@ -1065,9 +1187,56 @@ async function resolveKeywordId(phrase) {
 
 // Builds a discover query from whatever survey fields were filled in.
 // Every field is optional; an all-empty filter set behaves like "popular".
+// When a Gemini key is connected, abstract vibe/theme descriptions get
+// suggested by the model directly (it just knows movies), then each
+// suggestion is looked up on TMDB for real data. Falls back to null on
+// any failure so the caller can use the plain TMDB-keyword path instead.
+async function tryGeminiCuratedPick(filters) {
+  const descParts = [];
+  if (filters.vibe) descParts.push("vibe: " + filters.vibe);
+  if (filters.themes) descParts.push("themes/plot elements: " + filters.themes);
+  if (filters.genre) {
+    const g = GENRES.find((x) => String(x.id) === String(filters.genre));
+    if (g) descParts.push("genre: " + g.name);
+  }
+  if (filters.decade) descParts.push("from the " + filters.decade);
+  if (filters.director) descParts.push("directed by, or similar in style to, " + filters.director);
+  if (filters.actor) descParts.push("starring, or similar to work by, " + filters.actor);
+  const description = descParts.join("; ");
+  if (!description) return null;
+
+  const suggestions = await fetchGeminiMovieSuggestions(description, 8);
+  if (!suggestions.length) return null;
+
+  let resolved = await resolveGeminiSuggestions(suggestions);
+  if (!resolved.length) return null;
+
+  if (filters.runtime) {
+    const range = runtimeRangeFor(filters.runtime);
+    if (range) {
+      const withRuntime = await Promise.all(resolved.map(async (m) => {
+        const minutes = await fetchMovieRuntime(m.id);
+        return { ...m, runtime: minutes };
+      }));
+      const filtered = withRuntime.filter((m) => m.runtime && m.runtime >= range[0] && m.runtime <= range[1]);
+      if (filtered.length) resolved = filtered;
+    }
+  }
+
+  return resolved[Math.floor(Math.random() * resolved.length)];
+}
+
 async function fetchCuratedMovie(filters) {
   const key = await ensureTmdbKey();
   if (!key) return null;
+
+  const hasAbstractQuery = (filters.vibe && !filters.genre) || filters.themes;
+  if (hasAbstractQuery && getGeminiKeyIfAny()) {
+    const geminiPick = await tryGeminiCuratedPick(filters);
+    if (geminiPick) return geminiPick;
+    // Falls through to the plain TMDB-only matching below if Gemini
+    // didn't return anything usable.
+  }
 
   const baseParams = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=10", "include_adult=false"];
   const keywordIds = [];
@@ -1189,7 +1358,7 @@ function runtimeRangeFor(bucket) {
   return null;
 }
 
-async function fetchSimilarMovies(id, runtimeFilter) {
+async function fetchSimilarMovies(id, title, runtimeFilter) {
   const key = await ensureTmdbKey();
   if (!key || !id) return [];
   try {
@@ -1206,6 +1375,25 @@ async function fetchSimilarMovies(id, runtimeFilter) {
       results = (data2.results || []).filter((m) => m.poster_path);
     }
     let mapped = results.map(mapTmdbResult);
+
+    // TMDB's own similarity data is collaborative-filtering based - it's
+    // usually good, but thin for obscure/arthouse titles. Only ask Gemini
+    // to top it up when TMDB genuinely doesn't have much to offer, rather
+    // than replacing data that's already reliable.
+    if (mapped.length < 5 && getGeminiKeyIfAny() && title) {
+      const description = "movies similar in feel, themes, or style to \"" + title + "\"";
+      const suggestions = await fetchGeminiMovieSuggestions(description, 8);
+      if (suggestions.length) {
+        const resolved = await resolveGeminiSuggestions(suggestions);
+        const existingIds = new Set(mapped.map((m) => m.id));
+        resolved.forEach((m) => {
+          if (m.id !== id && !existingIds.has(m.id)) {
+            mapped.push(m);
+            existingIds.add(m.id);
+          }
+        });
+      }
+    }
 
     const range = runtimeRangeFor(runtimeFilter);
     if (range) {
@@ -1688,7 +1876,7 @@ function showMovieSearch(title, message) {
       editFiltersBtn.classList.remove("hidden-block");
       resultButtons.classList.remove("hidden-block");
       try {
-        const list = await fetchSimilarMovies(baseId, runtimeFilter);
+        const list = await fetchSimilarMovies(baseId, baseTitle, runtimeFilter);
         if (!list.length) {
           suggestionCard.innerHTML = '<div class="search-status">Couldn\'t find anything similar to that one.</div>';
           return;

@@ -510,6 +510,7 @@
   <div class="dialog">
     <h2 id="confirmTitle">Remove movie?</h2>
     <img id="confirmPoster" class="confirm-poster hidden-block" alt="">
+    <div id="confirmRuntime" class="watch-status hidden-block"></div>
     <div id="confirmWatchArea"></div>
     <p id="confirmText"></p>
     <div class="dialog-buttons">
@@ -861,6 +862,30 @@ async function fetchTrailerKey(id) {
     console.error("Trailer fetch failed", e);
     return null;
   }
+}
+
+// Search/discover results don't include runtime - only the movie detail
+// endpoint does, so this is a separate lookup (same pattern as trailers).
+async function fetchMovieRuntime(id) {
+  const key = await ensureTmdbKey();
+  if (!key || !id) return null;
+  try {
+    const url = "https://api.themoviedb.org/3/movie/" + id + "?api_key=" + key;
+    const r = await fetch(url);
+    const data = await r.json();
+    return data.runtime || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function formatRuntime(minutes) {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return m + "m";
+  if (m === 0) return h + "h";
+  return h + "h " + m + "m";
 }
 
 async function fetchMovieMeta(title) {
@@ -1266,6 +1291,7 @@ const confirmOk = document.getElementById("confirmOk");
 const confirmCancel = document.getElementById("confirmCancel");
 const confirmPoster = document.getElementById("confirmPoster");
 const confirmWatchArea = document.getElementById("confirmWatchArea");
+const confirmRuntimeEl = document.getElementById("confirmRuntime");
 
 const inputOverlay = document.getElementById("inputOverlay");
 const inputTitle = document.getElementById("inputTitle");
@@ -1341,11 +1367,19 @@ function showConfirm(movie, message) {
       confirmPoster.classList.add("hidden-block");
     }
     confirmWatchArea.innerHTML = '<div class="watch-status">Checking where to watch&hellip;</div>';
+    confirmRuntimeEl.classList.add("hidden-block");
     confirmOverlay.classList.remove("hidden");
 
     if (movie && movie.id) {
       fetchWatchProviders(movie.id).then((providers) => {
         confirmWatchArea.innerHTML = renderWatchBadges(providers);
+      });
+      fetchMovieRuntime(movie.id).then((minutes) => {
+        const formatted = formatRuntime(minutes);
+        if (formatted) {
+          confirmRuntimeEl.textContent = "⏱ " + formatted;
+          confirmRuntimeEl.classList.remove("hidden-block");
+        }
       });
     } else {
       confirmWatchArea.innerHTML = "";
@@ -1500,7 +1534,7 @@ function showMovieSearch(title, message) {
       suggestionCard.innerHTML =
         (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
         '<div class="stitle">' + pick.title + '</div>' +
-        '<div class="syear">' + pick.year + '</div>' +
+        '<div class="syear" id="pickMeta">' + pick.year + '</div>' +
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
@@ -1536,6 +1570,14 @@ function showMovieSearch(title, message) {
       fetchWatchProviders(pick.id).then((providers) => {
         if (currentPick === pick) {
           document.getElementById("watchArea").innerHTML = renderWatchBadges(providers);
+        }
+      });
+
+      fetchMovieRuntime(pick.id).then((minutes) => {
+        const formatted = formatRuntime(minutes);
+        if (currentPick === pick && formatted) {
+          const metaEl = document.getElementById("pickMeta");
+          if (metaEl) metaEl.textContent = pick.year + " · " + formatted;
         }
       });
     }

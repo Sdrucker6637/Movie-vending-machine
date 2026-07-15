@@ -1163,7 +1163,11 @@ const VIBES = [
   { label: "Cozy", genres: [10751, 10749] },
   { label: "Quirky", genres: [35, 18] },
   { label: "Epic", genres: [12, 28] },
-  { label: "Suspenseful", genres: [53, 9648] }
+  { label: "Suspenseful", genres: [53, 9648] },
+  // "Cheesy" is a genre unto itself (Sharknado, Plan 9, The Room) that
+  // popularity-based sorting can't find - the real signal is a LOW rating
+  // on a movie enough people bothered to rate, not a genre or keyword.
+  { label: "Cheesy / so bad it's good", genres: [27, 878, 28, 35], sortOverride: "vote_average.asc", minVotes: 50 }
 ];
 
 // Matches loosely - "trippy" should hit "Trippy / psychedelic", "cute"
@@ -1178,10 +1182,20 @@ function findVibePreset(text) {
   });
 }
 
+// Prefers a result not already shown this session; falls back to the full
+// list if everything available has already been seen (rare, but better
+// than an error).
+function pickPreferringUnseen(results, seenIds) {
+  if (!results.length) return null;
+  const unseen = seenIds ? results.filter((m) => !seenIds.has(m.id)) : results;
+  const pool = unseen.length ? unseen : results;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // mode: "popular" pulls TMDB's popularity ranking but within a randomly
 // chosen decade, so it isn't dominated by whatever's trending right now.
 // "indie" filters toward well-reviewed but low-vote-count titles.
-async function fetchRandomMovie(mode) {
+async function fetchRandomMovie(mode, seenIds) {
   const key = await ensureTmdbKey();
   if (!key) return null;
   const decade = DECADES[Math.floor(Math.random() * DECADES.length)];
@@ -1203,7 +1217,7 @@ async function fetchRandomMovie(mode) {
   const data = await r.json();
   const results = (data.results || []).filter((m) => m.poster_path);
   if (results.length === 0) return null;
-  const pick = results[Math.floor(Math.random() * results.length)];
+  const pick = pickPreferringUnseen(results, seenIds);
   return mapTmdbResult(pick);
 }
 
@@ -1239,7 +1253,7 @@ async function resolveKeywordId(phrase) {
 // suggested by the model directly (it just knows movies), then each
 // suggestion is looked up on TMDB for real data. Falls back to null on
 // any failure so the caller can use the plain TMDB-keyword path instead.
-async function tryGeminiCuratedPick(filters) {
+async function tryGeminiCuratedPick(filters, seenIds) {
   const descParts = [];
   if (filters.vibe) descParts.push("vibe: " + filters.vibe);
   if (filters.themes) descParts.push("themes/plot elements: " + filters.themes);
@@ -1271,16 +1285,16 @@ async function tryGeminiCuratedPick(filters) {
     }
   }
 
-  return resolved[Math.floor(Math.random() * resolved.length)];
+  return pickPreferringUnseen(resolved, seenIds);
 }
 
-async function fetchCuratedMovie(filters) {
+async function fetchCuratedMovie(filters, seenIds) {
   const key = await ensureTmdbKey();
   if (!key) return null;
 
   const hasAbstractQuery = (filters.vibe && !filters.genre) || filters.themes;
   if (hasAbstractQuery && getGeminiKeyIfAny()) {
-    const geminiPick = await tryGeminiCuratedPick(filters);
+    const geminiPick = await tryGeminiCuratedPick(filters, seenIds);
     if (geminiPick) return geminiPick;
     // Falls through to the plain TMDB-only matching below if Gemini
     // didn't return anything usable.
@@ -1303,6 +1317,14 @@ async function fetchCuratedMovie(filters) {
     const vibe = findVibePreset(filters.vibe);
     if (vibe) {
       baseParams.push("with_genres=" + vibe.genres.join("|"));
+      if (vibe.sortOverride) {
+        const sortIdx = baseParams.findIndex((p) => p.startsWith("sort_by="));
+        if (sortIdx !== -1) baseParams[sortIdx] = "sort_by=" + vibe.sortOverride;
+      }
+      if (vibe.minVotes) {
+        const voteIdx = baseParams.findIndex((p) => p.startsWith("vote_count.gte="));
+        if (voteIdx !== -1) baseParams[voteIdx] = "vote_count.gte=" + vibe.minVotes;
+      }
     } else {
       // Not one of the presets - try it as a free-text keyword instead.
       const kwId = await resolveKeywordId(filters.vibe);
@@ -1408,8 +1430,22 @@ async function fetchCuratedMovie(filters) {
     results = (data.results || []).filter((m) => m.poster_path);
   }
 
+  if (results.length === 0 && onlyVibeOrThemesGiven && resolvedSomething) {
+    // For vibe-only searches specifically: don't drop the actual vibe
+    // match (that's how "Seven Samurai" happened for "cheesy bad") - just
+    // relax the popularity/vote-count floor and search all decades. Niche
+    // vibes often have real but lightly-rated matches, not zero matches.
+    const relaxed = baseParams
+      .filter((p) => !p.startsWith("vote_count.gte=") && !p.startsWith("primary_release_date"))
+      .concat(["vote_count.gte=1"]);
+    const url = "https://api.themoviedb.org/3/discover/movie?" + relaxed.join("&") + "&page=1";
+    const r = await fetch(url);
+    const data = await r.json();
+    results = (data.results || []).filter((m) => m.poster_path);
+  }
+
   if (results.length === 0) return null;
-  const pick = results[Math.floor(Math.random() * results.length)];
+  const pick = pickPreferringUnseen(results, seenIds);
   return mapTmdbResult(pick);
 }
 
@@ -1711,6 +1747,7 @@ function showMovieSearch(title, message) {
     let lastSimilarBaseId = null;
     let lastSimilarTitle = null;
     let lastSimilarRuntime = null;
+    const seenIds = new Set(); // avoids repeat picks across "Try another" within this modal session
 
     function resetCuratedForm() {
       curatedDirectorInput.value = "";
@@ -1822,6 +1859,7 @@ function showMovieSearch(title, message) {
 
     function renderPick(pick) {
       currentPick = pick;
+      if (pick.id) seenIds.add(pick.id);
       const full = pick.overview || "No synopsis available.";
       const short = full.length > 140 ? full.slice(0, 140) + "…" : full;
       const needsToggle = full.length > 140;
@@ -1885,7 +1923,7 @@ function showMovieSearch(title, message) {
       suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
       currentPick = null;
       try {
-        const pick = await fetchRandomMovie(currentMode);
+        const pick = await fetchRandomMovie(currentMode, seenIds);
         if (!pick) {
           suggestionCard.innerHTML = '<div class="search-status">No luck — try again.</div>';
           return;
@@ -1916,7 +1954,7 @@ function showMovieSearch(title, message) {
       editFiltersBtn.classList.remove("hidden-block");
       resultButtons.classList.remove("hidden-block");
       try {
-        const pick = await fetchCuratedMovie(filters);
+        const pick = await fetchCuratedMovie(filters, seenIds);
         if (!pick) {
           suggestionCard.innerHTML = '<div class="search-status">Couldn\'t match that to anything specific — try rephrasing the vibe/plot description, or pair it with a genre or decade.</div>';
           return;
@@ -1943,7 +1981,7 @@ function showMovieSearch(title, message) {
           suggestionCard.innerHTML = '<div class="search-status">Couldn\'t find anything similar to that one.</div>';
           return;
         }
-        const pick = list[Math.floor(Math.random() * list.length)];
+        const pick = pickPreferringUnseen(list, seenIds);
         renderPick(pick);
       } catch (e) {
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';

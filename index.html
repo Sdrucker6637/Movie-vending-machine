@@ -148,7 +148,10 @@
     padding: 20px;
     z-index: 50;
   }
-  .overlay.hidden { display: none; }
+.overlay.hidden { display: none; }
+#keyOverlay, #geminiKeyOverlay {
+  z-index: 60;
+}
   .dialog {
     background: var(--paper);
     color: #1a1d22;
@@ -502,6 +505,34 @@
     cursor: pointer;
     padding: 0;
   }
+  .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #b8b0a0;
+    flex-shrink: 0;
+  }
+  .conn-dot.on {
+    background: #2e7d4f;
+  }
+  .key-btn {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--danger);
+    background: none;
+    border: 1px solid var(--danger);
+    border-radius: 20px;
+    padding: 7px 16px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -543,7 +574,7 @@
     <input type="text" id="keyField" placeholder="Paste API key here" autocomplete="off">
     <div class="dialog-buttons">
       <button class="btn-cancel" id="keyCancel">Cancel</button>
-      <button class="btn-primary" id="keySave">Save</button>
+      <button class="btn-primary" id="keySave">Connect</button>
     </div>
   </div>
 </div>
@@ -557,7 +588,7 @@
     <input type="text" id="geminiKeyField" placeholder="Paste API key here" autocomplete="off">
     <div class="dialog-buttons">
       <button class="btn-cancel" id="geminiKeyCancel">Cancel</button>
-      <button class="btn-primary" id="geminiKeySave">Save</button>
+      <button class="btn-primary" id="geminiKeySave">Connect</button>
     </div>
   </div>
 </div>
@@ -568,15 +599,15 @@
 
     <div class="curated-field">
       <label>TMDB Connection</label>
-      <p style="margin:0 0 8px;" id="keyStatusText">Not connected</p>
-      <button class="btn-cancel" id="changeKeyBtn" style="width:100%;">Change API key</button>
+      <div class="conn-status"><span class="conn-dot" id="keyStatusDot"></span><span id="keyStatusText">Not connected</span></div>
+      <button class="key-btn" id="changeKeyBtn">Change API key</button>
     </div>
 
     <div class="curated-field">
       <label>AI-Powered Vibe Search (optional)</label>
       <p style="margin:0 0 8px; font-size:12px; color:#888;">Connect a free Gemini API key to make the Vibe and Plot/themes fields in Curated understand more abstract descriptions (get one at aistudio.google.com/apikey).</p>
-      <p style="margin:0 0 8px;" id="geminiKeyStatusText">Not connected</p>
-      <button class="btn-cancel" id="changeGeminiKeyBtn" style="width:100%;">Change Gemini key</button>
+      <div class="conn-status"><span class="conn-dot" id="geminiKeyStatusDot"></span><span id="geminiKeyStatusText">Not connected</span></div>
+      <button class="key-btn" id="changeGeminiKeyBtn">Change Gemini key</button>
     </div>
 
     <div class="curated-field">
@@ -798,8 +829,11 @@ async function fetchGeminiMovieSuggestions(description, count) {
   const key = getGeminiKeyIfAny();
   if (!key) return [];
   const prompt =
-    "Suggest " + count + " real, existing movies that match this description: \"" + description + "\". " +
-    "Only suggest films you are confident actually exist. Prefer variety over obvious picks. " +
+    "Suggest up to " + count + " real, existing movies that genuinely match this description: \"" + description + "\". " +
+    "Only suggest films you are confident actually exist and actually fit - do not stretch or guess. " +
+    "If you can't think of any that genuinely fit, or the description is too vague/nonsensical to match confidently, " +
+    "respond with an empty array [] instead of forcing unrelated or generically popular picks. " +
+    "Prefer variety over obvious picks among the ones that do fit. " +
     "Respond with ONLY a JSON array, no markdown formatting, no code fences, no extra text. " +
     "Each item must be exactly: {\"title\": \"...\", \"year\": \"...\"}.";
   try {
@@ -810,10 +844,17 @@ async function fetchGeminiMovieSuggestions(description, count) {
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
     const data = await r.json();
+    if (data.error) {
+      console.error("Gemini API error:", data.error.message || data.error);
+      return [];
+    }
     const text = data.candidates && data.candidates[0] && data.candidates[0].content &&
       data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
       data.candidates[0].content.parts[0].text;
-    if (!text) return [];
+    if (!text) {
+      console.error("Gemini returned no usable text", data);
+      return [];
+    }
     const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     return Array.isArray(parsed) ? parsed : [];
@@ -923,6 +964,7 @@ function ownsProvider(name) {
 // --- Settings panel ---
 const settingsOverlay = document.getElementById("settingsOverlay");
 const keyStatusText = document.getElementById("keyStatusText");
+const keyStatusDot = document.getElementById("keyStatusDot");
 const changeKeyBtn = document.getElementById("changeKeyBtn");
 const serviceChecklist = document.getElementById("serviceChecklist");
 const customServiceInput = document.getElementById("customServiceInput");
@@ -930,11 +972,17 @@ const addCustomServiceBtn = document.getElementById("addCustomServiceBtn");
 const customServiceChips = document.getElementById("customServiceChips");
 const settingsDone = document.getElementById("settingsDone");
 const geminiKeyStatusText = document.getElementById("geminiKeyStatusText");
+const geminiKeyStatusDot = document.getElementById("geminiKeyStatusDot");
 const changeGeminiKeyBtn = document.getElementById("changeGeminiKeyBtn");
 
 function renderSettingsPanel() {
-  keyStatusText.textContent = getStoredKey() ? "Connected" : "Not connected";
-  geminiKeyStatusText.textContent = getStoredGeminiKey() ? "Connected" : "Not connected";
+  const tmdbConnected = !!getStoredKey();
+  keyStatusText.textContent = tmdbConnected ? "Connected" : "Not connected";
+  keyStatusDot.classList.toggle("on", tmdbConnected);
+
+  const geminiConnected = !!getStoredGeminiKey();
+  geminiKeyStatusText.textContent = geminiConnected ? "Connected" : "Not connected";
+  geminiKeyStatusDot.classList.toggle("on", geminiConnected);
 
   const mine = getMyServices();
   serviceChecklist.innerHTML = "";
@@ -1336,10 +1384,13 @@ async function fetchCuratedMovie(filters) {
     }
   }
 
-  if (results.length === 0 && keywordIds.length) {
+  if (results.length === 0 && keywordIds.length && !onlyVibeOrThemesGiven) {
     // Last resort: the vibe/theme text may not have matched TMDB's keyword
     // vocabulary well - retry with everything except the keyword filter
     // rather than reporting "nothing found" over a single unmatched word.
+    // Only done when a real filter (genre/decade/director/actor) is also
+    // set - otherwise dropping the keyword means searching on nothing at
+    // all, which is how unrelated "popular" movies were slipping through.
     const withoutKeywords = baseParams.filter((p) => !p.startsWith("with_keywords="));
     const url = "https://api.themoviedb.org/3/discover/movie?" + withoutKeywords.join("&") + "&page=1";
     const r = await fetch(url);
@@ -1347,7 +1398,7 @@ async function fetchCuratedMovie(filters) {
     results = (data.results || []).filter((m) => m.poster_path);
   }
 
-  if (results.length === 0 && filters.runtime) {
+  if (results.length === 0 && filters.runtime && !onlyVibeOrThemesGiven) {
     // Still nothing - the runtime bucket may just be too narrow for the
     // rest of the combo. Drop it rather than reporting a false zero.
     const withoutRuntime = baseParams.filter((p) => !p.startsWith("with_runtime"));

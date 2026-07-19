@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Movie Machine</title>
+<title>Movie Vending Machine</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -436,6 +436,11 @@
     border-radius: 10px;
     background: var(--steel-dark);
     margin: 6px 0 4px;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .reel-window.fading {
+    opacity: 0;
+    transform: scale(0.94);
   }
   .reel-window::before, .reel-window::after {
     content: "";
@@ -710,7 +715,7 @@
   <button class="settings-btn info-btn" id="infoBtn" title="How this works">ⓘ</button>
   <button class="settings-btn" id="settingsBtn" title="TMDB settings">⚙</button>
   <div class="eyebrow">Now Dispensing</div>
-  <h1>The Movie Machine</h1>
+  <h1>The Movie Vending Machine</h1>
   <div class="sub">Tap a slot to swap it out</div>
 </header>
 
@@ -748,7 +753,7 @@
 
     <div class="dialog-buttons hidden-block" id="drawButtons">
       <button class="btn-cancel" id="drawAgainBtn">Draw again</button>
-      <button class="btn-primary" id="drawCloseBtn">Nice!</button>
+      <button class="btn-primary" id="drawCloseBtn">▶ Watch</button>
     </div>
     <div class="dialog-buttons hidden-block" id="drawEmptyButtons">
       <button class="btn-primary" id="drawEmptyClose" style="flex:1;">Close</button>
@@ -2477,10 +2482,15 @@ const drawCloseBtn = document.getElementById("drawCloseBtn");
 const drawEmptyButtons = document.getElementById("drawEmptyButtons");
 const drawEmptyClose = document.getElementById("drawEmptyClose");
 
+let lastDrawIndex = null;
+
 function runDrawAnimation() {
-  const filled = slots.filter(Boolean);
+  const filledEntries = slots
+    .map((m, i) => (m ? { movie: m, index: i } : null))
+    .filter(Boolean);
 
   drawHeading.classList.remove("hidden-block");
+  reelWindow.classList.remove("fading");
   reelWindow.classList.add("hidden-block");
   capsuleStage.classList.add("hidden-block");
   drawTitleEl.classList.add("hidden-block");
@@ -2493,24 +2503,28 @@ function runDrawAnimation() {
 
   drawOverlay.classList.remove("hidden");
 
-  if (filled.length === 0) {
+  if (filledEntries.length === 0) {
     drawHeading.classList.add("hidden-block");
     drawEmptyMsg.classList.remove("hidden-block");
     drawEmptyButtons.classList.remove("hidden-block");
     return;
   }
 
-  const winner = filled[Math.floor(Math.random() * filled.length)];
+  const winnerEntry = filledEntries[Math.floor(Math.random() * filledEntries.length)];
+  const winner = winnerEntry.movie;
+  lastDrawIndex = winnerEntry.index;
 
-  // Build a long reel of posters (repeated + shuffled) so the spin has
-  // something to scroll through, landing on a few copies of the winner.
-  const posterPool = filled.map((m) => m.poster).filter(Boolean);
+  // Build a long reel to scroll through. The winner appears naturally
+  // wherever it lands in the shuffles, plus exactly once more at the very
+  // end (not several times in a row) so the stopping point doesn't
+  // telegraph the result before the reveal.
+  const posterPool = filledEntries.map((e) => e.movie.poster).filter(Boolean);
   if (posterPool.length === 0) posterPool.push(winner.poster || "");
   let stripImgs = [];
   for (let i = 0; i < 4; i++) {
     stripImgs = stripImgs.concat(posterPool.slice().sort(() => Math.random() - 0.5));
   }
-  for (let i = 0; i < 3; i++) stripImgs.push(winner.poster || posterPool[0]);
+  stripImgs.push(winner.poster || posterPool[0]);
 
   reelWindow.classList.remove("hidden-block");
   reelStrip.innerHTML = stripImgs.map((src) => '<img src="' + src + '" alt="">').join("");
@@ -2519,37 +2533,51 @@ function runDrawAnimation() {
   void reelStrip.offsetWidth; // force reflow so the animation restarts cleanly
 
   const itemWidth = 116; // poster width (108) + gap (8)
-  const distance = (stripImgs.length - 2) * itemWidth;
-  reelStrip.style.setProperty("--reel-distance", "-" + distance + "px");
+  const winnerIndex = stripImgs.length - 1;
+  const windowWidth = reelWindow.clientWidth || 300;
+  // Land with the winning poster centered in the visible window, not just
+  // scrolled to the raw end of the strip.
+  const distance = winnerIndex * itemWidth + 8 - (windowWidth / 2 - itemWidth / 2);
+  reelStrip.style.setProperty("--reel-distance", "-" + Math.max(distance, 0) + "px");
 
   requestAnimationFrame(() => {
     reelStrip.classList.add("spinning");
   });
 
   setTimeout(() => {
-    reelWindow.classList.add("hidden-block");
-    capsuleStage.classList.remove("hidden-block");
-    revealPosterImg.src = winner.poster || "";
-    capsuleEl.style.animation = "none";
-    void capsuleEl.offsetWidth;
-    capsuleEl.style.animation = "";
+    // Fade the reel out first rather than hard-cutting straight to the
+    // capsule stage - gives a beat of separation between "spinning" and
+    // "the machine dispensed something."
+    reelWindow.classList.add("fading");
 
     setTimeout(() => {
-      capsuleEl.classList.add("opening");
+      reelWindow.classList.add("hidden-block");
+      capsuleStage.classList.remove("hidden-block");
+      revealPosterImg.src = winner.poster || "";
+      capsuleEl.style.animation = "none";
+      void capsuleEl.offsetWidth;
+      capsuleEl.style.animation = "";
+
       setTimeout(() => {
-        revealPoster.classList.remove("hidden-block");
-        revealPoster.classList.add("show");
-        drawTitleEl.textContent = winner.title;
-        drawTitleEl.classList.remove("hidden-block");
-        drawButtons.classList.remove("hidden-block");
-      }, 350);
-    }, 750);
+        capsuleEl.classList.add("opening");
+        setTimeout(() => {
+          revealPoster.classList.remove("hidden-block");
+          revealPoster.classList.add("show");
+          drawTitleEl.textContent = winner.title;
+          drawTitleEl.classList.remove("hidden-block");
+          drawButtons.classList.remove("hidden-block");
+        }, 350);
+      }, 750);
+    }, 350);
   }, 1650);
 }
 
 drawBtn.onclick = runDrawAnimation;
 drawAgainBtn.onclick = runDrawAnimation;
-drawCloseBtn.onclick = () => drawOverlay.classList.add("hidden");
+drawCloseBtn.onclick = () => {
+  drawOverlay.classList.add("hidden");
+  if (lastDrawIndex !== null) handleSlotClick(lastDrawIndex);
+};
 drawEmptyClose.onclick = () => drawOverlay.classList.add("hidden");
 
 loadSlots();

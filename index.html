@@ -431,11 +431,11 @@
   .reel-window {
     position: relative;
     width: 100%;
-    height: 180px;
+    height: 210px;
     overflow: hidden;
     border-radius: 10px;
     background: var(--steel-dark);
-    margin: 6px 0 4px;
+    margin: 6px 0;
     transition: opacity 0.35s ease, transform 0.35s ease;
   }
   .reel-window.fading {
@@ -484,6 +484,11 @@
     margin: 6px 0;
     background: radial-gradient(ellipse at center, rgba(43,47,54,0.12), transparent 65%);
     border-radius: 16px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .capsule-stage.visible {
+    opacity: 1;
   }
   .capsule {
     width: 120px;
@@ -2492,6 +2497,7 @@ function runDrawAnimation() {
   drawHeading.classList.remove("hidden-block");
   reelWindow.classList.remove("fading");
   reelWindow.classList.add("hidden-block");
+  capsuleStage.classList.remove("visible");
   capsuleStage.classList.add("hidden-block");
   drawTitleEl.classList.add("hidden-block");
   drawButtons.classList.add("hidden-block");
@@ -2514,60 +2520,73 @@ function runDrawAnimation() {
   const winner = winnerEntry.movie;
   lastDrawIndex = winnerEntry.index;
 
-  // Build a long reel to scroll through. The winner appears naturally
-  // wherever it lands in the shuffles, plus exactly once more at the very
-  // end (not several times in a row) so the stopping point doesn't
-  // telegraph the result before the reveal.
+  // Build a long reel to scroll through. Importantly, where the reel stops
+  // has nothing to do with which movie actually won - that's decided
+  // separately and only revealed when the capsule opens. Otherwise the
+  // last poster you see scroll past IS the answer, and the capsule reveal
+  // is pointless.
   const posterPool = filledEntries.map((e) => e.movie.poster).filter(Boolean);
   if (posterPool.length === 0) posterPool.push(winner.poster || "");
   let stripImgs = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     stripImgs = stripImgs.concat(posterPool.slice().sort(() => Math.random() - 0.5));
   }
-  stripImgs.push(winner.poster || posterPool[0]);
 
   reelWindow.classList.remove("hidden-block");
   reelStrip.innerHTML = stripImgs.map((src) => '<img src="' + src + '" alt="">').join("");
-  reelStrip.classList.remove("spinning");
-  reelStrip.style.transform = "translateX(0)";
-  void reelStrip.offsetWidth; // force reflow so the animation restarts cleanly
 
   const itemWidth = 116; // poster width (108) + gap (8)
-  const winnerIndex = stripImgs.length - 1;
-  const windowWidth = reelWindow.clientWidth || 300;
-  // Land with the winning poster centered in the visible window, not just
-  // scrolled to the raw end of the strip.
-  const distance = winnerIndex * itemWidth + 8 - (windowWidth / 2 - itemWidth / 2);
-  reelStrip.style.setProperty("--reel-distance", "-" + Math.max(distance, 0) + "px");
+  const maxDistance = Math.max((stripImgs.length - 3) * itemWidth, itemWidth);
+  // Random stopping point with no relationship to the winner - somewhere
+  // in the back half of the strip so it still feels like a full spin.
+  const distance = Math.floor(maxDistance * (0.55 + Math.random() * 0.4));
+  reelStrip.style.setProperty("--reel-distance", "-" + distance + "px");
 
+  // Restart the CSS animation reliably (toggling the class alone can be
+  // flaky, especially on mobile Safari - explicitly clearing the animation
+  // and forcing two paint frames before restarting fixes the "every other
+  // time it doesn't spin" issue).
+  reelStrip.classList.remove("spinning");
+  reelStrip.style.animation = "none";
+  reelStrip.style.transform = "translateX(0)";
+  void reelStrip.offsetWidth;
+  reelStrip.style.animation = "";
   requestAnimationFrame(() => {
-    reelStrip.classList.add("spinning");
+    requestAnimationFrame(() => {
+      reelStrip.classList.add("spinning");
+    });
   });
 
   setTimeout(() => {
-    // Fade the reel out first rather than hard-cutting straight to the
-    // capsule stage - gives a beat of separation between "spinning" and
-    // "the machine dispensed something."
+    // Fade the reel out, then leave a brief empty beat before the capsule
+    // drops in - a clean hand-off instead of one thing instantly becoming
+    // another in the same spot.
     reelWindow.classList.add("fading");
 
     setTimeout(() => {
       reelWindow.classList.add("hidden-block");
-      capsuleStage.classList.remove("hidden-block");
-      revealPosterImg.src = winner.poster || "";
-      capsuleEl.style.animation = "none";
-      void capsuleEl.offsetWidth;
-      capsuleEl.style.animation = "";
 
       setTimeout(() => {
-        capsuleEl.classList.add("opening");
+        capsuleStage.classList.remove("hidden-block");
+        revealPosterImg.src = winner.poster || "";
+        capsuleEl.style.animation = "none";
+        void capsuleEl.offsetWidth;
+        capsuleEl.style.animation = "";
+        requestAnimationFrame(() => {
+          capsuleStage.classList.add("visible");
+        });
+
         setTimeout(() => {
-          revealPoster.classList.remove("hidden-block");
-          revealPoster.classList.add("show");
-          drawTitleEl.textContent = winner.title;
-          drawTitleEl.classList.remove("hidden-block");
-          drawButtons.classList.remove("hidden-block");
-        }, 350);
-      }, 750);
+          capsuleEl.classList.add("opening");
+          setTimeout(() => {
+            revealPoster.classList.remove("hidden-block");
+            revealPoster.classList.add("show");
+            drawTitleEl.textContent = winner.title;
+            drawTitleEl.classList.remove("hidden-block");
+            drawButtons.classList.remove("hidden-block");
+          }, 350);
+        }, 750);
+      }, 300);
     }, 350);
   }, 1650);
 }

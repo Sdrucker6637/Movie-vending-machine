@@ -425,6 +425,55 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.4);
   }
   .draw-btn:active { transform: scale(0.98); }
+  .watched-btn {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    margin: 10px auto 0;
+    padding: 11px;
+    background: transparent;
+    color: #9a9fa8;
+    border: 1px solid #3a3f47;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .watched-btn:active { transform: scale(0.98); }
+  .watched-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e4e0d5;
+  }
+  .watched-row img {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 5px;
+    background: #ddd;
+    flex-shrink: 0;
+  }
+  .watched-row .wtitle {
+    flex: 1;
+    font-size: 13.5px;
+  }
+  .watched-row button {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .watched-empty {
+    font-size: 13px;
+    color: #999;
+    text-align: center;
+    padding: 14px 0;
+  }
 
   .draw-dialog { text-align: center; }
 
@@ -460,6 +509,7 @@
     box-sizing: border-box;
   }
   .reel-strip img {
+    display: block;
     width: 108px;
     height: 100%;
     object-fit: cover;
@@ -731,7 +781,29 @@
 
 <button class="draw-btn" id="drawBtn">🎰 Draw a Movie</button>
 
+<button class="watched-btn" id="watchedBtn">✓ Watched List</button>
+
 <footer>16 slots &middot; tap empty to fill, tap full to replace</footer>
+
+<div class="overlay hidden" id="watchedOverlay">
+  <div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left;">
+    <h2 style="text-align:center;">Watched List</h2>
+    <p style="margin:0 0 10px; font-size:12.5px; color:#888; text-align:center;">
+      Movies here are skipped by every Surprise Me tab.
+    </p>
+
+    <input type="text" id="watchedSearchInput" placeholder="Search to add a movie" autocomplete="off">
+    <div class="search-status hidden-block" id="watchedSearchStatus"></div>
+    <div class="search-results hidden-block" id="watchedSearchResults"></div>
+
+    <div class="watch-label" style="text-align:left; margin-top:14px;">Already Marked (<span id="watchedCount">0</span>)</div>
+    <div id="watchedListArea"></div>
+
+    <div class="dialog-buttons" style="margin-top:14px;">
+      <button class="btn-primary" id="watchedDone" style="width:100%;">Done</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay hidden" id="drawOverlay">
   <div class="dialog draw-dialog">
@@ -1251,6 +1323,46 @@ function ownsProvider(name) {
   });
 }
 
+// --- Watched List (persistent - unlike seenIds, this survives across sessions) ---
+const WATCHED_STORAGE = "watched-movies";
+
+function getWatchedList() {
+  try {
+    const raw = localStorage.getItem(WATCHED_STORAGE);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveWatchedList(list) {
+  localStorage.setItem(WATCHED_STORAGE, JSON.stringify(list));
+}
+
+function isWatched(id) {
+  return getWatchedList().some((m) => m.id === id);
+}
+
+function addWatched(movie) {
+  if (!movie || !movie.id || isWatched(movie.id)) return;
+  const list = getWatchedList();
+  list.push({ id: movie.id, title: movie.title, poster: movie.poster || null });
+  saveWatchedList(list);
+}
+
+function removeWatched(id) {
+  saveWatchedList(getWatchedList().filter((m) => m.id !== id));
+}
+
+// Strips already-watched titles out of a batch of TMDB results before
+// picking. Falls back to the unfiltered list if everything available
+// happens to be watched, so a small library doesn't dead-end.
+function filterOutWatched(results) {
+  const watchedIds = new Set(getWatchedList().map((m) => m.id));
+  const unwatched = results.filter((m) => !watchedIds.has(m.id));
+  return unwatched.length ? unwatched : results;
+}
+
 // --- Settings panel ---
 const settingsOverlay = document.getElementById("settingsOverlay");
 const keyStatusText = document.getElementById("keyStatusText");
@@ -1345,6 +1457,94 @@ document.getElementById("infoBtn").onclick = () => {
 };
 document.getElementById("infoDone").onclick = () => {
   document.getElementById("infoOverlay").classList.add("hidden");
+};
+
+// --- Watched List overlay ---
+const watchedOverlay = document.getElementById("watchedOverlay");
+const watchedSearchInput = document.getElementById("watchedSearchInput");
+const watchedSearchStatus = document.getElementById("watchedSearchStatus");
+const watchedSearchResults = document.getElementById("watchedSearchResults");
+const watchedListArea = document.getElementById("watchedListArea");
+const watchedCountEl = document.getElementById("watchedCount");
+let watchedDebounceTimer = null;
+
+function renderWatchedList() {
+  const list = getWatchedList();
+  watchedCountEl.textContent = list.length;
+  if (list.length === 0) {
+    watchedListArea.innerHTML = '<div class="watched-empty">Nothing marked yet.</div>';
+    return;
+  }
+  watchedListArea.innerHTML = "";
+  list.slice().reverse().forEach((m) => {
+    const row = document.createElement("div");
+    row.className = "watched-row";
+    row.innerHTML =
+      (m.poster ? '<img src="' + m.poster + '" alt="">' : '<div class="watched-row-noposter"></div>') +
+      '<div class="wtitle">' + m.title + '</div>' +
+      '<button aria-label="Remove">Remove</button>';
+    row.querySelector("button").onclick = () => {
+      removeWatched(m.id);
+      renderWatchedList();
+    };
+    watchedListArea.appendChild(row);
+  });
+}
+
+document.getElementById("watchedBtn").onclick = () => {
+  watchedSearchInput.value = "";
+  watchedSearchResults.innerHTML = "";
+  watchedSearchResults.classList.add("hidden-block");
+  watchedSearchStatus.classList.add("hidden-block");
+  renderWatchedList();
+  watchedOverlay.classList.remove("hidden");
+};
+document.getElementById("watchedDone").onclick = () => {
+  watchedOverlay.classList.add("hidden");
+};
+
+watchedSearchInput.oninput = () => {
+  clearTimeout(watchedDebounceTimer);
+  watchedDebounceTimer = setTimeout(async () => {
+    const q = watchedSearchInput.value.trim();
+    if (!q || q.length < 2) {
+      watchedSearchResults.classList.add("hidden-block");
+      watchedSearchStatus.classList.add("hidden-block");
+      return;
+    }
+    watchedSearchStatus.textContent = "Searching…";
+    watchedSearchStatus.classList.remove("hidden-block");
+    watchedSearchResults.classList.add("hidden-block");
+    try {
+      const results = await searchMovies(q);
+      watchedSearchStatus.classList.add("hidden-block");
+      if (results.length === 0) {
+        watchedSearchStatus.textContent = "No matches.";
+        watchedSearchStatus.classList.remove("hidden-block");
+        return;
+      }
+      watchedSearchResults.innerHTML = "";
+      results.forEach((m) => {
+        const row = document.createElement("div");
+        row.className = "result-row";
+        row.innerHTML =
+          '<img src="' + m.poster + '" alt="">' +
+          '<div><div class="rtitle">' + m.title + '</div>' +
+          '<div class="ryear">' + m.year + '</div></div>';
+        row.onclick = () => {
+          addWatched(m);
+          watchedSearchInput.value = "";
+          watchedSearchResults.classList.add("hidden-block");
+          renderWatchedList();
+        };
+        watchedSearchResults.appendChild(row);
+      });
+      watchedSearchResults.classList.remove("hidden-block");
+    } catch (e) {
+      watchedSearchStatus.textContent = "Search failed — check your connection.";
+      watchedSearchStatus.classList.remove("hidden-block");
+    }
+  }, 350);
 };
 
 function mapTmdbResult(m) {
@@ -1479,13 +1679,14 @@ function findVibePreset(text) {
   });
 }
 
-// Prefers a result not already shown this session; falls back to the full
-// list if everything available has already been seen (rare, but better
-// than an error).
+// Excludes anything on the permanent Watched List first (hard exclude),
+// then prefers a result not already shown this session on top of that.
+// Falls back gracefully at each step so a small library never dead-ends.
 function pickPreferringUnseen(results, seenIds) {
   if (!results.length) return null;
-  const unseen = seenIds ? results.filter((m) => !seenIds.has(m.id)) : results;
-  const pool = unseen.length ? unseen : results;
+  const unwatched = filterOutWatched(results);
+  const unseen = seenIds ? unwatched.filter((m) => !seenIds.has(m.id)) : unwatched;
+  const pool = unseen.length ? unseen : unwatched;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -2169,7 +2370,15 @@ function showMovieSearch(title, message) {
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
+        '<button class="synopsis-toggle" id="markWatchedBtn" style="display:block; margin:0 auto 10px;">✓ Already seen this — mark as watched</button>' +
         '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
+
+      document.getElementById("markWatchedBtn").onclick = (ev) => {
+        addWatched(pick);
+        ev.target.textContent = "✓ Marked - won't be suggested again";
+        ev.target.disabled = true;
+        ev.target.style.opacity = "0.6";
+      };
 
       if (needsToggle) {
         let expanded = false;

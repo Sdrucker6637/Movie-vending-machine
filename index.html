@@ -2065,19 +2065,30 @@ async function fetchFinishTheSetPick(seenIds) {
   const watched = getWatchedList();
   if (watched.length === 0) return { pick: null, reason: "empty" };
 
+  // Resolve collection info in small batches rather than firing a request
+  // per watched movie all at once - with a large Watched List that can
+  // easily be 50+ simultaneous requests, which risks TMDB rate-limiting.
+  // A rate-limited/failed lookup is left unresolved (not cached as "no
+  // collection") so it gets retried next time instead of being wrongly
+  // written off forever.
+  const toResolve = watched.filter((m) => m.collectionId === undefined);
+  const BATCH_SIZE = 6;
   let changed = false;
-  await Promise.all(watched.map(async (m) => {
-    if (m.collectionId !== undefined) return;
-    try {
-      const r = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
-      const d = await r.json();
-      m.collectionId = d.belongs_to_collection ? d.belongs_to_collection.id : null;
-      m.collectionName = d.belongs_to_collection ? d.belongs_to_collection.name : null;
-      changed = true;
-    } catch (e) {
-      m.collectionId = null;
-    }
-  }));
+  for (let i = 0; i < toResolve.length; i += BATCH_SIZE) {
+    const batch = toResolve.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map(async (m) => {
+      try {
+        const r = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
+        if (!r.ok) return; // leave unresolved, retry next time
+        const d = await r.json();
+        m.collectionId = d.belongs_to_collection ? d.belongs_to_collection.id : null;
+        m.collectionName = d.belongs_to_collection ? d.belongs_to_collection.name : null;
+        changed = true;
+      } catch (e) {
+        // leave unresolved, retry next time
+      }
+    }));
+  }
   if (changed) saveWatchedList(watched);
 
   const collectionIds = [...new Set(watched.filter((m) => m.collectionId).map((m) => m.collectionId))];
@@ -2112,79 +2123,6 @@ async function fetchYoullLikePick(seenIds, runtimeFilter) {
 
   const pick = pickPreferringUnseen(list, seenIds);
   return { pick, reason: null, seedTitle: seed.title };
-}
-
-// --- "Finish the Set" (unwatched entries from a series/collection you've
-// partly watched) and "We think you'll like" (based on your 8+ ratings) ---
-
-async function fetchMovieCollectionInfo(id) {
-  const key = await ensureTmdbKey();
-  if (!key || !id) return null;
-  try {
-    const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?api_key=" + key);
-    const data = await r.json();
-    if (data.belongs_to_collection) {
-      return { id: data.belongs_to_collection.id, name: data.belongs_to_collection.name };
-    }
-    return null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// Watched entries added before this feature (or added quickly via the
-// one-tap "mark as watched" button) won't have collection info yet - this
-// backfills it lazily, once per movie, the first time it's actually needed.
-async function backfillCollectionInfo() {
-  const list = getWatchedList();
-  const needsCheck = list.filter((m) => !m.collectionChecked);
-  if (needsCheck.length === 0) return list;
-
-  await Promise.all(needsCheck.map(async (m) => {
-    const info = await fetchMovieCollectionInfo(m.id);
-    m.collectionChecked = true;
-    m.collectionId = info ? info.id : null;
-    m.collectionName = info ? info.name : null;
-  }));
-
-  saveWatchedList(list);
-  return list;
-}
-
-async function fetchFinishTheSetPick(seenIds) {
-  const key = await ensureTmdbKey();
-  if (!key) return null;
-
-  const list = await backfillCollectionInfo();
-  const watchedIds = new Set(list.map((m) => m.id));
-  const collectionIds = [...new Set(list.filter((m) => m.collectionId).map((m) => m.collectionId))];
-  if (collectionIds.length === 0) return null;
-
-  const shuffled = collectionIds.slice().sort(() => Math.random() - 0.5);
-  for (const collectionId of shuffled) {
-    try {
-      const r = await fetch("https://api.themoviedb.org/3/collection/" + collectionId + "?api_key=" + key);
-      const data = await r.json();
-      const parts = (data.parts || []).filter((m) => m.poster_path && !watchedIds.has(m.id));
-      if (parts.length > 0) {
-        const mapped = parts.map(mapTmdbResult);
-        return pickPreferringUnseen(mapped, seenIds);
-      }
-    } catch (e) {
-      // try the next collection
-    }
-  }
-  return null;
-}
-
-async function fetchYoullLikePick(seenIds) {
-  const rated = getWatchedList().filter((m) => typeof m.rating === "number" && m.rating >= 8);
-  if (rated.length === 0) return null;
-
-  const seed = rated[Math.floor(Math.random() * rated.length)];
-  const list = await fetchSimilarMovies(seed.id, seed.title);
-  if (!list.length) return null;
-  return pickPreferringUnseen(list, seenIds);
 }
 
 async function fetchWatchProviders(id) {

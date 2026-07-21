@@ -796,7 +796,8 @@
 <footer>16 slots &middot; tap empty to fill, tap full to replace</footer>
 
 <div class="overlay hidden" id="watchedOverlay">
-  <div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left;">
+  <div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left; position: relative;">
+    <button id="watchedCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
     <h2 style="text-align:center;">Watched List</h2>
     <p style="margin:0 0 10px; font-size:12.5px; color:#888; text-align:center;">
       Movies here are skipped by every Surprise Me tab.
@@ -1530,6 +1531,9 @@ document.getElementById("watchedBtn").onclick = () => {
   watchedOverlay.classList.remove("hidden");
 };
 document.getElementById("watchedDone").onclick = () => {
+  watchedOverlay.classList.add("hidden");
+};
+document.getElementById("watchedCloseX").onclick = () => {
   watchedOverlay.classList.add("hidden");
 };
 
@@ -2540,15 +2544,39 @@ function showMovieSearch(title, message) {
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
-        '<button class="synopsis-toggle" id="markWatchedBtn" style="display:block; margin:0 auto 10px;">✓ Already seen this — mark as watched</button>' +
+        '<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
         '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
 
-      document.getElementById("markWatchedBtn").onclick = (ev) => {
-        addWatched(pick);
-        ev.target.textContent = "✓ Marked - won't be suggested again";
-        ev.target.disabled = true;
-        ev.target.style.opacity = "0.6";
-      };
+      function renderMarkWatchedArea() {
+        const area = document.getElementById("markWatchedArea");
+        if (!area) return;
+        if (isWatched(pick.id)) {
+          const current = getWatchedList().find((m) => m.id === pick.id);
+          const ratingOptionsHtml = '<option value="">Rate it</option>' +
+            RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (current && current.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
+          area.innerHTML =
+            '<div style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px; color:#2e7d4f; font-weight:700;">' +
+            '✓ Marked as watched' +
+            '<select class="rating-select" id="quickRatingSelect">' + ratingOptionsHtml + '</select>' +
+            '<button class="synopsis-toggle" id="undoWatchedBtn" style="padding:0;">Undo</button>' +
+            '</div>';
+          document.getElementById("quickRatingSelect").onchange = (ev) => {
+            const v = ev.target.value;
+            setWatchedRating(pick.id, v === "" ? null : parseFloat(v));
+          };
+          document.getElementById("undoWatchedBtn").onclick = () => {
+            removeWatched(pick.id);
+            renderMarkWatchedArea();
+          };
+        } else {
+          area.innerHTML = '<button class="synopsis-toggle" id="markWatchedBtn" style="display:block; margin:0 auto;">✓ Already seen this — mark as watched</button>';
+          document.getElementById("markWatchedBtn").onclick = () => {
+            addWatched(pick);
+            renderMarkWatchedArea();
+          };
+        }
+      }
+      renderMarkWatchedArea();
 
       if (needsToggle) {
         let expanded = false;
@@ -2658,6 +2686,7 @@ function showMovieSearch(title, message) {
         }
         renderPick(result.pick);
       } catch (e) {
+        console.error("Finish the Set failed", e);
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
       }
     }
@@ -2676,6 +2705,7 @@ function showMovieSearch(title, message) {
         }
         renderPick(result.pick);
       } catch (e) {
+        console.error("You'll Like failed", e);
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
       }
     }

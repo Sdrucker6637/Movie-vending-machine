@@ -459,6 +459,16 @@
     flex: 1;
     font-size: 13.5px;
   }
+  .rating-select {
+    width: 52px;
+    padding: 4px 2px;
+    font-size: 12.5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
   .watched-row button {
     background: none;
     border: none;
@@ -1013,6 +1023,8 @@
         <button class="mode-btn" id="modeIndie">Indie/obscure</button>
         <button class="mode-btn" id="modeCurated">Curated</button>
         <button class="mode-btn" id="modeSimilar">Similar to&hellip;</button>
+        <button class="mode-btn" id="modeFinishSet">Finish the Set</button>
+        <button class="mode-btn" id="modeYoullLike">You'll Like</button>
       </div>
 
       <div id="similarForm" class="curated-form hidden-block">
@@ -1346,12 +1358,20 @@ function isWatched(id) {
 function addWatched(movie) {
   if (!movie || !movie.id || isWatched(movie.id)) return;
   const list = getWatchedList();
-  list.push({ id: movie.id, title: movie.title, poster: movie.poster || null });
+  list.push({ id: movie.id, title: movie.title, poster: movie.poster || null, rating: null });
   saveWatchedList(list);
 }
 
 function removeWatched(id) {
   saveWatchedList(getWatchedList().filter((m) => m.id !== id));
+}
+
+function setWatchedRating(id, rating) {
+  const list = getWatchedList();
+  const entry = list.find((m) => m.id === id);
+  if (!entry) return;
+  entry.rating = rating; // null clears it; otherwise 1-10 in 0.5 steps
+  saveWatchedList(list);
 }
 
 // Strips already-watched titles out of a batch of TMDB results before
@@ -1468,6 +1488,9 @@ const watchedListArea = document.getElementById("watchedListArea");
 const watchedCountEl = document.getElementById("watchedCount");
 let watchedDebounceTimer = null;
 
+const RATING_OPTIONS = [];
+for (let r = 1; r <= 10; r += 0.5) RATING_OPTIONS.push(r);
+
 function renderWatchedList() {
   const list = getWatchedList();
   watchedCountEl.textContent = list.length;
@@ -1479,10 +1502,17 @@ function renderWatchedList() {
   list.slice().reverse().forEach((m) => {
     const row = document.createElement("div");
     row.className = "watched-row";
+    const ratingOptionsHtml = '<option value="">–</option>' +
+      RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (m.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
     row.innerHTML =
       (m.poster ? '<img src="' + m.poster + '" alt="">' : '<div class="watched-row-noposter"></div>') +
       '<div class="wtitle">' + m.title + '</div>' +
+      '<select class="rating-select" aria-label="Rating">' + ratingOptionsHtml + '</select>' +
       '<button aria-label="Remove">Remove</button>';
+    row.querySelector("select").onchange = (ev) => {
+      const v = ev.target.value;
+      setWatchedRating(m.id, v === "" ? null : parseFloat(v));
+    };
     row.querySelector("button").onclick = () => {
       removeWatched(m.id);
       renderWatchedList();
@@ -2019,6 +2049,140 @@ async function fetchSimilarMovies(id, title, runtimeFilter) {
   }
 }
 
+// "Finish the Set" - looks at your Watched List for movies that belong to
+// a TMDB collection (a real franchise/series grouping, e.g. "The Lord of
+// the Rings Collection"), picks one such collection, and suggests an entry
+// you haven't marked watched yet. The collection id is resolved once per
+// watched movie and cached back onto the entry so repeat calls are cheap.
+async function fetchFinishTheSetPick(seenIds) {
+  const key = await ensureTmdbKey();
+  if (!key) return { pick: null, reason: "no-key" };
+
+  const watched = getWatchedList();
+  if (watched.length === 0) return { pick: null, reason: "empty" };
+
+  let changed = false;
+  await Promise.all(watched.map(async (m) => {
+    if (m.collectionId !== undefined) return;
+    try {
+      const r = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
+      const d = await r.json();
+      m.collectionId = d.belongs_to_collection ? d.belongs_to_collection.id : null;
+      m.collectionName = d.belongs_to_collection ? d.belongs_to_collection.name : null;
+      changed = true;
+    } catch (e) {
+      m.collectionId = null;
+    }
+  }));
+  if (changed) saveWatchedList(watched);
+
+  const collectionIds = [...new Set(watched.filter((m) => m.collectionId).map((m) => m.collectionId))];
+  if (collectionIds.length === 0) return { pick: null, reason: "no-collections" };
+
+  const chosenId = collectionIds[Math.floor(Math.random() * collectionIds.length)];
+  try {
+    const r = await fetch("https://api.themoviedb.org/3/collection/" + chosenId + "?api_key=" + key);
+    const data = await r.json();
+    const parts = (data.parts || []).filter((p) => p.poster_path);
+    const watchedIds = new Set(getWatchedList().map((m) => m.id));
+    const unseenParts = parts.filter((p) => !watchedIds.has(p.id));
+    if (unseenParts.length === 0) return { pick: null, reason: "complete", collectionName: data.name };
+
+    const pick = pickPreferringUnseen(unseenParts.map(mapTmdbResult), seenIds);
+    return { pick, reason: null, collectionName: data.name };
+  } catch (e) {
+    return { pick: null, reason: "error" };
+  }
+}
+
+// "We Think You'll Like" - picks a random movie you rated 8+ as a seed and
+// runs the same recommendation logic as Similar To, just auto-selecting
+// the seed instead of asking you to search for one.
+async function fetchYoullLikePick(seenIds, runtimeFilter) {
+  const highRated = getWatchedList().filter((m) => m.rating && m.rating >= 8);
+  if (highRated.length === 0) return { pick: null, reason: "no-high-rated" };
+
+  const seed = highRated[Math.floor(Math.random() * highRated.length)];
+  const list = await fetchSimilarMovies(seed.id, seed.title, runtimeFilter);
+  if (!list.length) return { pick: null, reason: "no-results", seedTitle: seed.title };
+
+  const pick = pickPreferringUnseen(list, seenIds);
+  return { pick, reason: null, seedTitle: seed.title };
+}
+
+// --- "Finish the Set" (unwatched entries from a series/collection you've
+// partly watched) and "We think you'll like" (based on your 8+ ratings) ---
+
+async function fetchMovieCollectionInfo(id) {
+  const key = await ensureTmdbKey();
+  if (!key || !id) return null;
+  try {
+    const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?api_key=" + key);
+    const data = await r.json();
+    if (data.belongs_to_collection) {
+      return { id: data.belongs_to_collection.id, name: data.belongs_to_collection.name };
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Watched entries added before this feature (or added quickly via the
+// one-tap "mark as watched" button) won't have collection info yet - this
+// backfills it lazily, once per movie, the first time it's actually needed.
+async function backfillCollectionInfo() {
+  const list = getWatchedList();
+  const needsCheck = list.filter((m) => !m.collectionChecked);
+  if (needsCheck.length === 0) return list;
+
+  await Promise.all(needsCheck.map(async (m) => {
+    const info = await fetchMovieCollectionInfo(m.id);
+    m.collectionChecked = true;
+    m.collectionId = info ? info.id : null;
+    m.collectionName = info ? info.name : null;
+  }));
+
+  saveWatchedList(list);
+  return list;
+}
+
+async function fetchFinishTheSetPick(seenIds) {
+  const key = await ensureTmdbKey();
+  if (!key) return null;
+
+  const list = await backfillCollectionInfo();
+  const watchedIds = new Set(list.map((m) => m.id));
+  const collectionIds = [...new Set(list.filter((m) => m.collectionId).map((m) => m.collectionId))];
+  if (collectionIds.length === 0) return null;
+
+  const shuffled = collectionIds.slice().sort(() => Math.random() - 0.5);
+  for (const collectionId of shuffled) {
+    try {
+      const r = await fetch("https://api.themoviedb.org/3/collection/" + collectionId + "?api_key=" + key);
+      const data = await r.json();
+      const parts = (data.parts || []).filter((m) => m.poster_path && !watchedIds.has(m.id));
+      if (parts.length > 0) {
+        const mapped = parts.map(mapTmdbResult);
+        return pickPreferringUnseen(mapped, seenIds);
+      }
+    } catch (e) {
+      // try the next collection
+    }
+  }
+  return null;
+}
+
+async function fetchYoullLikePick(seenIds) {
+  const rated = getWatchedList().filter((m) => typeof m.rating === "number" && m.rating >= 8);
+  if (rated.length === 0) return null;
+
+  const seed = rated[Math.floor(Math.random() * rated.length)];
+  const list = await fetchSimilarMovies(seed.id, seed.title);
+  if (!list.length) return null;
+  return pickPreferringUnseen(list, seenIds);
+}
+
 async function fetchWatchProviders(id) {
   const key = await ensureTmdbKey();
   if (!key || !id) return null;
@@ -2153,6 +2317,8 @@ const curatedActorInput = document.getElementById("curatedActor");
 const curatedSubmit = document.getElementById("curatedSubmit");
 const editFiltersBtn = document.getElementById("editFiltersBtn");
 const modeSimilar = document.getElementById("modeSimilar");
+const modeFinishSet = document.getElementById("modeFinishSet");
+const modeYoullLike = document.getElementById("modeYoullLike");
 const similarForm = document.getElementById("similarForm");
 const similarSearchInput = document.getElementById("similarSearchInput");
 const similarSearchStatus = document.getElementById("similarSearchStatus");
@@ -2273,6 +2439,8 @@ function showMovieSearch(title, message) {
     modeIndie.classList.remove("active");
     modeCurated.classList.remove("active");
     modeSimilar.classList.remove("active");
+    modeFinishSet.classList.remove("active");
+    modeYoullLike.classList.remove("active");
     curatedForm.classList.add("hidden-block");
     similarForm.classList.add("hidden-block");
     editFiltersBtn.classList.add("hidden-block");
@@ -2294,6 +2462,8 @@ function showMovieSearch(title, message) {
       modeIndie.onclick = null;
       modeCurated.onclick = null;
       modeSimilar.onclick = null;
+      modeFinishSet.onclick = null;
+      modeYoullLike.onclick = null;
       curatedSubmit.onclick = null;
       editFiltersBtn.onclick = null;
       if (similarSearchInput) similarSearchInput.oninput = null;
@@ -2471,6 +2641,45 @@ function showMovieSearch(title, message) {
       }
     }
 
+    async function runFinishTheSetSearch() {
+      suggestionCard.innerHTML = '<div class="search-status">Checking your Watched List for series with more to see&hellip;</div>';
+      currentPick = null;
+      try {
+        const result = await fetchFinishTheSetPick(seenIds);
+        if (!result.pick) {
+          let msg = "No franchises with something left to see yet — mark more watched movies first, especially ones that are part of a series.";
+          if (result.reason === "complete") {
+            msg = "Looks like you've already seen every entry in \"" + result.collectionName + "\" — nice work! Try marking another series as watched.";
+          } else if (result.reason === "no-key") {
+            msg = "Connect your TMDB key in Settings first.";
+          }
+          suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
+          return;
+        }
+        renderPick(result.pick);
+      } catch (e) {
+        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
+      }
+    }
+
+    async function runYoullLikeSearch() {
+      suggestionCard.innerHTML = '<div class="search-status">Looking at what you\'ve loved&hellip;</div>';
+      currentPick = null;
+      try {
+        const result = await fetchYoullLikePick(seenIds, null);
+        if (!result.pick) {
+          const msg = result.reason === "no-high-rated"
+            ? "Rate a few watched movies 8 or higher on your Watched List first, then this can make picks based on what you loved."
+            : "Couldn't find a good match right now — try again in a moment.";
+          suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
+          return;
+        }
+        renderPick(result.pick);
+      } catch (e) {
+        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
+      }
+    }
+
     async function runSimilarSearch(baseId, baseTitle, runtimeFilter) {
       suggestionCard.innerHTML = '<div class="search-status">Finding something similar to "' + baseTitle + '"&hellip;</div>';
       currentPick = null;
@@ -2533,12 +2742,14 @@ function showMovieSearch(title, message) {
       }, 350);
     };
 
+    const ALL_MODE_BTNS = [modePopular, modeIndie, modeCurated, modeSimilar, modeFinishSet, modeYoullLike];
+    function setActiveModeBtn(activeBtn) {
+      ALL_MODE_BTNS.forEach((b) => b.classList.toggle("active", b === activeBtn));
+    }
+
     function enterPopular() {
       currentMode = "popular";
-      modePopular.classList.add("active");
-      modeIndie.classList.remove("active");
-      modeCurated.classList.remove("active");
-      modeSimilar.classList.remove("active");
+      setActiveModeBtn(modePopular);
       curatedForm.classList.add("hidden-block");
       similarForm.classList.add("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
@@ -2547,10 +2758,7 @@ function showMovieSearch(title, message) {
     }
     function enterIndie() {
       currentMode = "indie";
-      modeIndie.classList.add("active");
-      modePopular.classList.remove("active");
-      modeCurated.classList.remove("active");
-      modeSimilar.classList.remove("active");
+      setActiveModeBtn(modeIndie);
       curatedForm.classList.add("hidden-block");
       similarForm.classList.add("hidden-block");
       editFiltersBtn.classList.add("hidden-block");
@@ -2559,10 +2767,7 @@ function showMovieSearch(title, message) {
     }
     function enterCurated() {
       currentMode = "curated";
-      modeCurated.classList.add("active");
-      modePopular.classList.remove("active");
-      modeIndie.classList.remove("active");
-      modeSimilar.classList.remove("active");
+      setActiveModeBtn(modeCurated);
       similarForm.classList.add("hidden-block");
       resetCuratedForm();
       curatedForm.classList.remove("hidden-block");
@@ -2573,10 +2778,7 @@ function showMovieSearch(title, message) {
     }
     function enterSimilar() {
       currentMode = "similar";
-      modeSimilar.classList.add("active");
-      modePopular.classList.remove("active");
-      modeIndie.classList.remove("active");
-      modeCurated.classList.remove("active");
+      setActiveModeBtn(modeSimilar);
       curatedForm.classList.add("hidden-block");
       resetSimilarForm();
       similarForm.classList.remove("hidden-block");
@@ -2585,11 +2787,31 @@ function showMovieSearch(title, message) {
       suggestionCard.innerHTML = '<div class="search-status">Search for a movie you like below.</div>';
       currentPick = null;
     }
+    function enterFinishSet() {
+      currentMode = "finishset";
+      setActiveModeBtn(modeFinishSet);
+      curatedForm.classList.add("hidden-block");
+      similarForm.classList.add("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.remove("hidden-block");
+      runFinishTheSetSearch();
+    }
+    function enterYoullLike() {
+      currentMode = "youlllike";
+      setActiveModeBtn(modeYoullLike);
+      curatedForm.classList.add("hidden-block");
+      similarForm.classList.add("hidden-block");
+      editFiltersBtn.classList.add("hidden-block");
+      resultButtons.classList.remove("hidden-block");
+      runYoullLikeSearch();
+    }
 
     modePopular.onclick = enterPopular;
     modeIndie.onclick = enterIndie;
     modeCurated.onclick = enterCurated;
     modeSimilar.onclick = enterSimilar;
+    modeFinishSet.onclick = enterFinishSet;
+    modeYoullLike.onclick = enterYoullLike;
 
     curatedSubmit.onclick = () => {
       lastCuratedFilters = readCuratedFilters();
@@ -2624,6 +2846,10 @@ function showMovieSearch(title, message) {
         runCuratedSearch(lastCuratedFilters);
       } else if (currentMode === "similar" && lastSimilarBaseId) {
         runSimilarSearch(lastSimilarBaseId, lastSimilarTitle, lastSimilarRuntime);
+      } else if (currentMode === "finishset") {
+        runFinishTheSetSearch();
+      } else if (currentMode === "youlllike") {
+        runYoullLikeSearch();
       } else {
         loadSuggestion();
       }

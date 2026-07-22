@@ -870,6 +870,16 @@
   </div>
 </div>
 
+<div class="overlay hidden" id="whyPickedOverlay">
+  <div class="dialog" style="text-align:center;">
+    <h2>Why this pick?</h2>
+    <p id="whyPickedText" style="font-size:14px; color:#555; margin:0 0 16px;"></p>
+    <div class="dialog-buttons">
+      <button class="btn-primary" id="whyPickedClose" style="width:100%;">Got it</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="rateMovieOverlay">
   <div class="dialog" style="text-align:center;">
     <h2>Rate it</h2>
@@ -1602,11 +1612,22 @@ watchedSearchInput.oninput = () => {
   }, 350);
 };
 
+// Excludes movies that aren't out yet (missing or future release_date).
+// TMDB's collections/discover/recommendations endpoints routinely include
+// announced-but-unreleased sequels, which is exactly what showed up in
+// Finish the Set - this keeps every mode from suggesting something you
+// can't actually go watch.
+function isReleased(m) {
+  if (!m.release_date) return false;
+  return m.release_date <= new Date().toISOString().slice(0, 10);
+}
+
 function mapTmdbResult(m) {
   return {
     id: m.id,
     title: m.title,
     year: (m.release_date || "").slice(0, 4),
+    releaseDate: m.release_date || null,
     poster: m.poster_path ? TMDB_IMG + m.poster_path : null,
     overview: m.overview || ""
   };
@@ -1737,9 +1758,24 @@ function findVibePreset(text) {
 // Excludes anything on the permanent Watched List first (hard exclude),
 // then prefers a result not already shown this session on top of that.
 // Falls back gracefully at each step so a small library never dead-ends.
+// Excludes anything not actually released yet (announced sequels, TBD
+// dates, etc. that TMDB's collection/recommendation data often includes
+// alongside real releases). Unlike the watched-list filter, this has no
+// fallback - showing an unreleased movie as a "recommendation" isn't
+// useful even if it means coming up empty.
+function filterOutUnreleased(results) {
+  const today = new Date().toISOString().slice(0, 10);
+  return results.filter((m) => {
+    const dateStr = m.release_date || m.releaseDate;
+    return !!dateStr && dateStr <= today;
+  });
+}
+
 function pickPreferringUnseen(results, seenIds) {
   if (!results.length) return null;
-  const unwatched = filterOutWatched(results);
+  const released = filterOutUnreleased(results);
+  if (!released.length) return null;
+  const unwatched = filterOutWatched(released);
   const unseen = seenIds ? unwatched.filter((m) => !seenIds.has(m.id)) : unwatched;
   const pool = unseen.length ? unseen : unwatched;
   return pool[Math.floor(Math.random() * pool.length)];
@@ -1768,7 +1804,7 @@ async function fetchRandomMovie(mode, seenIds) {
   }
   const r = await fetch(url);
   const data = await r.json();
-  const results = (data.results || []).filter((m) => m.poster_path);
+  const results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
   if (results.length === 0) return null;
   const pick = pickPreferringUnseen(results, seenIds);
   return mapTmdbResult(pick);
@@ -1925,7 +1961,7 @@ async function fetchCuratedMovie(filters, seenIds) {
     const url = "https://api.themoviedb.org/3/discover/movie?" + baseParams.concat(extraParams).join("&");
     const r = await fetch(url);
     const data = await r.json();
-    return (data.results || []).filter((m) => m.poster_path);
+    return (data.results || []).filter((m) => m.poster_path && isReleased(m));
   }
 
   let results = [];
@@ -1970,7 +2006,7 @@ async function fetchCuratedMovie(filters, seenIds) {
     const url = "https://api.themoviedb.org/3/discover/movie?" + withoutKeywords.join("&") + "&page=1";
     const r = await fetch(url);
     const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path);
+    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
   }
 
   if (results.length === 0 && filters.runtime && !onlyVibeOrThemesGiven) {
@@ -1980,7 +2016,7 @@ async function fetchCuratedMovie(filters, seenIds) {
     const url = "https://api.themoviedb.org/3/discover/movie?" + withoutRuntime.join("&") + "&page=1";
     const r = await fetch(url);
     const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path);
+    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
   }
 
   if (results.length === 0 && onlyVibeOrThemesGiven && resolvedSomething) {
@@ -1994,7 +2030,7 @@ async function fetchCuratedMovie(filters, seenIds) {
     const url = "https://api.themoviedb.org/3/discover/movie?" + relaxed.join("&") + "&page=1";
     const r = await fetch(url);
     const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path);
+    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
   }
 
   if (results.length === 0) return null;
@@ -2016,14 +2052,14 @@ async function fetchSimilarMovies(id, title, runtimeFilter) {
     const url = "https://api.themoviedb.org/3/movie/" + id + "/recommendations?api_key=" + key + "&page=1";
     const r = await fetch(url);
     const data = await r.json();
-    let results = (data.results || []).filter((m) => m.poster_path);
+    let results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
     if (results.length === 0) {
       // "recommendations" is usually better quality but sparser than "similar" -
       // fall back to "similar" if there was nothing to recommend.
       const url2 = "https://api.themoviedb.org/3/movie/" + id + "/similar?api_key=" + key + "&page=1";
       const r2 = await fetch(url2);
       const data2 = await r2.json();
-      results = (data2.results || []).filter((m) => m.poster_path);
+      results = (data2.results || []).filter((m) => m.poster_path && isReleased(m));
     }
     let mapped = results.map(mapTmdbResult);
 
@@ -2119,12 +2155,13 @@ async function fetchFinishTheSetPick(seenIds) {
   try {
     const r = await fetch("https://api.themoviedb.org/3/collection/" + chosenId + "?api_key=" + key);
     const data = await r.json();
-    const parts = (data.parts || []).filter((p) => p.poster_path);
+    const parts = (data.parts || []).filter((p) => p.poster_path && isReleased(p));
     const watchedIds = new Set(getWatchedList().map((m) => m.id));
     const unseenParts = parts.filter((p) => !watchedIds.has(p.id));
     if (unseenParts.length === 0) return { pick: null, reason: "complete", collectionName: data.name };
 
     const pick = pickPreferringUnseen(unseenParts.map(mapTmdbResult), seenIds);
+    if (!pick) return { pick: null, reason: "not-yet-released", collectionName: data.name };
     return { pick, reason: null, collectionName: data.name };
   } catch (e) {
     return { pick: null, reason: "error" };
@@ -2320,6 +2357,14 @@ populateCuratedOptions();
 // both here and on the surprise-me card. Resolves with a number, or null
 // if skipped.
 let ratingSelectPopulated = false;
+function showWhyPicked(text) {
+  document.getElementById("whyPickedText").textContent = text;
+  document.getElementById("whyPickedOverlay").classList.remove("hidden");
+}
+document.getElementById("whyPickedClose").onclick = () => {
+  document.getElementById("whyPickedOverlay").classList.add("hidden");
+};
+
 function promptForRating(title) {
   return new Promise((resolve) => {
     const overlay = document.getElementById("rateMovieOverlay");
@@ -2538,7 +2583,7 @@ function showMovieSearch(title, message) {
 
     let currentMode = "popular";
 
-    function renderPick(pick) {
+    function renderPick(pick, whyText) {
       currentPick = pick;
       if (pick.id) seenIds.add(pick.id);
       const full = pick.overview || "No synopsis available.";
@@ -2552,6 +2597,7 @@ function showMovieSearch(title, message) {
         '<div id="pickRuntime" class="runtime-badge hidden-block"></div>' +
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
+        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn" style="display:block; margin:0 auto 10px;">ⓘ Based on&hellip;</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
         '<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
         '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
@@ -2572,6 +2618,10 @@ function showMovieSearch(title, message) {
         }
       }
       renderMarkWatchedArea();
+
+      if (whyText) {
+        document.getElementById("whyPickedBtn").onclick = () => showWhyPicked(whyText);
+      }
 
       if (needsToggle) {
         let expanded = false;
@@ -2679,7 +2729,7 @@ function showMovieSearch(title, message) {
           suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
           return;
         }
-        renderPick(result.pick);
+        renderPick(result.pick, 'This is part of "' + result.collectionName + '," which you have other entries from in your Watched List — this one just isn\'t marked watched yet.');
       } catch (e) {
         console.error("Finish the Set failed", e);
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
@@ -2698,7 +2748,7 @@ function showMovieSearch(title, message) {
           suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
           return;
         }
-        renderPick(result.pick);
+        renderPick(result.pick, 'You rated "' + result.seedTitle + '" 8 or higher, so this was pulled from TMDB\'s recommendations for that movie — similar genre, cast, or style.');
       } catch (e) {
         console.error("You'll Like failed", e);
         suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';

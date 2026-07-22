@@ -867,6 +867,7 @@
       <button class="btn-cancel" id="confirmCancel">Cancel</button>
       <div id="confirmMarkWatchedArea" style="flex:1;"></div>
     </div>
+    <div id="confirmRatingRow" class="hidden-block" style="display:flex; align-items:center; justify-content:center; gap:12px; margin-top:12px; font-size:13px;"></div>
   </div>
 </div>
 
@@ -2235,6 +2236,7 @@ const confirmPoster = document.getElementById("confirmPoster");
 const confirmWatchArea = document.getElementById("confirmWatchArea");
 const confirmRuntimeEl = document.getElementById("confirmRuntime");
 const confirmMarkWatchedArea = document.getElementById("confirmMarkWatchedArea");
+const confirmRatingRow = document.getElementById("confirmRatingRow");
 
 const inputOverlay = document.getElementById("inputOverlay");
 const inputTitle = document.getElementById("inputTitle");
@@ -2305,18 +2307,22 @@ populateCuratedOptions();
 function renderConfirmMarkWatchedArea(movie) {
   if (!movie || !movie.id) {
     confirmMarkWatchedArea.innerHTML = "";
+    confirmRatingRow.classList.add("hidden-block");
     return;
   }
   if (isWatched(movie.id)) {
+    // Keep the button-row slot the same size/shape (just marked done and
+    // non-interactive) so the layout doesn't jump, and give the rating
+    // controls their own full-width row where there's room to breathe.
+    confirmMarkWatchedArea.innerHTML = '<button class="btn-primary" style="width:100%; opacity:0.55;" disabled>✓ Watched</button>';
+
     const current = getWatchedList().find((m) => m.id === movie.id);
     const ratingOptionsHtml = '<option value="">Rate it</option>' +
       RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (current && current.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
-    confirmMarkWatchedArea.innerHTML =
-      '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">' +
-      '<div style="color:#2e7d4f; font-weight:700; font-size:12px;">✓ Watched</div>' +
+    confirmRatingRow.innerHTML =
       '<select class="rating-select" id="confirmRatingSelect">' + ratingOptionsHtml + '</select>' +
-      '<button class="synopsis-toggle" id="confirmUndoWatchedBtn" style="padding:0; font-size:11px;">Undo</button>' +
-      '</div>';
+      '<button class="synopsis-toggle" id="confirmUndoWatchedBtn" style="padding:0;">Undo</button>';
+    confirmRatingRow.classList.remove("hidden-block");
     document.getElementById("confirmRatingSelect").onchange = (ev) => {
       const v = ev.target.value;
       setWatchedRating(movie.id, v === "" ? null : parseFloat(v));
@@ -2327,6 +2333,7 @@ function renderConfirmMarkWatchedArea(movie) {
     };
   } else {
     confirmMarkWatchedArea.innerHTML = '<button class="btn-primary" id="confirmMarkWatchedBtn" style="width:100%;">✓ Watched</button>';
+    confirmRatingRow.classList.add("hidden-block");
     document.getElementById("confirmMarkWatchedBtn").onclick = () => {
       addWatched(movie);
       renderConfirmMarkWatchedArea(movie);

@@ -820,7 +820,8 @@
 </div>
 
 <div class="overlay hidden" id="drawOverlay">
-  <div class="dialog draw-dialog">
+  <div class="dialog draw-dialog" style="position:relative;">
+    <button id="drawCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
     <h2 id="drawHeading">Drawing your movie&hellip;</h2>
 
     <div class="search-status hidden-block" id="drawEmptyMsg">No movies are loaded in the machine yet — add some to the grid first!</div>
@@ -859,10 +860,12 @@
     <div id="confirmRuntime" class="runtime-badge hidden-block"></div>
     <div id="confirmWatchArea"></div>
     <p id="confirmText"></p>
-    <div id="confirmMarkWatchedArea" style="text-align:center; margin-bottom:10px;"></div>
+    <div style="text-align:center; margin-bottom:8px;">
+      <button class="synopsis-toggle" id="confirmOk" style="color:var(--danger);">Remove from slot</button>
+    </div>
     <div class="dialog-buttons">
       <button class="btn-cancel" id="confirmCancel">Cancel</button>
-      <button class="btn-danger" id="confirmOk">Remove</button>
+      <div id="confirmMarkWatchedArea" style="flex:1;"></div>
     </div>
   </div>
 </div>
@@ -2309,10 +2312,10 @@ function renderConfirmMarkWatchedArea(movie) {
     const ratingOptionsHtml = '<option value="">Rate it</option>' +
       RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (current && current.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
     confirmMarkWatchedArea.innerHTML =
-      '<div style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px; color:#2e7d4f; font-weight:700;">' +
-      '✓ Marked as watched' +
+      '<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">' +
+      '<div style="color:#2e7d4f; font-weight:700; font-size:12px;">✓ Watched</div>' +
       '<select class="rating-select" id="confirmRatingSelect">' + ratingOptionsHtml + '</select>' +
-      '<button class="synopsis-toggle" id="confirmUndoWatchedBtn" style="padding:0;">Undo</button>' +
+      '<button class="synopsis-toggle" id="confirmUndoWatchedBtn" style="padding:0; font-size:11px;">Undo</button>' +
       '</div>';
     document.getElementById("confirmRatingSelect").onchange = (ev) => {
       const v = ev.target.value;
@@ -2323,7 +2326,7 @@ function renderConfirmMarkWatchedArea(movie) {
       renderConfirmMarkWatchedArea(movie);
     };
   } else {
-    confirmMarkWatchedArea.innerHTML = '<button class="synopsis-toggle" id="confirmMarkWatchedBtn" style="display:block; margin:0 auto;">✓ Mark as watched</button>';
+    confirmMarkWatchedArea.innerHTML = '<button class="btn-primary" id="confirmMarkWatchedBtn" style="width:100%;">✓ Watched</button>';
     document.getElementById("confirmMarkWatchedBtn").onclick = () => {
       addWatched(movie);
       renderConfirmMarkWatchedArea(movie);
@@ -3039,6 +3042,7 @@ drawCloseBtn.onclick = () => {
   if (lastDrawIndex !== null) handleSlotClick(lastDrawIndex);
 };
 drawEmptyClose.onclick = () => drawOverlay.classList.add("hidden");
+document.getElementById("drawCloseX").onclick = () => drawOverlay.classList.add("hidden");
 
 loadSlots();
 

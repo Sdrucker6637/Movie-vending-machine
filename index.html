@@ -859,6 +859,7 @@
     <div id="confirmRuntime" class="runtime-badge hidden-block"></div>
     <div id="confirmWatchArea"></div>
     <p id="confirmText"></p>
+    <div id="confirmMarkWatchedArea" style="text-align:center; margin-bottom:10px;"></div>
     <div class="dialog-buttons">
       <button class="btn-cancel" id="confirmCancel">Cancel</button>
       <button class="btn-danger" id="confirmOk">Remove</button>
@@ -2230,6 +2231,7 @@ const confirmCancel = document.getElementById("confirmCancel");
 const confirmPoster = document.getElementById("confirmPoster");
 const confirmWatchArea = document.getElementById("confirmWatchArea");
 const confirmRuntimeEl = document.getElementById("confirmRuntime");
+const confirmMarkWatchedArea = document.getElementById("confirmMarkWatchedArea");
 
 const inputOverlay = document.getElementById("inputOverlay");
 const inputTitle = document.getElementById("inputTitle");
@@ -2297,6 +2299,38 @@ function populateCuratedOptions() {
 }
 populateCuratedOptions();
 
+function renderConfirmMarkWatchedArea(movie) {
+  if (!movie || !movie.id) {
+    confirmMarkWatchedArea.innerHTML = "";
+    return;
+  }
+  if (isWatched(movie.id)) {
+    const current = getWatchedList().find((m) => m.id === movie.id);
+    const ratingOptionsHtml = '<option value="">Rate it</option>' +
+      RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (current && current.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
+    confirmMarkWatchedArea.innerHTML =
+      '<div style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px; color:#2e7d4f; font-weight:700;">' +
+      '✓ Marked as watched' +
+      '<select class="rating-select" id="confirmRatingSelect">' + ratingOptionsHtml + '</select>' +
+      '<button class="synopsis-toggle" id="confirmUndoWatchedBtn" style="padding:0;">Undo</button>' +
+      '</div>';
+    document.getElementById("confirmRatingSelect").onchange = (ev) => {
+      const v = ev.target.value;
+      setWatchedRating(movie.id, v === "" ? null : parseFloat(v));
+    };
+    document.getElementById("confirmUndoWatchedBtn").onclick = () => {
+      removeWatched(movie.id);
+      renderConfirmMarkWatchedArea(movie);
+    };
+  } else {
+    confirmMarkWatchedArea.innerHTML = '<button class="synopsis-toggle" id="confirmMarkWatchedBtn" style="display:block; margin:0 auto;">✓ Mark as watched</button>';
+    document.getElementById("confirmMarkWatchedBtn").onclick = () => {
+      addWatched(movie);
+      renderConfirmMarkWatchedArea(movie);
+    };
+  }
+}
+
 function showConfirm(movie, message) {
   return new Promise((resolve) => {
     confirmText.textContent = message;
@@ -2308,6 +2342,7 @@ function showConfirm(movie, message) {
     }
     confirmWatchArea.innerHTML = '<div class="watch-status">Checking where to watch&hellip;</div>';
     confirmRuntimeEl.classList.add("hidden-block");
+    renderConfirmMarkWatchedArea(movie);
     confirmOverlay.classList.remove("hidden");
 
     if (movie && movie.id) {

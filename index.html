@@ -149,7 +149,7 @@
     z-index: 50;
   }
 .overlay.hidden { display: none; }
-#keyOverlay, #geminiKeyOverlay, #rateMovieOverlay {
+#keyOverlay, #geminiKeyOverlay, #rateMovieOverlay, #whyPickedOverlay {
   z-index: 60;
 }
   .dialog {
@@ -2597,7 +2597,7 @@ function showMovieSearch(title, message) {
         '<div id="pickRuntime" class="runtime-badge hidden-block"></div>' +
         '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
         (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
-        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn" style="display:block; margin:0 auto 10px;">ⓘ Based on&hellip;</button>' : '') +
+        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn">ⓘ Based on&hellip;</button>' : '') +
         '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
         '<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
         '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';

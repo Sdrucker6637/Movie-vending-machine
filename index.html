@@ -1,3123 +1,651 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Movie Vending Machine</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1a1d22">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tour de Alcoholism</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- React (no build step needed) -->
+<script crossorigin="anonymous" src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin="anonymous" src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+<!-- Firebase (free tier) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <style>
-  :root {
-    --steel: #2b2f36;
-    --steel-dark: #1a1d22;
-    --glass: rgba(255,255,255,0.04);
-    --slot-empty: #3a3f47;
-    --coin: #e8b84b;
-    --coin-dim: #8a6d2f;
-    --paper: #f2ede2;
-    --danger: #c1462f;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body {
-    margin: 0;
-    background: linear-gradient(180deg, #14161a, #0d0e10 60%);
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: var(--paper);
-    padding: 20px 14px 60px;
-  }
-  header {
-    text-align: center;
-    margin-bottom: 22px;
-  }
-  .eyebrow {
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--coin);
-    font-weight: 700;
-  }
-  h1 {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 28px;
-    margin: 4px 0 2px;
-    letter-spacing: 0.01em;
-  }
-  .sub {
-    font-size: 13px;
-    color: #9a9fa8;
-  }
-  .machine {
-    background: linear-gradient(180deg, var(--steel), var(--steel-dark));
-    border-radius: 18px;
-    padding: 14px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
-    max-width: 480px;
-    margin: 0 auto;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-  }
-  .slot {
-    position: relative;
-    aspect-ratio: 2/3;
-    border-radius: 8px;
-    background: var(--slot-empty);
-    overflow: hidden;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.12s ease;
-  }
-  .slot:active { transform: scale(0.94); }
-  .slot img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .slot .num {
-    position: absolute;
-    top: 3px;
-    left: 5px;
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.55);
-    background: rgba(0,0,0,0.35);
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
-  .slot.empty::after {
-    content: "+";
-    font-size: 26px;
-    color: #6b7078;
-    font-weight: 300;
-  }
-  .slot .title-fallback {
-    font-size: 10px;
-    text-align: center;
-    padding: 6px;
-    color: #d8dbe0;
-    line-height: 1.25;
-  }
-  .slot .label {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
-    font-size: 9.5px;
-    padding: 10px 5px 4px;
-    text-align: center;
-    line-height: 1.2;
-  }
-  .coin-slot {
-    margin: 14px auto 2px;
-    width: 60px;
-    height: 8px;
-    background: var(--steel-dark);
-    border-radius: 4px;
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.6);
-  }
-  footer {
-    text-align: center;
-    margin-top: 18px;
-    font-size: 11.5px;
-    color: #6b7078;
-  }
-  .loading {
-    font-size: 9px;
-    color: #888;
-  }
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 50;
-  }
-.overlay.hidden { display: none; }
-#keyOverlay, #geminiKeyOverlay, #rateMovieOverlay, #whyPickedOverlay {
-  z-index: 60;
-}
-  .dialog {
-    background: var(--paper);
-    color: #1a1d22;
-    border-radius: 14px;
-    padding: 20px;
-    width: 100%;
-    max-width: 340px;
-    max-height: 85vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-  }
-  .dialog h2 {
-    font-size: 16px;
-    margin: 0 0 6px;
-    font-family: Georgia, serif;
-  }
-  .dialog p {
-    font-size: 13px;
-    color: #555;
-    margin: 0 0 14px;
-  }
-  .dialog input {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 15px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    box-sizing: border-box;
-  }
-  .dialog-buttons {
-    display: flex;
-    gap: 8px;
-  }
-  .dialog-buttons button {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .btn-cancel {
-    background: #e4e0d5;
-    color: #333;
-  }
-  .btn-danger {
-    background: var(--danger);
-    color: white;
-  }
-  .btn-primary {
-    background: var(--steel-dark);
-    color: white;
-  }
-  .search-results {
-    max-height: 220px;
-    overflow-y: auto;
-    margin: -6px 0 14px;
-    border-radius: 8px;
-  }
-  .result-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .result-row:active { background: #e4e0d5; }
-  .result-row img {
-    display: block;
-    width: 36px;
-    height: 36px;
-    object-fit: cover;
-    border-radius: 5px;
-    background: #ddd;
-    flex-shrink: 0;
-  }
-  .result-row .rtitle {
-    font-size: 13px;
-    line-height: 1.3;
-  }
-  .result-row .ryear {
-    font-size: 11px;
-    color: #888;
-  }
-  .search-status {
-    font-size: 12px;
-    color: #888;
-    margin: -6px 0 14px;
-  }
-  .divider {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 2px 0 12px;
-    font-size: 11px;
-    color: #999;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .divider::before, .divider::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: #ddd;
-  }
-  .surprise-btn {
-    width: 100%;
-    padding: 10px;
-    border: 1px dashed #b8b0a0;
-    background: transparent;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #555;
-    cursor: pointer;
-    margin-bottom: 4px;
-  }
-  .suggestion-card {
-    text-align: center;
-  }
-  .suggestion-card img {
-    display: block;
-    width: 140px;
-    aspect-ratio: 2/3;
-    object-fit: cover;
-    border-radius: 8px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-    margin: 0 auto 10px;
-  }
-  .suggestion-card .stitle {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 2px;
-  }
-  .suggestion-card .syear {
-    font-size: 12px;
-    color: #888;
-    margin-bottom: 14px;
-  }
-  .hidden-block { display: none; }
-  header { position: relative; }
-  .settings-btn {
-    position: absolute;
-    top: 0;
-    right: 4px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #6b7078;
-    cursor: pointer;
-    padding: 6px;
-  }
-  .info-btn {
-    right: auto;
-    left: 4px;
-    font-size: 20px;
-  }
-  .mode-toggle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-  .mode-btn {
-    padding: 8px 4px;
-    border: 1px solid #d8d2c4;
-    background: transparent;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #666;
-    cursor: pointer;
-  }
-  .mode-btn.active {
-    background: var(--steel-dark);
-    color: white;
-    border-color: var(--steel-dark);
-  }
-  .key-link {
-    color: var(--danger);
-    text-decoration: underline;
-  }
-  .ssynopsis {
-    font-size: 12.5px;
-    color: #555;
-    line-height: 1.4;
-    text-align: left;
-    margin: 0 0 12px;
-  }
-  .trailer-btn {
-    display: inline-block;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--danger);
-    background: none;
-    border: 1px solid var(--danger);
-    border-radius: 20px;
-    padding: 6px 14px;
-    cursor: pointer;
-    margin-bottom: 12px;
-  }
-  .trailer-embed {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16/9;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #000;
-  }
-  .trailer-embed iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-  .synopsis-toggle {
-    display: inline-block;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--danger);
-    background: none;
-    border: none;
-    padding: 0 0 10px;
-    margin-right: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-  }
-  .watch-label {
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #999;
-    text-align: center;
-    margin-bottom: 6px;
-  }
-  .watch-badges {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 12px;
-  }
-  .runtime-badge {
-    display: block;
-    width: fit-content;
-    font-size: 11.5px;
-    font-weight: 700;
-    padding: 5px 12px;
-    border-radius: 20px;
-    background: #d8d2c4;
-    color: #444;
-    margin: 0 auto 10px;
-  }
-
-  /* --- Draw a Movie --- */
-  .draw-btn {
-    display: block;
-    width: 100%;
-    max-width: 480px;
-    margin: 16px auto 0;
-    padding: 15px;
-    background: linear-gradient(180deg, var(--coin), var(--coin-dim));
-    color: #241c08;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  }
-  .draw-btn:active { transform: scale(0.98); }
-  .watched-btn {
-    display: block;
-    width: 100%;
-    max-width: 480px;
-    margin: 10px auto 0;
-    padding: 11px;
-    background: transparent;
-    color: #9a9fa8;
-    border: 1px solid #3a3f47;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .watched-btn:active { transform: scale(0.98); }
-  .watched-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #e4e0d5;
-  }
-  .watched-row img {
-    display: block;
-    width: 34px;
-    height: 34px;
-    object-fit: cover;
-    border-radius: 5px;
-    background: #ddd;
-    flex-shrink: 0;
-  }
-  .watched-row .wtitle {
-    flex: 1;
-    font-size: 13.5px;
-  }
-  .rating-select {
-    width: 62px;
-    padding: 5px 3px;
-    font-size: 13px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background: white;
-    flex-shrink: 0;
-    margin-bottom: 0;
-  }
-  .watched-row button {
-    background: none;
-    border: none;
-    color: var(--danger);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 4px 6px;
-  }
-  .watched-empty {
-    font-size: 13px;
-    color: #999;
-    text-align: center;
-    padding: 14px 0;
-  }
-
-  .draw-dialog { text-align: center; }
-
-  .reel-window {
-    position: relative;
-    width: 100%;
-    height: 210px;
-    overflow: hidden;
-    border-radius: 10px;
-    background: var(--steel-dark);
-    margin: 6px 0;
-    transition: opacity 0.35s ease, transform 0.35s ease;
-  }
-  .reel-window.fading {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-  .reel-window::before, .reel-window::after {
-    content: "";
-    position: absolute;
-    top: 0; bottom: 0;
-    width: 34px;
-    z-index: 2;
-    pointer-events: none;
-  }
-  .reel-window::before { left: 0; background: linear-gradient(90deg, var(--steel-dark), transparent); }
-  .reel-window::after { right: 0; background: linear-gradient(270deg, var(--steel-dark), transparent); }
-  .reel-strip {
-    display: flex;
-    gap: 8px;
-    padding: 8px;
-    height: 100%;
-    box-sizing: border-box;
-  }
-  .reel-strip img {
-    display: block;
-    width: 108px;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 6px;
-    flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-  }
-  .reel-strip.spinning {
-    animation: reelSpin 1.6s cubic-bezier(0.11, 0.85, 0.16, 1) forwards;
-  }
-  @keyframes reelSpin {
-    from { transform: translateX(0); }
-    to { transform: translateX(var(--reel-distance, -1800px)); }
-  }
-
-  .capsule-stage {
-    position: relative;
-    height: 210px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 6px 0;
-    background: radial-gradient(ellipse at center, rgba(43,47,54,0.12), transparent 65%);
-    border-radius: 16px;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-  }
-  .capsule-stage.visible {
-    opacity: 1;
-  }
-  .capsule {
-    width: 120px;
-    height: 120px;
-    position: relative;
-    transform: translateY(-240px) rotate(-20deg);
-    animation: capsuleDrop 0.6s cubic-bezier(0.5,0,0.3,1.4) forwards;
-  }
-  @keyframes capsuleDrop {
-    0% { transform: translateY(-240px) rotate(-20deg); }
-    60% { transform: translateY(8px) rotate(6deg); }
-    80% { transform: translateY(-10px) rotate(-3deg); }
-    100% { transform: translateY(0) rotate(0deg); }
-  }
-  .capsule-top, .capsule-bottom {
-    position: absolute;
-    left: 0; right: 0;
-    height: 60px;
-    overflow: hidden;
-  }
-  .capsule-top {
-    top: 0;
-    border-radius: 60px 60px 0 0;
-    background: linear-gradient(200deg, rgba(255,255,255,0.75), rgba(200,215,225,0.25) 55%, rgba(160,180,195,0.35));
-    border: 2px solid rgba(255,255,255,0.55);
-    border-bottom: none;
-    box-shadow: inset -8px -8px 14px rgba(120,140,155,0.25), inset 6px 8px 10px rgba(255,255,255,0.7);
-    transform-origin: center bottom;
-  }
-  .capsule-top::after {
-    content: "";
-    position: absolute;
-    top: 10px; left: 18px;
-    width: 26px; height: 12px;
-    background: rgba(255,255,255,0.75);
-    border-radius: 50%;
-    filter: blur(1px);
-    transform: rotate(-25deg);
-  }
-  .capsule-bottom {
-    bottom: 0;
-    border-radius: 0 0 60px 60px;
-    background: linear-gradient(180deg, var(--coin), var(--coin-dim));
-  }
-  .capsule-shine {
-    position: absolute;
-    top: 50%; left: 50%;
-    width: 128px; height: 10px;
-    background: var(--steel-dark);
-    transform: translate(-50%, -50%);
-    border-radius: 3px;
-  }
-  .capsule.opening .capsule-top {
-    animation: capsuleTopOpen 0.5s ease-in forwards;
-  }
-  @keyframes capsuleTopOpen {
-    to { transform: translateY(-90px) rotate(-110deg); opacity: 0; }
-  }
-  .capsule.opening .capsule-bottom {
-    animation: capsuleBottomOpen 0.5s ease-in forwards;
-  }
-  @keyframes capsuleBottomOpen {
-    to { transform: translateY(90px) rotate(20deg); opacity: 0; }
-  }
-  .reveal-poster {
-    position: absolute;
-    width: 132px;
-    aspect-ratio: 2/3;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-    transform: scale(0);
-    opacity: 0;
-  }
-  .reveal-poster.show {
-    animation: posterPop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards;
-  }
-  @keyframes posterPop {
-    0% { transform: scale(0) rotate(-15deg); opacity: 0; }
-    70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-  }
-  .reveal-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
-
-  .draw-title {
-    font-family: Georgia, serif;
-    font-size: 19px;
-    font-weight: 700;
-    margin-top: 8px;
-  }
-
-  .watch-badge {
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 20px;
-    background: #e4e0d5;
-    color: #444;
-  }
-  .watch-badge.free {
-    background: #2e7d4f;
-    color: white;
-  }
-  .watch-badge.sub {
-    background: #33445c;
-    color: white;
-  }
-  .watch-status {
-    font-size: 12px;
-    color: #888;
-    text-align: left;
-    margin-bottom: 12px;
-  }
-  .confirm-poster {
-    display: block;
-    width: 90px;
-    aspect-ratio: 2/3;
-    object-fit: cover;
-    border-radius: 8px;
-    margin: 0 auto 10px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-  }
-  .curated-form {
-    text-align: left;
-  }
-  .curated-field {
-    margin-bottom: 12px;
-  }
-  .curated-field label {
-    display: block;
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #888;
-    margin-bottom: 4px;
-    font-weight: 700;
-  }
-  .curated-field select,
-  .curated-field input {
-    width: 100%;
-    padding: 9px 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-sizing: border-box;
-    background: white;
-  }
-  .curated-hint {
-    font-size: 11.5px;
-    color: #999;
-    margin: -4px 0 14px;
-  }
-  .edit-filters-btn {
-    display: block;
-    width: 100%;
-    text-align: center;
-    font-size: 11.5px;
-    color: #888;
-    background: none;
-    border: none;
-    text-decoration: underline;
-    cursor: pointer;
-    margin-bottom: 8px;
-  }
-  .service-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: 14px;
-  }
-  .service-row input {
-    width: auto;
-    margin: 0;
-  }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #2e7d4f;
-    color: white;
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 5px 8px 5px 10px;
-    border-radius: 20px;
-  }
-  .chip button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 13px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0;
-  }
-  .conn-status {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 13px;
-    margin-bottom: 10px;
-  }
-  .conn-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #b8b0a0;
-    flex-shrink: 0;
-  }
-  .conn-dot.on {
-    background: #2e7d4f;
-  }
-  .key-btn {
-    display: inline-block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--danger);
-    background: none;
-    border: 1px solid var(--danger);
-    border-radius: 20px;
-    padding: 7px 16px;
-    cursor: pointer;
-  }
+  body { margin: 0; }
+  /* ====== PASTE YOUR CONFIG BELOW, THEN THE REST OF THE STYLES/APP HANDLE THEMSELVES ====== */
 </style>
 </head>
 <body>
-
-<header>
-  <button class="settings-btn info-btn" id="infoBtn" title="How this works">ⓘ</button>
-  <button class="settings-btn" id="settingsBtn" title="TMDB settings">⚙</button>
-  <div class="eyebrow">Now Dispensing</div>
-  <h1>The Movie Vending Machine</h1>
-  <div class="sub">Tap a slot to swap it out</div>
-</header>
-
-<div class="machine">
-  <div class="grid" id="grid"></div>
-  <div class="coin-slot"></div>
-</div>
-
-<button class="draw-btn" id="drawBtn">🎰 Draw a Movie</button>
-
-<button class="watched-btn" id="watchedBtn">✓ Watched List</button>
-
-<footer>16 slots &middot; tap empty to fill, tap full to replace</footer>
-
-<div class="overlay hidden" id="watchedOverlay">
-  <div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left; position: relative;">
-    <button id="watchedCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
-    <h2 style="text-align:center;">Watched List</h2>
-    <p style="margin:0 0 10px; font-size:12.5px; color:#888; text-align:center;">
-      Movies here are skipped by every Surprise Me tab.
-    </p>
-
-    <input type="text" id="watchedSearchInput" placeholder="Search to add a movie" autocomplete="off">
-    <div class="search-status hidden-block" id="watchedSearchStatus"></div>
-    <div class="search-results hidden-block" id="watchedSearchResults"></div>
-
-    <div class="watch-label" style="text-align:left; margin-top:14px;">Already Marked (<span id="watchedCount">0</span>)</div>
-    <div id="watchedListArea"></div>
-
-    <div class="dialog-buttons" style="margin-top:14px;">
-      <button class="btn-primary" id="watchedDone" style="width:100%;">Done</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="drawOverlay">
-  <div class="dialog draw-dialog" style="position:relative;">
-    <button id="drawCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
-    <h2 id="drawHeading">Drawing your movie&hellip;</h2>
-
-    <div class="search-status hidden-block" id="drawEmptyMsg">No movies are loaded in the machine yet — add some to the grid first!</div>
-
-    <div class="reel-window" id="reelWindow">
-      <div class="reel-strip" id="reelStrip"></div>
-    </div>
-
-    <div class="capsule-stage hidden-block" id="capsuleStage">
-      <div class="capsule" id="capsule">
-        <div class="capsule-top"></div>
-        <div class="capsule-bottom"></div>
-        <div class="capsule-shine"></div>
-      </div>
-      <div class="reveal-poster hidden-block" id="revealPoster">
-        <img id="revealPosterImg" src="" alt="">
-      </div>
-    </div>
-
-    <div class="draw-title hidden-block" id="drawTitle"></div>
-
-    <div class="dialog-buttons hidden-block" id="drawButtons">
-      <button class="btn-cancel" id="drawAgainBtn">Draw again</button>
-      <button class="btn-primary" id="drawCloseBtn">▶ Watch</button>
-    </div>
-    <div class="dialog-buttons hidden-block" id="drawEmptyButtons">
-      <button class="btn-primary" id="drawEmptyClose" style="flex:1;">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="confirmOverlay">
-  <div class="dialog">
-    <h2 id="confirmTitle">Remove movie?</h2>
-    <img id="confirmPoster" class="confirm-poster hidden-block" alt="">
-    <div id="confirmRuntime" class="runtime-badge hidden-block"></div>
-    <div id="confirmWatchArea"></div>
-    <p id="confirmText"></p>
-    <div style="text-align:center; margin-bottom:8px;">
-      <button class="synopsis-toggle" id="confirmOk" style="color:var(--danger);">Remove from slot</button>
-    </div>
-    <div class="dialog-buttons">
-      <button class="btn-cancel" id="confirmCancel">Cancel</button>
-      <button class="btn-primary" id="confirmWatchedBtn" style="flex:1;">✓ Watched</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="whyPickedOverlay">
-  <div class="dialog" style="text-align:center;">
-    <h2>Why this pick?</h2>
-    <p id="whyPickedText" style="font-size:14px; color:#555; margin:0 0 16px;"></p>
-    <div class="dialog-buttons">
-      <button class="btn-primary" id="whyPickedClose" style="width:100%;">Got it</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="rateMovieOverlay">
-  <div class="dialog" style="text-align:center;">
-    <h2>Rate it</h2>
-    <p id="rateMovieTitle" style="margin:0 0 16px; font-weight:700; font-size:16px;"></p>
-    <select id="rateMovieSelect" style="display:block; width:150px; margin:0 auto 18px; padding:12px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white;">
-      <option value="">Skip for now</option>
-    </select>
-    <div class="dialog-buttons">
-      <button class="btn-cancel" id="rateMovieSkip" style="flex:1;">Skip</button>
-      <button class="btn-primary" id="rateMovieSave" style="flex:1;">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="keyOverlay">
-  <div class="dialog">
-    <h2>Connect TMDB</h2>
-    <p>Paste your free TMDB API key (v3 auth) to enable search and suggestions. Get one at
-      <a class="key-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a>.
-    </p>
-    <input type="text" id="keyField" placeholder="Paste API key here" autocomplete="off">
-    <div class="dialog-buttons">
-      <button class="btn-cancel" id="keyCancel">Cancel</button>
-      <button class="btn-primary" id="keySave">Connect</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="geminiKeyOverlay">
-  <div class="dialog">
-    <h2>Connect Gemini</h2>
-    <p>Paste your Gemini API key to power more abstract Vibe/Plot searches. Get a free one at
-      <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
-    </p>
-    <input type="text" id="geminiKeyField" placeholder="Paste API key here" autocomplete="off">
-    <div class="dialog-buttons">
-      <button class="btn-cancel" id="geminiKeyCancel">Cancel</button>
-      <button class="btn-primary" id="geminiKeySave">Connect</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="infoOverlay">
-  <div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left;">
-    <h2>How This Works</h2>
-
-    <div class="curated-field">
-      <label>The Machine</label>
-      <p style="margin:0; font-size:13px; color:#555;">
-        16 slots, one movie each. Tap an empty slot to add a movie, or tap a
-        full one to see where to watch it and swap it for something else.
-        Everything's saved on this device automatically.
-      </p>
-    </div>
-
-    <div class="curated-field">
-      <label>Adding a Movie</label>
-      <p style="margin:0; font-size:13px; color:#555;">
-        Search by title, or tap <strong>🎲 Surprise me</strong> for a random
-        pick instead of typing one in.
-      </p>
-    </div>
-
-    <div class="curated-field">
-      <label>The Surprise Me Tabs</label>
-      <p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Popular</strong> — well-known movies, spread across different decades rather than just what's trending now.</p>
-      <p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Indie/obscure</strong> — well-reviewed but lower-profile titles you probably haven't heard of.</p>
-      <p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Curated</strong> — a short survey (genre, vibe, decade, runtime, director, actor, plot/themes) - answer as few or as many as you like.</p>
-      <p style="margin:0; font-size:13px; color:#555;"><strong>Similar to…</strong> — search a movie you like and get something in the same spirit.</p>
-    </div>
-
-    <div class="curated-field">
-      <label>Draw a Movie</label>
-      <p style="margin:0; font-size:13px; color:#555;">
-        Picks at random from whatever's actually loaded in your 16 slots
-        right now - good for "just tell me what to watch tonight."
-      </p>
-    </div>
-
-    <div class="curated-field">
-      <label>APIs This Uses</label>
-      <p style="margin:0 0 6px; font-size:13px; color:#555;">
-        <strong>TMDB (required)</strong> — powers search, posters, synopses,
-        trailers, and where-to-watch info. Free. Get a key at
-        <a class="key-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a>,
-        then paste it in via the ⚙ Settings button.
-      </p>
-      <p style="margin:0; font-size:13px; color:#555;">
-        <strong>Gemini (optional)</strong> — makes the Vibe and Plot/themes
-        fields in Curated understand abstract descriptions ("trippy,"
-        "cheesy," "coming of age") that TMDB's own search can't. Free to
-        start. Get a key at
-        <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>,
-        then paste it in via ⚙ Settings. Everything works without it -
-        Curated just falls back to plainer matching.
-      </p>
-    </div>
-
-    <div class="curated-field">
-      <label>Streaming Services</label>
-      <p style="margin:0; font-size:13px; color:#555;">
-        In ⚙ Settings, check off what you actually have access to - paid or
-        free. <span style="color:#2e7d4f; font-weight:700;">Green</span> means
-        no extra cost with what you already have,
-        <span style="color:#33445c; font-weight:700;">blue</span> means you'd
-        pay extra even with an account you own (like renting on Amazon), and
-        <span style="font-weight:700;">tan</span> means you don't have that
-        one. Nothing is assumed - only what you check shows as yours.
-      </p>
-    </div>
-
-    <div class="dialog-buttons">
-      <button class="btn-primary" id="infoDone" style="width:100%;">Got it</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="settingsOverlay">
-  <div class="dialog" style="max-height: 85vh; overflow-y: auto;">
-    <h2>Settings</h2>
-
-    <div class="curated-field">
-      <label>TMDB Connection</label>
-      <div class="conn-status"><span class="conn-dot" id="keyStatusDot"></span><span id="keyStatusText">Not connected</span></div>
-      <button class="key-btn" id="changeKeyBtn">Change API key</button>
-    </div>
-
-    <div class="curated-field">
-      <label>AI-Powered Vibe Search (optional)</label>
-      <p style="margin:0 0 8px; font-size:12px; color:#888;">Connect a free Gemini API key to make the Vibe and Plot/themes fields in Curated understand more abstract descriptions (get one at aistudio.google.com/apikey).</p>
-      <div class="conn-status"><span class="conn-dot" id="geminiKeyStatusDot"></span><span id="geminiKeyStatusText">Not connected</span></div>
-      <button class="key-btn" id="changeGeminiKeyBtn">Change Gemini key</button>
-    </div>
-
-    <div class="curated-field">
-      <label>My Streaming Services</label>
-      <p style="margin:0 0 8px; font-size:12px; color:#888;">Check anything you actually have access to — paid or free. Only checked ones show up green; nothing is assumed.</p>
-      <div id="serviceChecklist"></div>
-      <div style="display:flex; gap:6px; margin-top:8px;">
-        <input type="text" id="customServiceInput" placeholder="Add another service" autocomplete="off" style="margin-bottom:0;">
-        <button class="btn-cancel" id="addCustomServiceBtn" style="flex:0 0 auto; padding:9px 14px;">Add</button>
-      </div>
-      <div class="watch-badges" id="customServiceChips" style="margin-top:10px;"></div>
-    </div>
-
-    <div class="dialog-buttons">
-      <button class="btn-primary" id="settingsDone" style="width:100%;">Done</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay hidden" id="inputOverlay">
-  <div class="dialog">
-
-    <div id="searchView">
-      <h2 id="inputTitle">Add a movie</h2>
-      <p id="inputText">What movie goes in this slot?</p>
-      <input type="text" id="inputField" placeholder="Search for a movie" autocomplete="off">
-      <div class="search-status hidden-block" id="searchStatus"></div>
-      <div class="search-results hidden-block" id="searchResults"></div>
-      <div class="divider">or</div>
-      <button class="surprise-btn" id="surpriseBtn">🎲 Surprise me</button>
-      <div class="dialog-buttons" style="margin-top:14px;">
-        <button class="btn-cancel" id="inputCancel">Cancel</button>
-        <button class="btn-primary" id="inputOk">Use as typed</button>
-      </div>
-    </div>
-
-    <div id="surpriseView" class="hidden-block">
-      <h2>Surprise pick</h2>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="modePopular">Popular</button>
-        <button class="mode-btn" id="modeIndie">Indie/obscure</button>
-        <button class="mode-btn" id="modeCurated">Curated</button>
-        <button class="mode-btn" id="modeSimilar">Similar to&hellip;</button>
-        <button class="mode-btn" id="modeFinishSet">Finish the Set</button>
-        <button class="mode-btn" id="modeYoullLike">You'll Like</button>
-      </div>
-
-      <div id="similarForm" class="curated-form hidden-block">
-        <div class="curated-hint">Search for a movie you like — we'll suggest something similar.</div>
-        <div class="curated-field">
-          <label>Runtime</label>
-          <select id="similarRuntime">
-            <option value="">Any length</option>
-            <option value="short">Under 90 min</option>
-            <option value="medium">90–120 min</option>
-            <option value="long">Over 120 min</option>
-          </select>
-        </div>
-        <input type="text" id="similarSearchInput" placeholder="Search for a movie" autocomplete="off">
-        <div class="search-status hidden-block" id="similarSearchStatus"></div>
-        <div class="search-results hidden-block" id="similarSearchResults"></div>
-      </div>
-
-      <div id="curatedForm" class="curated-form hidden-block">
-        <div class="curated-hint">Answer as few or as many as you like.</div>
-        <div class="curated-field">
-          <label>Genre</label>
-          <select id="curatedGenre"><option value="">Any</option></select>
-        </div>
-        <div class="curated-field">
-          <label>Vibe</label>
-          <input type="text" id="curatedVibe" list="vibeOptions" placeholder="e.g. Feel-good, dark, mind-bending…" autocomplete="off">
-          <datalist id="vibeOptions"></datalist>
-        </div>
-        <div class="curated-field">
-          <label>Plot / themes</label>
-          <input type="text" id="curatedThemes" placeholder="e.g. coming of age, road trip" autocomplete="off">
-        </div>
-        <div class="curated-field">
-          <label>Decade</label>
-          <select id="curatedDecade"><option value="">Any</option></select>
-        </div>
-        <div class="curated-field">
-          <label>Runtime</label>
-          <select id="curatedRuntime">
-            <option value="">Any length</option>
-            <option value="short">Under 90 min</option>
-            <option value="medium">90–120 min</option>
-            <option value="long">Over 120 min</option>
-          </select>
-        </div>
-        <div class="curated-field">
-          <label>Director</label>
-          <input type="text" id="curatedDirector" placeholder="e.g. Greta Gerwig" autocomplete="off">
-        </div>
-        <div class="curated-field">
-          <label>Actor</label>
-          <input type="text" id="curatedActor" placeholder="e.g. Denzel Washington" autocomplete="off">
-        </div>
-        <div class="dialog-buttons">
-          <button class="btn-primary" id="curatedSubmit">Find a film</button>
-        </div>
-      </div>
-
-      <button class="edit-filters-btn hidden-block" id="editFiltersBtn">✎ Edit filters and search again</button>
-      <div class="suggestion-card" id="suggestionCard">
-        <div class="search-status" id="suggestionStatus">Finding something good&hellip;</div>
-      </div>
-      <div class="dialog-buttons" id="resultButtons">
-        <button class="btn-cancel" id="surpriseAnother">Try another</button>
-        <button class="btn-primary" id="surpriseUse">Use this</button>
-      </div>
-      <div class="dialog-buttons" style="margin-top:8px;">
-        <button class="btn-cancel" id="surpriseBack" style="flex:1;">Back to search</button>
-      </div>
-    </div>
-
-  </div>
-</div>
+<div id="root"></div>
 
 <script>
-const SLOT_COUNT = 16;
-const STORAGE_KEY = "movie-machine-slots";
-let slots = new Array(SLOT_COUNT).fill(null); // {title, poster}
-
-function loadSlots() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) slots = JSON.parse(raw);
-  } catch (e) {
-    // no data yet, keep defaults
-  }
-  render();
-}
-
-function saveSlots() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(slots));
-  } catch (e) {
-    console.error("Save failed", e);
-  }
-}
-
-// --- TMDB API key management ---
-const TMDB_KEY_STORAGE = "tmdb-api-key";
-const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
-
-function getStoredKey() {
-  return localStorage.getItem(TMDB_KEY_STORAGE);
-}
-
-function ensureTmdbKey() {
-  const existing = getStoredKey();
-  if (existing) return Promise.resolve(existing);
-  return new Promise((resolve) => {
-    const keyOverlay = document.getElementById("keyOverlay");
-    const keyField = document.getElementById("keyField");
-    const keySave = document.getElementById("keySave");
-    const keyCancel = document.getElementById("keyCancel");
-    keyField.value = "";
-    keyOverlay.classList.remove("hidden");
-    setTimeout(() => keyField.focus(), 50);
-    const cleanup = (result) => {
-      keyOverlay.classList.add("hidden");
-      keySave.onclick = null;
-      keyCancel.onclick = null;
-      resolve(result);
-    };
-    keySave.onclick = () => {
-      const v = keyField.value.trim();
-      if (!v) return;
-      localStorage.setItem(TMDB_KEY_STORAGE, v);
-      cleanup(v);
-    };
-    keyCancel.onclick = () => cleanup(null);
-  });
-}
-
-// --- Gemini API key management (optional, powers abstract vibe/theme search) ---
-const GEMINI_KEY_STORAGE = "gemini-api-key";
-
-function getStoredGeminiKey() {
-  return localStorage.getItem(GEMINI_KEY_STORAGE);
-}
-
-// Unlike the TMDB key, Gemini is optional - this never blocks with a modal
-// on its own. Curated mode calls this quietly and just skips the AI step
-// (falling back to plain TMDB keyword matching) if nothing's connected.
-function getGeminiKeyIfAny() {
-  return getStoredGeminiKey();
-}
-
-function promptForGeminiKey() {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("geminiKeyOverlay");
-    const field = document.getElementById("geminiKeyField");
-    const save = document.getElementById("geminiKeySave");
-    const cancel = document.getElementById("geminiKeyCancel");
-    field.value = "";
-    overlay.classList.remove("hidden");
-    setTimeout(() => field.focus(), 50);
-    const cleanup = (result) => {
-      overlay.classList.add("hidden");
-      save.onclick = null;
-      cancel.onclick = null;
-      resolve(result);
-    };
-    save.onclick = () => {
-      const v = field.value.trim();
-      if (!v) return;
-      localStorage.setItem(GEMINI_KEY_STORAGE, v);
-      cleanup(v);
-    };
-    cancel.onclick = () => cleanup(null);
-  });
-}
-
-// Asks Gemini for real movie titles matching a free-text vibe/theme
-// description. Returns [] on any failure so callers can fall back cleanly.
-async function fetchGeminiMovieSuggestions(description, count) {
-  const key = getGeminiKeyIfAny();
-  if (!key) return [];
-  const prompt =
-    "Suggest up to " + count + " real, existing movies that genuinely match this description: \"" + description + "\". " +
-    "Only suggest films you are confident actually exist and actually fit - do not stretch or guess. " +
-    "If you can't think of any that genuinely fit, or the description is too vague/nonsensical to match confidently, " +
-    "respond with an empty array [] instead of forcing unrelated or generically popular picks. " +
-    "Prefer variety over obvious picks among the ones that do fit. " +
-    "Respond with ONLY a JSON array, no markdown formatting, no code fences, no extra text. " +
-    "Each item must be exactly: {\"title\": \"...\", \"year\": \"...\"}.";
-  try {
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    const data = await r.json();
-    if (data.error) {
-      console.error("Gemini API error:", data.error.message || data.error);
-      return [];
-    }
-    const text = data.candidates && data.candidates[0] && data.candidates[0].content &&
-      data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
-      data.candidates[0].content.parts[0].text;
-    if (!text) {
-      console.error("Gemini returned no usable text", data);
-      return [];
-    }
-    const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.error("Gemini suggestion fetch failed", e);
-    return [];
-  }
-}
-
-// Looks up each Gemini-suggested title on TMDB (using the year as a
-// disambiguator) and keeps only the ones that actually resolve.
-async function resolveGeminiSuggestions(suggestions) {
-  const key = await ensureTmdbKey();
-  if (!key) return [];
-  const results = await Promise.all(suggestions.map(async (s) => {
-    try {
-      const query = s.year ? s.title + " " + s.year : s.title;
-      const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(query);
-      const r = await fetch(url);
-      const data = await r.json();
-      if (data.results && data.results.length > 0) {
-        return mapTmdbResult(data.results[0]);
-      }
-    } catch (e) {
-      // skip unresolved suggestions
-    }
-    return null;
-  }));
-  return results.filter(Boolean);
-}
-
-// --- "My streaming services" (which providers show green) ---
-// Nothing is checked by default - a provider only turns green once you
-// explicitly confirm you actually have access to it, paid or free.
-const MY_SERVICES_STORAGE = "my-streaming-services";
-const COMMON_PROVIDERS = [
-  "Netflix", "Amazon Prime Video", "Max", "Disney Plus", "Hulu",
-  "Apple TV Plus", "Peacock", "Paramount Plus", "Starz", "MGM Plus", "ESPN Plus", "YouTube",
-  "Tubi", "Pluto TV", "The Roku Channel", "Freevee", "Kanopy", "Crackle"
-];
-
-function getMyServices() {
-  try {
-    const raw = localStorage.getItem(MY_SERVICES_STORAGE);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveMyServices(list) {
-  localStorage.setItem(MY_SERVICES_STORAGE, JSON.stringify(list));
-}
-
-// TMDB/JustWatch sometimes lists the same account under a different name
-// depending on whether it's a subscription or a purchase (e.g. buying a
-// movie through Amazon shows up as "Amazon Video", not "Amazon Prime Video").
-const PROVIDER_ALIASES = {
-  "Amazon Prime Video": ["Amazon Video"],
-  "Apple TV Plus": ["Apple TV"],
-  "Max": ["HBO Max"],
-  "Disney Plus": ["Disney+"]
-};
-
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Whole-word containment, so a short name like "Max" doesn't accidentally
-// match inside an unrelated word like "Cinemax".
-function wordMatch(a, b) {
-  const lowerA = a.trim().toLowerCase();
-  const lowerB = b.trim().toLowerCase();
-  if (!lowerA || !lowerB) return false;
-  if (lowerA === lowerB) return true;
-  const reA = new RegExp("\\b" + escapeRegex(lowerA) + "\\b");
-  const reB = new RegExp("\\b" + escapeRegex(lowerB) + "\\b");
-  return reA.test(lowerB) || reB.test(lowerA);
-}
-
-// "___ Amazon Channel" / "___ Apple TV Channel" listings are separate
-// a-la-carte add-on subscriptions bundled through Amazon or Apple - having
-// the base service (or even the same channel through its own app) doesn't
-// mean you have this specific add-on. Same idea for "YouTube TV", which is
-// a completely different product from renting/buying on YouTube.
-function requiresExactMatch(name) {
-  return /\bchannel\b/i.test(name) || name.trim().toLowerCase() === "youtube tv";
-}
-
-function ownsProvider(name) {
-  const mine = getMyServices();
-  const lower = name.trim().toLowerCase();
-
-  // An exact match (including one you added yourself, like a specific
-  // channel add-on) always counts, even for names that otherwise require
-  // an exact match below.
-  if (mine.some((s) => s.trim().toLowerCase() === lower)) return true;
-  if (requiresExactMatch(name)) return false;
-
-  return mine.some((s) => {
-    if (wordMatch(s, name)) return true;
-    const aliases = PROVIDER_ALIASES[s] || [];
-    return aliases.some((a) => wordMatch(a, name));
-  });
-}
-
-// --- Watched List (persistent - unlike seenIds, this survives across sessions) ---
-const WATCHED_STORAGE = "watched-movies";
-
-function getWatchedList() {
-  try {
-    const raw = localStorage.getItem(WATCHED_STORAGE);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveWatchedList(list) {
-  localStorage.setItem(WATCHED_STORAGE, JSON.stringify(list));
-}
-
-function isWatched(id) {
-  return getWatchedList().some((m) => m.id === id);
-}
-
-function addWatched(movie) {
-  if (!movie || !movie.id || isWatched(movie.id)) return;
-  const list = getWatchedList();
-  list.push({ id: movie.id, title: movie.title, poster: movie.poster || null, rating: null });
-  saveWatchedList(list);
-}
-
-function removeWatched(id) {
-  saveWatchedList(getWatchedList().filter((m) => m.id !== id));
-}
-
-function setWatchedRating(id, rating) {
-  const list = getWatchedList();
-  const entry = list.find((m) => m.id === id);
-  if (!entry) return;
-  entry.rating = rating; // null clears it; otherwise 1-10 in 0.5 steps
-  saveWatchedList(list);
-}
-
-// Strips already-watched titles out of a batch of TMDB results before
-// picking. Falls back to the unfiltered list if everything available
-// happens to be watched, so a small library doesn't dead-end.
-function filterOutWatched(results) {
-  const watchedIds = new Set(getWatchedList().map((m) => m.id));
-  const unwatched = results.filter((m) => !watchedIds.has(m.id));
-  return unwatched.length ? unwatched : results;
-}
-
-// --- Settings panel ---
-const settingsOverlay = document.getElementById("settingsOverlay");
-const keyStatusText = document.getElementById("keyStatusText");
-const keyStatusDot = document.getElementById("keyStatusDot");
-const changeKeyBtn = document.getElementById("changeKeyBtn");
-const serviceChecklist = document.getElementById("serviceChecklist");
-const customServiceInput = document.getElementById("customServiceInput");
-const addCustomServiceBtn = document.getElementById("addCustomServiceBtn");
-const customServiceChips = document.getElementById("customServiceChips");
-const settingsDone = document.getElementById("settingsDone");
-const geminiKeyStatusText = document.getElementById("geminiKeyStatusText");
-const geminiKeyStatusDot = document.getElementById("geminiKeyStatusDot");
-const changeGeminiKeyBtn = document.getElementById("changeGeminiKeyBtn");
-
-function renderSettingsPanel() {
-  const tmdbConnected = !!getStoredKey();
-  keyStatusText.textContent = tmdbConnected ? "Connected" : "Not connected";
-  keyStatusDot.classList.toggle("on", tmdbConnected);
-
-  const geminiConnected = !!getStoredGeminiKey();
-  geminiKeyStatusText.textContent = geminiConnected ? "Connected" : "Not connected";
-  geminiKeyStatusDot.classList.toggle("on", geminiConnected);
-
-  const mine = getMyServices();
-  serviceChecklist.innerHTML = "";
-  COMMON_PROVIDERS.forEach((name) => {
-    const row = document.createElement("label");
-    row.className = "service-row";
-    const checked = mine.includes(name);
-    row.innerHTML = '<input type="checkbox" data-name="' + name + '"' + (checked ? " checked" : "") + '> ' + name;
-    row.querySelector("input").onchange = (ev) => {
-      let list = getMyServices();
-      if (ev.target.checked) {
-        if (!list.includes(name)) list.push(name);
-      } else {
-        list = list.filter((n) => n !== name);
-      }
-      saveMyServices(list);
-    };
-    serviceChecklist.appendChild(row);
-  });
-
-  const custom = mine.filter((n) => !COMMON_PROVIDERS.includes(n));
-  customServiceChips.innerHTML = "";
-  custom.forEach((name) => {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.innerHTML = name + ' <button aria-label="Remove">✕</button>';
-    chip.querySelector("button").onclick = () => {
-      saveMyServices(getMyServices().filter((n) => n !== name));
-      renderSettingsPanel();
-    };
-    customServiceChips.appendChild(chip);
-  });
-}
-
-addCustomServiceBtn.onclick = () => {
-  const v = customServiceInput.value.trim();
-  if (!v) return;
-  const list = getMyServices();
-  if (!list.includes(v)) {
-    list.push(v);
-    saveMyServices(list);
-  }
-  customServiceInput.value = "";
-  renderSettingsPanel();
-};
-
-changeKeyBtn.onclick = async () => {
-  localStorage.removeItem(TMDB_KEY_STORAGE);
-  await ensureTmdbKey();
-  renderSettingsPanel();
-};
-
-changeGeminiKeyBtn.onclick = async () => {
-  localStorage.removeItem(GEMINI_KEY_STORAGE);
-  await promptForGeminiKey();
-  renderSettingsPanel();
-};
-
-settingsDone.onclick = () => {
-  settingsOverlay.classList.add("hidden");
-};
-
-document.getElementById("settingsBtn").onclick = () => {
-  renderSettingsPanel();
-  settingsOverlay.classList.remove("hidden");
-};
-
-document.getElementById("infoBtn").onclick = () => {
-  document.getElementById("infoOverlay").classList.remove("hidden");
-};
-document.getElementById("infoDone").onclick = () => {
-  document.getElementById("infoOverlay").classList.add("hidden");
-};
-
-// --- Watched List overlay ---
-const watchedOverlay = document.getElementById("watchedOverlay");
-const watchedSearchInput = document.getElementById("watchedSearchInput");
-const watchedSearchStatus = document.getElementById("watchedSearchStatus");
-const watchedSearchResults = document.getElementById("watchedSearchResults");
-const watchedListArea = document.getElementById("watchedListArea");
-const watchedCountEl = document.getElementById("watchedCount");
-let watchedDebounceTimer = null;
-
-const RATING_OPTIONS = [];
-for (let r = 1; r <= 10; r += 0.5) RATING_OPTIONS.push(r);
-
-function renderWatchedList() {
-  const list = getWatchedList();
-  watchedCountEl.textContent = list.length;
-  if (list.length === 0) {
-    watchedListArea.innerHTML = '<div class="watched-empty">Nothing marked yet.</div>';
-    return;
-  }
-  watchedListArea.innerHTML = "";
-  list.slice().reverse().forEach((m) => {
-    const row = document.createElement("div");
-    row.className = "watched-row";
-    const ratingOptionsHtml = '<option value="">–</option>' +
-      RATING_OPTIONS.map((r) => '<option value="' + r + '"' + (m.rating === r ? " selected" : "") + '>' + r + '</option>').join("");
-    row.innerHTML =
-      (m.poster ? '<img src="' + m.poster + '" alt="">' : '<div class="watched-row-noposter"></div>') +
-      '<div class="wtitle">' + m.title + '</div>' +
-      '<select class="rating-select" aria-label="Rating">' + ratingOptionsHtml + '</select>' +
-      '<button aria-label="Remove">Remove</button>';
-    row.querySelector("select").onchange = (ev) => {
-      const v = ev.target.value;
-      setWatchedRating(m.id, v === "" ? null : parseFloat(v));
-    };
-    row.querySelector("button").onclick = () => {
-      removeWatched(m.id);
-      renderWatchedList();
-    };
-    watchedListArea.appendChild(row);
-  });
-}
-
-document.getElementById("watchedBtn").onclick = () => {
-  watchedSearchInput.value = "";
-  watchedSearchResults.innerHTML = "";
-  watchedSearchResults.classList.add("hidden-block");
-  watchedSearchStatus.classList.add("hidden-block");
-  renderWatchedList();
-  watchedOverlay.classList.remove("hidden");
-};
-document.getElementById("watchedDone").onclick = () => {
-  watchedOverlay.classList.add("hidden");
-};
-document.getElementById("watchedCloseX").onclick = () => {
-  watchedOverlay.classList.add("hidden");
-};
-
-watchedSearchInput.oninput = () => {
-  clearTimeout(watchedDebounceTimer);
-  watchedDebounceTimer = setTimeout(async () => {
-    const q = watchedSearchInput.value.trim();
-    if (!q || q.length < 2) {
-      watchedSearchResults.classList.add("hidden-block");
-      watchedSearchStatus.classList.add("hidden-block");
-      return;
-    }
-    watchedSearchStatus.textContent = "Searching…";
-    watchedSearchStatus.classList.remove("hidden-block");
-    watchedSearchResults.classList.add("hidden-block");
-    try {
-      const results = await searchMovies(q);
-      watchedSearchStatus.classList.add("hidden-block");
-      if (results.length === 0) {
-        watchedSearchStatus.textContent = "No matches.";
-        watchedSearchStatus.classList.remove("hidden-block");
-        return;
-      }
-      watchedSearchResults.innerHTML = "";
-      results.forEach((m) => {
-        const row = document.createElement("div");
-        row.className = "result-row";
-        row.innerHTML =
-          '<img src="' + m.poster + '" alt="">' +
-          '<div><div class="rtitle">' + m.title + '</div>' +
-          '<div class="ryear">' + m.year + '</div></div>';
-        row.onclick = () => {
-          addWatched(m);
-          watchedSearchInput.value = "";
-          watchedSearchResults.classList.add("hidden-block");
-          renderWatchedList();
-        };
-        watchedSearchResults.appendChild(row);
-      });
-      watchedSearchResults.classList.remove("hidden-block");
-    } catch (e) {
-      watchedSearchStatus.textContent = "Search failed — check your connection.";
-      watchedSearchStatus.classList.remove("hidden-block");
-    }
-  }, 350);
-};
-
-// Excludes movies that aren't out yet (missing or future release_date).
-// TMDB's collections/discover/recommendations endpoints routinely include
-// announced-but-unreleased sequels, which is exactly what showed up in
-// Finish the Set - this keeps every mode from suggesting something you
-// can't actually go watch.
-function isReleased(m) {
-  if (!m.release_date) return false;
-  return m.release_date <= new Date().toISOString().slice(0, 10);
-}
-
-function mapTmdbResult(m) {
-  return {
-    id: m.id,
-    title: m.title,
-    year: (m.release_date || "").slice(0, 4),
-    releaseDate: m.release_date || null,
-    poster: m.poster_path ? TMDB_IMG + m.poster_path : null,
-    overview: m.overview || ""
+  // ======================================================================
+  // 1. PASTE YOUR FIREBASE CONFIG HERE (see README.md for how to get this)
+  // ======================================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB10NK8lIz26T6NzObu421kg7wX6YQoFxg",
+    authDomain: "bar-rating.firebaseapp.com",
+    projectId: "bar-rating",
+    storageBucket: "bar-rating.firebasestorage.app",
+    messagingSenderId: "372554240407",
+    appId: "1:372554240407:web:103646f876f9c8416234d2"
   };
-}
 
-async function fetchTrailerKey(id) {
-  const key = await ensureTmdbKey();
-  if (!key || !id) return null;
-  try {
-    const url = "https://api.themoviedb.org/3/movie/" + id + "/videos?api_key=" + key;
-    const r = await fetch(url);
-    const data = await r.json();
-    const vids = data.results || [];
-    const pick =
-      vids.find((v) => v.site === "YouTube" && v.type === "Trailer" && v.official) ||
-      vids.find((v) => v.site === "YouTube" && v.type === "Trailer") ||
-      vids.find((v) => v.site === "YouTube");
-    return pick ? pick.key : null;
-  } catch (e) {
-    console.error("Trailer fetch failed", e);
-    return null;
-  }
-}
-
-// Search/discover results don't include runtime - only the movie detail
-// endpoint does, so this is a separate lookup (same pattern as trailers).
-async function fetchMovieRuntime(id) {
-  const key = await ensureTmdbKey();
-  if (!key || !id) return null;
-  try {
-    const url = "https://api.themoviedb.org/3/movie/" + id + "?api_key=" + key;
-    const r = await fetch(url);
-    const data = await r.json();
-    return data.runtime || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-function formatRuntime(minutes) {
-  if (!minutes) return null;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return m + "m";
-  if (m === 0) return h + "h";
-  return h + "h " + m + "m";
-}
-
-async function fetchMovieMeta(title) {
-  const key = await ensureTmdbKey();
-  if (!key) return { poster: null, id: null };
-  try {
-    const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(title);
-    const r = await fetch(url);
-    const data = await r.json();
-    if (data.results && data.results.length > 0) {
-      const m = mapTmdbResult(data.results[0]);
-      return { poster: m.poster, id: m.id };
-    }
-  } catch (e) {
-    console.error("Poster fetch failed", e);
-  }
-  return { poster: null, id: null };
-}
-
-async function searchMovies(query) {
-  const key = await ensureTmdbKey();
-  if (!key) return [];
-  const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(query);
-  const r = await fetch(url);
-  const data = await r.json();
-  return (data.results || []).slice(0, 6).map(mapTmdbResult);
-}
-
-// Decades to sample from so results aren't dominated by whatever's
-// currently trending. Weighted toward having classics represented.
-const DECADES = [
-  { label: "1950s", start: "1950-01-01", end: "1959-12-31" },
-  { label: "1960s", start: "1960-01-01", end: "1969-12-31" },
-  { label: "1970s", start: "1970-01-01", end: "1979-12-31" },
-  { label: "1980s", start: "1980-01-01", end: "1989-12-31" },
-  { label: "1990s", start: "1990-01-01", end: "1999-12-31" },
-  { label: "2000s", start: "2000-01-01", end: "2009-12-31" },
-  { label: "2010s", start: "2010-01-01", end: "2019-12-31" },
-  { label: "2020s", start: "2020-01-01", end: "2029-12-31" }
-];
-
-const GENRES = [
-  { id: 28, name: "Action" }, { id: 12, name: "Adventure" }, { id: 16, name: "Animation" },
-  { id: 35, name: "Comedy" }, { id: 80, name: "Crime" }, { id: 99, name: "Documentary" },
-  { id: 18, name: "Drama" }, { id: 10751, name: "Family" }, { id: 14, name: "Fantasy" },
-  { id: 36, name: "History" }, { id: 27, name: "Horror" }, { id: 10402, name: "Music" },
-  { id: 9648, name: "Mystery" }, { id: 10749, name: "Romance" }, { id: 878, name: "Science Fiction" },
-  { id: 53, name: "Thriller" }, { id: 10752, name: "War" }, { id: 37, name: "Western" }
-];
-
-const VIBES = [
-  { label: "Feel-good", genres: [35, 10751] },
-  { label: "Dark & intense", genres: [27, 53, 80] },
-  { label: "Mind-bending", genres: [878, 9648] },
-  { label: "Heartfelt / tearjerker", genres: [18, 10749] },
-  { label: "Action-packed", genres: [28, 12] },
-  { label: "Just funny", genres: [35] },
-  { label: "Trippy / psychedelic", genres: [878, 16] },
-  { label: "Cute / wholesome", genres: [10751, 16] },
-  { label: "Cozy", genres: [10751, 10749] },
-  { label: "Quirky", genres: [35, 18] },
-  { label: "Epic", genres: [12, 28] },
-  { label: "Suspenseful", genres: [53, 9648] },
-  // "Cheesy" is a genre unto itself (Sharknado, Plan 9, The Room) that
-  // popularity-based sorting can't find - the real signal is a LOW rating
-  // on a movie enough people bothered to rate, not a genre or keyword.
-  { label: "Cheesy / so bad it's good", genres: [27, 878, 28, 35], sortOverride: "vote_average.asc", minVotes: 50 }
-];
-
-// Matches loosely - "trippy" should hit "Trippy / psychedelic", "cute"
-// should hit "Cute / wholesome", etc. Splits each label on "/" so a typed
-// word matching either half of a combined label still counts.
-function findVibePreset(text) {
-  const lower = text.trim().toLowerCase();
-  if (!lower) return null;
-  return VIBES.find((v) => {
-    const parts = v.label.toLowerCase().split("/").map((s) => s.trim());
-    return parts.some((p) => p.includes(lower) || lower.includes(p));
-  });
-}
-
-// Excludes anything on the permanent Watched List first (hard exclude),
-// then prefers a result not already shown this session on top of that.
-// Falls back gracefully at each step so a small library never dead-ends.
-// Excludes anything not actually released yet (announced sequels, TBD
-// dates, etc. that TMDB's collection/recommendation data often includes
-// alongside real releases). Unlike the watched-list filter, this has no
-// fallback - showing an unreleased movie as a "recommendation" isn't
-// useful even if it means coming up empty.
-function filterOutUnreleased(results) {
-  const today = new Date().toISOString().slice(0, 10);
-  return results.filter((m) => {
-    const dateStr = m.release_date || m.releaseDate;
-    return !!dateStr && dateStr <= today;
-  });
-}
-
-function pickPreferringUnseen(results, seenIds) {
-  if (!results.length) return null;
-  const released = filterOutUnreleased(results);
-  if (!released.length) return null;
-  const unwatched = filterOutWatched(released);
-  const unseen = seenIds ? unwatched.filter((m) => !seenIds.has(m.id)) : unwatched;
-  const pool = unseen.length ? unseen : unwatched;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// mode: "popular" pulls TMDB's popularity ranking but within a randomly
-// chosen decade, so it isn't dominated by whatever's trending right now.
-// "indie" filters toward well-reviewed but low-vote-count titles.
-async function fetchRandomMovie(mode, seenIds) {
-  const key = await ensureTmdbKey();
-  if (!key) return null;
-  const decade = DECADES[Math.floor(Math.random() * DECADES.length)];
-  const page = Math.floor(Math.random() * 5) + 1;
-  let url;
-  if (mode === "indie") {
-    url = "https://api.themoviedb.org/3/discover/movie?api_key=" + key +
-      "&sort_by=vote_average.desc&vote_count.gte=20&vote_count.lte=300" +
-      "&vote_average.gte=6&include_adult=false" +
-      "&primary_release_date.gte=" + decade.start + "&primary_release_date.lte=" + decade.end +
-      "&page=" + page;
-  } else {
-    url = "https://api.themoviedb.org/3/discover/movie?api_key=" + key +
-      "&sort_by=popularity.desc&vote_count.gte=100&include_adult=false" +
-      "&primary_release_date.gte=" + decade.start + "&primary_release_date.lte=" + decade.end +
-      "&page=" + page;
-  }
-  const r = await fetch(url);
-  const data = await r.json();
-  const results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
-  if (results.length === 0) return null;
-  const pick = pickPreferringUnseen(results, seenIds);
-  return mapTmdbResult(pick);
-}
-
-async function fetchPersonId(name) {
-  const key = await ensureTmdbKey();
-  if (!key || !name || !name.trim()) return null;
-  try {
-    const url = "https://api.themoviedb.org/3/search/person?api_key=" + key + "&query=" + encodeURIComponent(name.trim());
-    const r = await fetch(url);
-    const data = await r.json();
-    return data.results && data.results.length > 0 ? data.results[0].id : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function resolveKeywordId(phrase) {
-  const key = await ensureTmdbKey();
-  if (!key || !phrase || !phrase.trim()) return null;
-  try {
-    const url = "https://api.themoviedb.org/3/search/keyword?api_key=" + key + "&query=" + encodeURIComponent(phrase.trim());
-    const r = await fetch(url);
-    const data = await r.json();
-    return data.results && data.results.length > 0 ? data.results[0].id : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// Builds a discover query from whatever survey fields were filled in.
-// Every field is optional; an all-empty filter set behaves like "popular".
-// When a Gemini key is connected, abstract vibe/theme descriptions get
-// suggested by the model directly (it just knows movies), then each
-// suggestion is looked up on TMDB for real data. Falls back to null on
-// any failure so the caller can use the plain TMDB-keyword path instead.
-async function tryGeminiCuratedPick(filters, seenIds) {
-  const descParts = [];
-  if (filters.vibe) descParts.push("vibe: " + filters.vibe);
-  if (filters.themes) descParts.push("themes/plot elements: " + filters.themes);
-  if (filters.genre) {
-    const g = GENRES.find((x) => String(x.id) === String(filters.genre));
-    if (g) descParts.push("genre: " + g.name);
-  }
-  if (filters.decade) descParts.push("from the " + filters.decade);
-  if (filters.director) descParts.push("directed by, or similar in style to, " + filters.director);
-  if (filters.actor) descParts.push("starring, or similar to work by, " + filters.actor);
-  const description = descParts.join("; ");
-  if (!description) return null;
-
-  const suggestions = await fetchGeminiMovieSuggestions(description, 8);
-  if (!suggestions.length) return null;
-
-  let resolved = await resolveGeminiSuggestions(suggestions);
-  if (!resolved.length) return null;
-
-  if (filters.runtime) {
-    const range = runtimeRangeFor(filters.runtime);
-    if (range) {
-      const withRuntime = await Promise.all(resolved.map(async (m) => {
-        const minutes = await fetchMovieRuntime(m.id);
-        return { ...m, runtime: minutes };
-      }));
-      const filtered = withRuntime.filter((m) => m.runtime && m.runtime >= range[0] && m.runtime <= range[1]);
-      if (filtered.length) resolved = filtered;
-    }
-  }
-
-  return pickPreferringUnseen(resolved, seenIds);
-}
-
-async function fetchCuratedMovie(filters, seenIds) {
-  const key = await ensureTmdbKey();
-  if (!key) return null;
-
-  const hasAbstractQuery = (filters.vibe && !filters.genre) || filters.themes;
-  if (hasAbstractQuery && getGeminiKeyIfAny()) {
-    const geminiPick = await tryGeminiCuratedPick(filters, seenIds);
-    if (geminiPick) return geminiPick;
-    // Falls through to the plain TMDB-only matching below if Gemini
-    // didn't return anything usable.
-  }
-
-  const baseParams = ["api_key=" + key, "sort_by=popularity.desc", "vote_count.gte=10", "include_adult=false"];
-  const keywordIds = [];
-
-  if (filters.runtime === "short") {
-    baseParams.push("with_runtime.lte=90");
-  } else if (filters.runtime === "medium") {
-    baseParams.push("with_runtime.gte=90", "with_runtime.lte=120");
-  } else if (filters.runtime === "long") {
-    baseParams.push("with_runtime.gte=120");
-  }
-
-  if (filters.genre) {
-    baseParams.push("with_genres=" + filters.genre);
-  } else if (filters.vibe) {
-    const vibe = findVibePreset(filters.vibe);
-    if (vibe) {
-      baseParams.push("with_genres=" + vibe.genres.join("|"));
-      if (vibe.sortOverride) {
-        const sortIdx = baseParams.findIndex((p) => p.startsWith("sort_by="));
-        if (sortIdx !== -1) baseParams[sortIdx] = "sort_by=" + vibe.sortOverride;
-      }
-      if (vibe.minVotes) {
-        const voteIdx = baseParams.findIndex((p) => p.startsWith("vote_count.gte="));
-        if (voteIdx !== -1) baseParams[voteIdx] = "vote_count.gte=" + vibe.minVotes;
-      }
-    } else {
-      // Not one of the presets - try it as a free-text keyword instead.
-      const kwId = await resolveKeywordId(filters.vibe);
-      if (kwId) keywordIds.push(kwId);
-    }
-  }
-
-  if (filters.themes) {
-    const phrases = filters.themes.split(",").map((s) => s.trim()).filter(Boolean);
-    const resolved = await Promise.all(phrases.map(resolveKeywordId));
-    resolved.forEach((id) => { if (id) keywordIds.push(id); });
-  }
-
-  // If vibe/themes were the ONLY thing filled in and none of them resolved
-  // to anything real (no genre preset, no keyword, and Gemini already
-  // failed above), don't silently fall back to an unrelated popular movie -
-  // that's how a "cheesy bad" search ends up recommending Seven Samurai.
-  const vibeOrThemesGiven = filters.vibe || filters.themes;
-  const onlyVibeOrThemesGiven = vibeOrThemesGiven && !filters.genre && !filters.decade && !filters.director && !filters.actor;
-  const resolvedSomething = baseParams.some((p) => p.startsWith("with_genres=")) || keywordIds.length > 0;
-  if (onlyVibeOrThemesGiven && !resolvedSomething) {
-    return null;
-  }
-
-  if (keywordIds.length) {
-    baseParams.push("with_keywords=" + [...new Set(keywordIds)].join("|"));
-  }
-
-  // with_cast/with_crew are more precise than with_people, which also
-  // counts documentary interview appearances, archive footage, etc.
-  const castIds = [];
-  const crewIds = [];
-  if (filters.director) {
-    const id = await fetchPersonId(filters.director);
-    if (id) crewIds.push(id);
-  }
-  if (filters.actor) {
-    const id = await fetchPersonId(filters.actor);
-    if (id) castIds.push(id);
-  }
-  if (castIds.length) baseParams.push("with_cast=" + castIds.join(","));
-  if (crewIds.length) baseParams.push("with_crew=" + crewIds.join(","));
-
-  async function tryDiscover(extraParams) {
-    const url = "https://api.themoviedb.org/3/discover/movie?" + baseParams.concat(extraParams).join("&");
-    const r = await fetch(url);
-    const data = await r.json();
-    return (data.results || []).filter((m) => m.poster_path && isReleased(m));
-  }
-
-  let results = [];
-
-  if (filters.decade) {
-    // User picked a specific decade - respect it, just try a couple of pages.
-    const d = DECADES.find((x) => x.label === filters.decade);
-    const dateParams = ["primary_release_date.gte=" + d.start, "primary_release_date.lte=" + d.end];
-    results = await tryDiscover([...dateParams, "page=" + (Math.floor(Math.random() * 3) + 1)]);
-    if (results.length === 0) results = await tryDiscover([...dateParams, "page=1"]);
-  } else if (castIds.length || crewIds.length) {
-    // Person filters are inherently period-limited - don't add a decade
-    // constraint on top, it could wrongly rule out their actual work.
-    results = await tryDiscover(["page=" + (Math.floor(Math.random() * 3) + 1)]);
-    if (results.length === 0) results = await tryDiscover(["page=1"]);
-  } else {
-    // No decade specified - try a few different random decades so results
-    // aren't dominated by new releases, but don't let bad luck on one
-    // random decade cause a false "nothing found".
-    const shuffled = DECADES.slice().sort(() => Math.random() - 0.5);
-    for (const d of shuffled.slice(0, 3)) {
-      results = await tryDiscover([
-        "primary_release_date.gte=" + d.start,
-        "primary_release_date.lte=" + d.end,
-        "page=" + (Math.floor(Math.random() * 2) + 1)
-      ]);
-      if (results.length) break;
-    }
-    if (results.length === 0) {
-      results = await tryDiscover(["page=1"]);
-    }
-  }
-
-  if (results.length === 0 && keywordIds.length && !onlyVibeOrThemesGiven) {
-    // Last resort: the vibe/theme text may not have matched TMDB's keyword
-    // vocabulary well - retry with everything except the keyword filter
-    // rather than reporting "nothing found" over a single unmatched word.
-    // Only done when a real filter (genre/decade/director/actor) is also
-    // set - otherwise dropping the keyword means searching on nothing at
-    // all, which is how unrelated "popular" movies were slipping through.
-    const withoutKeywords = baseParams.filter((p) => !p.startsWith("with_keywords="));
-    const url = "https://api.themoviedb.org/3/discover/movie?" + withoutKeywords.join("&") + "&page=1";
-    const r = await fetch(url);
-    const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
-  }
-
-  if (results.length === 0 && filters.runtime && !onlyVibeOrThemesGiven) {
-    // Still nothing - the runtime bucket may just be too narrow for the
-    // rest of the combo. Drop it rather than reporting a false zero.
-    const withoutRuntime = baseParams.filter((p) => !p.startsWith("with_runtime"));
-    const url = "https://api.themoviedb.org/3/discover/movie?" + withoutRuntime.join("&") + "&page=1";
-    const r = await fetch(url);
-    const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
-  }
-
-  if (results.length === 0 && onlyVibeOrThemesGiven && resolvedSomething) {
-    // For vibe-only searches specifically: don't drop the actual vibe
-    // match (that's how "Seven Samurai" happened for "cheesy bad") - just
-    // relax the popularity/vote-count floor and search all decades. Niche
-    // vibes often have real but lightly-rated matches, not zero matches.
-    const relaxed = baseParams
-      .filter((p) => !p.startsWith("vote_count.gte=") && !p.startsWith("primary_release_date"))
-      .concat(["vote_count.gte=1"]);
-    const url = "https://api.themoviedb.org/3/discover/movie?" + relaxed.join("&") + "&page=1";
-    const r = await fetch(url);
-    const data = await r.json();
-    results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
-  }
-
-  if (results.length === 0) return null;
-  const pick = pickPreferringUnseen(results, seenIds);
-  return mapTmdbResult(pick);
-}
-
-function runtimeRangeFor(bucket) {
-  if (bucket === "short") return [0, 90];
-  if (bucket === "medium") return [90, 120];
-  if (bucket === "long") return [120, 999];
-  return null;
-}
-
-async function fetchSimilarMovies(id, title, runtimeFilter) {
-  const key = await ensureTmdbKey();
-  if (!key || !id) return [];
-  try {
-    const url = "https://api.themoviedb.org/3/movie/" + id + "/recommendations?api_key=" + key + "&page=1";
-    const r = await fetch(url);
-    const data = await r.json();
-    let results = (data.results || []).filter((m) => m.poster_path && isReleased(m));
-    if (results.length === 0) {
-      // "recommendations" is usually better quality but sparser than "similar" -
-      // fall back to "similar" if there was nothing to recommend.
-      const url2 = "https://api.themoviedb.org/3/movie/" + id + "/similar?api_key=" + key + "&page=1";
-      const r2 = await fetch(url2);
-      const data2 = await r2.json();
-      results = (data2.results || []).filter((m) => m.poster_path && isReleased(m));
-    }
-    let mapped = results.map(mapTmdbResult);
-
-    // TMDB's own similarity data is collaborative-filtering based - it's
-    // usually good, but thin for obscure/arthouse titles. Only ask Gemini
-    // to top it up when TMDB genuinely doesn't have much to offer, rather
-    // than replacing data that's already reliable.
-    if (mapped.length < 5 && getGeminiKeyIfAny() && title) {
-      const description = "movies similar in feel, themes, or style to \"" + title + "\"";
-      const suggestions = await fetchGeminiMovieSuggestions(description, 8);
-      if (suggestions.length) {
-        const resolved = await resolveGeminiSuggestions(suggestions);
-        const existingIds = new Set(mapped.map((m) => m.id));
-        resolved.forEach((m) => {
-          if (m.id !== id && !existingIds.has(m.id)) {
-            mapped.push(m);
-            existingIds.add(m.id);
-          }
-        });
-      }
-    }
-
-    const range = runtimeRangeFor(runtimeFilter);
-    if (range) {
-      // Recommendation/similar results don't include runtime - it only
-      // comes from the movie detail endpoint, so check a capped, shuffled
-      // sample in parallel rather than every result one at a time.
-      const [min, max] = range;
-      const sample = mapped.slice().sort(() => Math.random() - 0.5).slice(0, 15);
-      const withRuntime = await Promise.all(sample.map(async (m) => {
-        try {
-          const rr = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
-          const d = await rr.json();
-          return { ...m, runtime: d.runtime };
-        } catch (e) {
-          return { ...m, runtime: null };
-        }
-      }));
-      const filtered = withRuntime.filter((m) => m.runtime && m.runtime >= min && m.runtime <= max);
-      // If the runtime bucket ruled out everything, fall back to the
-      // unfiltered list rather than reporting a false "nothing similar".
-      mapped = filtered.length ? filtered : mapped;
-    }
-
-    return mapped;
-  } catch (e) {
-    return [];
-  }
-}
-
-// "Finish the Set" - looks at your Watched List for movies that belong to
-// a TMDB collection (a real franchise/series grouping, e.g. "The Lord of
-// the Rings Collection"), picks one such collection, and suggests an entry
-// you haven't marked watched yet. The collection id is resolved once per
-// watched movie and cached back onto the entry so repeat calls are cheap.
-async function fetchFinishTheSetPick(seenIds) {
-  const key = await ensureTmdbKey();
-  if (!key) return { pick: null, reason: "no-key" };
-
-  const watched = getWatchedList();
-  if (watched.length === 0) return { pick: null, reason: "empty" };
-
-  // Resolve collection info in small batches rather than firing a request
-  // per watched movie all at once - with a large Watched List that can
-  // easily be 50+ simultaneous requests, which risks TMDB rate-limiting.
-  // A rate-limited/failed lookup is left unresolved (not cached as "no
-  // collection") so it gets retried next time instead of being wrongly
-  // written off forever.
-  const toResolve = watched.filter((m) => m.collectionId === undefined);
-  const BATCH_SIZE = 6;
-  let changed = false;
-  for (let i = 0; i < toResolve.length; i += BATCH_SIZE) {
-    const batch = toResolve.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map(async (m) => {
-      try {
-        const r = await fetch("https://api.themoviedb.org/3/movie/" + m.id + "?api_key=" + key);
-        if (!r.ok) return; // leave unresolved, retry next time
-        const d = await r.json();
-        m.collectionId = d.belongs_to_collection ? d.belongs_to_collection.id : null;
-        m.collectionName = d.belongs_to_collection ? d.belongs_to_collection.name : null;
-        changed = true;
-      } catch (e) {
-        // leave unresolved, retry next time
-      }
-    }));
-  }
-  if (changed) saveWatchedList(watched);
-
-  const collectionIds = [...new Set(watched.filter((m) => m.collectionId).map((m) => m.collectionId))];
-  if (collectionIds.length === 0) return { pick: null, reason: "no-collections" };
-
-  const chosenId = collectionIds[Math.floor(Math.random() * collectionIds.length)];
-  try {
-    const r = await fetch("https://api.themoviedb.org/3/collection/" + chosenId + "?api_key=" + key);
-    const data = await r.json();
-    const parts = (data.parts || []).filter((p) => p.poster_path && isReleased(p));
-    const watchedIds = new Set(getWatchedList().map((m) => m.id));
-    const unseenParts = parts.filter((p) => !watchedIds.has(p.id));
-    if (unseenParts.length === 0) return { pick: null, reason: "complete", collectionName: data.name };
-
-    const pick = pickPreferringUnseen(unseenParts.map(mapTmdbResult), seenIds);
-    if (!pick) return { pick: null, reason: "not-yet-released", collectionName: data.name };
-    return { pick, reason: null, collectionName: data.name };
-  } catch (e) {
-    return { pick: null, reason: "error" };
-  }
-}
-
-// "We Think You'll Like" - picks a random movie you rated 8+ as a seed and
-// runs the same recommendation logic as Similar To, just auto-selecting
-// the seed instead of asking you to search for one.
-async function fetchYoullLikePick(seenIds, runtimeFilter) {
-  const highRated = getWatchedList().filter((m) => m.rating && m.rating >= 8);
-  if (highRated.length === 0) return { pick: null, reason: "no-high-rated" };
-
-  const seed = highRated[Math.floor(Math.random() * highRated.length)];
-  const list = await fetchSimilarMovies(seed.id, seed.title, runtimeFilter);
-  if (!list.length) return { pick: null, reason: "no-results", seedTitle: seed.title };
-
-  const pick = pickPreferringUnseen(list, seenIds);
-  return { pick, reason: null, seedTitle: seed.title };
-}
-
-async function fetchWatchProviders(id) {
-  const key = await ensureTmdbKey();
-  if (!key || !id) return null;
-  try {
-    const url = "https://api.themoviedb.org/3/movie/" + id + "/watch/providers?api_key=" + key;
-    const r = await fetch(url);
-    const data = await r.json();
-    return (data.results && data.results.US) || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-function renderWatchBadges(providers) {
-  if (!providers) {
-    return '<div class="watch-status">Not available to stream in the US right now.</div>';
-  }
-  const free = (providers.free || providers.ads || []).map((p) => p.provider_name);
-  const sub = (providers.flatrate || []).map((p) => p.provider_name);
-  const rent = (providers.rent || []).map((p) => p.provider_name);
-  const buy = (providers.buy || []).map((p) => p.provider_name);
-  const paid = [...new Set([...rent, ...buy])];
-
-  if (!free.length && !sub.length && !paid.length) {
-    return '<div class="watch-status">Not available to stream in the US right now.</div>';
-  }
-
-  // Every provider gets shown; a name that appears in more than one category
-  // keeps the best one (free beats subscription beats rent/buy).
-  const byName = new Map();
-  free.forEach((n) => { if (!byName.has(n)) byName.set(n, "free"); });
-  sub.forEach((n) => { if (!byName.has(n)) byName.set(n, "sub"); });
-  paid.forEach((n) => { if (!byName.has(n)) byName.set(n, "paid"); });
-
-  const rank = { free: 0, sub: 1, paid: 2 };
-  const items = [...byName.entries()].map(([name, cat]) => ({ name, cat, owned: ownsProvider(name) }));
-  items.sort((a, b) => (b.owned - a.owned) || (rank[a.cat] - rank[b.cat]));
-
-  let html = '<div class="watch-label">Where to watch (US)</div><div class="watch-badges">';
-  items.slice(0, 6).forEach((it) => {
-    let cls, suffix;
-    if (it.owned && it.cat !== "paid") {
-      // Already covered by a service you have, at no extra cost.
-      cls = "free";
-      suffix = it.cat === "free" ? " · Free" : " · Included";
-    } else if (it.owned && it.cat === "paid") {
-      // You have the account, but this specific title still costs extra.
-      cls = "sub";
-      suffix = " · Rent/Buy";
-    } else {
-      cls = "";
-      suffix = it.cat === "free" ? " · Free" : it.cat === "paid" ? " · Rent/Buy" : "";
-    }
-    html += '<span class="watch-badge ' + cls + '">' + it.name + suffix + '</span>';
-  });
-  html += '</div>';
-  return html;
-}
-
-function render() {
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
-  slots.forEach((movie, i) => {
-    const btn = document.createElement("button");
-    btn.className = "slot" + (movie ? "" : " empty");
-    btn.onclick = () => handleSlotClick(i);
-
-    const num = document.createElement("div");
-    num.className = "num";
-    num.textContent = i + 1;
-    btn.appendChild(num);
-
-    if (movie) {
-      if (movie.poster) {
-        const img = document.createElement("img");
-        img.src = movie.poster;
-        img.alt = movie.title;
-        btn.appendChild(img);
-      } else {
-        const fb = document.createElement("div");
-        fb.className = "title-fallback";
-        fb.textContent = movie.title;
-        btn.appendChild(fb);
-      }
-      const label = document.createElement("div");
-      label.className = "label";
-      label.textContent = movie.title;
-      btn.appendChild(label);
-    }
-
-    grid.appendChild(btn);
-  });
-}
-
-// --- Custom modal dialogs (replace native confirm/prompt) ---
-const confirmOverlay = document.getElementById("confirmOverlay");
-const confirmText = document.getElementById("confirmText");
-const confirmOk = document.getElementById("confirmOk");
-const confirmCancel = document.getElementById("confirmCancel");
-const confirmPoster = document.getElementById("confirmPoster");
-const confirmWatchArea = document.getElementById("confirmWatchArea");
-const confirmRuntimeEl = document.getElementById("confirmRuntime");
-const confirmWatchedBtn = document.getElementById("confirmWatchedBtn");
-
-const inputOverlay = document.getElementById("inputOverlay");
-const inputTitle = document.getElementById("inputTitle");
-const inputText = document.getElementById("inputText");
-const inputField = document.getElementById("inputField");
-const inputOk = document.getElementById("inputOk");
-const inputCancel = document.getElementById("inputCancel");
-const searchView = document.getElementById("searchView");
-const searchResults = document.getElementById("searchResults");
-const searchStatus = document.getElementById("searchStatus");
-const surpriseBtn = document.getElementById("surpriseBtn");
-const surpriseView = document.getElementById("surpriseView");
-const suggestionCard = document.getElementById("suggestionCard");
-const surpriseAnother = document.getElementById("surpriseAnother");
-const surpriseUse = document.getElementById("surpriseUse");
-const surpriseBack = document.getElementById("surpriseBack");
-const resultButtons = document.getElementById("resultButtons");
-const modePopular = document.getElementById("modePopular");
-const modeIndie = document.getElementById("modeIndie");
-const modeCurated = document.getElementById("modeCurated");
-const curatedForm = document.getElementById("curatedForm");
-const curatedGenreSel = document.getElementById("curatedGenre");
-const curatedVibeInput = document.getElementById("curatedVibe");
-const vibeOptions = document.getElementById("vibeOptions");
-const curatedThemesInput = document.getElementById("curatedThemes");
-const curatedDecadeSel = document.getElementById("curatedDecade");
-const curatedRuntimeSel = document.getElementById("curatedRuntime");
-const curatedDirectorInput = document.getElementById("curatedDirector");
-const curatedActorInput = document.getElementById("curatedActor");
-const curatedSubmit = document.getElementById("curatedSubmit");
-const editFiltersBtn = document.getElementById("editFiltersBtn");
-const modeSimilar = document.getElementById("modeSimilar");
-const modeFinishSet = document.getElementById("modeFinishSet");
-const modeYoullLike = document.getElementById("modeYoullLike");
-const similarForm = document.getElementById("similarForm");
-const similarSearchInput = document.getElementById("similarSearchInput");
-const similarSearchStatus = document.getElementById("similarSearchStatus");
-const similarSearchResults = document.getElementById("similarSearchResults");
-const similarRuntimeSel = document.getElementById("similarRuntime");
-
-function populateCuratedOptions() {
-  if (curatedGenreSel.options.length <= 1) {
-    GENRES.forEach((g) => {
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      opt.textContent = g.name;
-      curatedGenreSel.appendChild(opt);
-    });
-  }
-  if (vibeOptions.options.length === 0) {
-    VIBES.forEach((v) => {
-      const opt = document.createElement("option");
-      opt.value = v.label;
-      vibeOptions.appendChild(opt);
-    });
-  }
-  if (curatedDecadeSel.options.length <= 1) {
-    DECADES.slice().reverse().forEach((d) => {
-      const opt = document.createElement("option");
-      opt.value = d.label;
-      opt.textContent = d.label;
-      curatedDecadeSel.appendChild(opt);
-    });
-  }
-}
-populateCuratedOptions();
-
-// A small reusable modal for entering a 1-10 (half-point) rating, used
-// both here and on the surprise-me card. Resolves with a number, or null
-// if skipped.
-let ratingSelectPopulated = false;
-function showWhyPicked(text) {
-  document.getElementById("whyPickedText").textContent = text;
-  document.getElementById("whyPickedOverlay").classList.remove("hidden");
-}
-document.getElementById("whyPickedClose").onclick = () => {
-  document.getElementById("whyPickedOverlay").classList.add("hidden");
-};
-
-function promptForRating(title) {
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("rateMovieOverlay");
-    const titleEl = document.getElementById("rateMovieTitle");
-    const select = document.getElementById("rateMovieSelect");
-    const skipBtn = document.getElementById("rateMovieSkip");
-    const saveBtn = document.getElementById("rateMovieSave");
-
-    if (!ratingSelectPopulated) {
-      RATING_OPTIONS.forEach((r) => {
-        const opt = document.createElement("option");
-        opt.value = r;
-        opt.textContent = r;
-        select.appendChild(opt);
-      });
-      ratingSelectPopulated = true;
-    }
-
-    titleEl.textContent = title;
-    select.value = "";
-    overlay.classList.remove("hidden");
-
-    const cleanup = (result) => {
-      overlay.classList.add("hidden");
-      skipBtn.onclick = null;
-      saveBtn.onclick = null;
-      resolve(result);
-    };
-    skipBtn.onclick = () => cleanup(null);
-    saveBtn.onclick = () => {
-      const v = select.value;
-      cleanup(v === "" ? null : parseFloat(v));
-    };
-  });
-}
-
-function showConfirm(movie, message) {
-  return new Promise((resolve) => {
-    confirmText.textContent = message;
-    if (movie && movie.poster) {
-      confirmPoster.src = movie.poster;
-      confirmPoster.classList.remove("hidden-block");
-    } else {
-      confirmPoster.classList.add("hidden-block");
-    }
-    confirmWatchArea.innerHTML = '<div class="watch-status">Checking where to watch&hellip;</div>';
-    confirmRuntimeEl.classList.add("hidden-block");
-    confirmOverlay.classList.remove("hidden");
-
-    if (movie && movie.id) {
-      fetchWatchProviders(movie.id).then((providers) => {
-        confirmWatchArea.innerHTML = renderWatchBadges(providers);
-      });
-      fetchMovieRuntime(movie.id).then((minutes) => {
-        const formatted = formatRuntime(minutes);
-        if (formatted) {
-          confirmRuntimeEl.textContent = formatted;
-          confirmRuntimeEl.classList.remove("hidden-block");
-        }
-      });
-    } else {
-      confirmWatchArea.innerHTML = "";
-    }
-
-    const cleanup = (result) => {
-      confirmOverlay.classList.add("hidden");
-      confirmOk.onclick = null;
-      confirmCancel.onclick = null;
-      confirmWatchedBtn.onclick = null;
-      resolve(result);
-    };
-    confirmOk.onclick = () => cleanup(true);
-    confirmCancel.onclick = () => cleanup(false);
-    // Marking watched behaves like Remove - it clears the slot and moves
-    // on to picking a replacement - just with a rating prompt on the way.
-    confirmWatchedBtn.onclick = async () => {
-      if (movie) addWatched(movie);
-      const rating = await promptForRating(movie ? movie.title : "");
-      if (movie && rating !== null) setWatchedRating(movie.id, rating);
-      cleanup(true);
-    };
-  });
-}
-
-function showMovieSearch(title, message) {
-  return new Promise((resolve) => {
-    inputTitle.textContent = title;
-    inputText.textContent = message;
-    inputField.value = "";
-    searchResults.innerHTML = "";
-    searchResults.classList.add("hidden-block");
-    searchStatus.classList.add("hidden-block");
-    searchView.classList.remove("hidden-block");
-    surpriseView.classList.add("hidden-block");
-    inputOverlay.classList.remove("hidden");
-    setTimeout(() => inputField.focus(), 50);
-
-    let debounceTimer = null;
-    let similarDebounceTimer = null;
-    let currentPick = null; // {title, poster, id} if suggestion chosen or a top-movie picked
-    let lastCuratedFilters = null;
-    let lastSimilarBaseId = null;
-    let lastSimilarTitle = null;
-    let lastSimilarRuntime = null;
-    const seenIds = new Set(); // avoids repeat picks across "Try another" within this modal session
-
-    function resetCuratedForm() {
-      curatedDirectorInput.value = "";
-      curatedActorInput.value = "";
-      curatedGenreSel.value = "";
-      curatedVibeInput.value = "";
-      curatedThemesInput.value = "";
-      curatedDecadeSel.value = "";
-      curatedRuntimeSel.value = "";
-      lastCuratedFilters = null;
-    }
-
-    function resetSimilarForm() {
-      similarSearchInput.value = "";
-      similarRuntimeSel.value = "";
-      similarSearchResults.innerHTML = "";
-      similarSearchResults.classList.add("hidden-block");
-      similarSearchStatus.classList.add("hidden-block");
-      lastSimilarBaseId = null;
-      lastSimilarTitle = null;
-      lastSimilarRuntime = null;
-    }
-
-    modePopular.classList.add("active");
-    modeIndie.classList.remove("active");
-    modeCurated.classList.remove("active");
-    modeSimilar.classList.remove("active");
-    modeFinishSet.classList.remove("active");
-    modeYoullLike.classList.remove("active");
-    curatedForm.classList.add("hidden-block");
-    similarForm.classList.add("hidden-block");
-    editFiltersBtn.classList.add("hidden-block");
-    resultButtons.classList.remove("hidden-block");
-    resetCuratedForm();
-    resetSimilarForm();
-
-    const finish = (result) => {
-      inputOverlay.classList.add("hidden");
-      inputField.oninput = null;
-      inputOk.onclick = null;
-      inputCancel.onclick = null;
-      inputField.onkeydown = null;
-      surpriseBtn.onclick = null;
-      surpriseAnother.onclick = null;
-      surpriseUse.onclick = null;
-      surpriseBack.onclick = null;
-      modePopular.onclick = null;
-      modeIndie.onclick = null;
-      modeCurated.onclick = null;
-      modeSimilar.onclick = null;
-      modeFinishSet.onclick = null;
-      modeYoullLike.onclick = null;
-      curatedSubmit.onclick = null;
-      editFiltersBtn.onclick = null;
-      if (similarSearchInput) similarSearchInput.oninput = null;
-      clearTimeout(debounceTimer);
-      clearTimeout(similarDebounceTimer);
-      resolve(result);
-    };
-
-    async function runSearch(q) {
-      if (!q || q.length < 2) {
-        searchResults.classList.add("hidden-block");
-        searchStatus.classList.add("hidden-block");
-        return;
-      }
-      searchStatus.textContent = "Searching…";
-      searchStatus.classList.remove("hidden-block");
-      searchResults.classList.add("hidden-block");
-      try {
-        const results = await searchMovies(q);
-        searchStatus.classList.add("hidden-block");
-        if (results.length === 0) {
-          searchStatus.textContent = "No matches — you can still use what you typed.";
-          searchStatus.classList.remove("hidden-block");
-          return;
-        }
-        searchResults.innerHTML = "";
-        results.forEach((m) => {
-          const row = document.createElement("div");
-          row.className = "result-row";
-          row.innerHTML =
-            '<img src="' + m.poster + '" alt="">' +
-            '<div><div class="rtitle">' + m.title + '</div>' +
-            '<div class="ryear">' + m.year + '</div></div>';
-          row.onclick = () => finish({ title: m.title, poster: m.poster, id: m.id });
-          searchResults.appendChild(row);
-        });
-        searchResults.classList.remove("hidden-block");
-      } catch (e) {
-        searchStatus.textContent = "Search failed — you can still use what you typed.";
-        searchStatus.classList.remove("hidden-block");
-      }
-    }
-
-    inputField.oninput = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => runSearch(inputField.value.trim()), 350);
-    };
-    inputField.onkeydown = (e) => {
-      if (e.key === "Enter") {
-        const v = inputField.value.trim();
-        if (v) finish({ title: v, poster: null });
-      }
-    };
-    inputOk.onclick = () => {
-      const v = inputField.value.trim();
-      finish(v ? { title: v, poster: null } : null);
-    };
-    inputCancel.onclick = () => finish(null);
-
-    let currentMode = "popular";
-
-    function renderPick(pick, whyText) {
-      currentPick = pick;
-      if (pick.id) seenIds.add(pick.id);
-      const full = pick.overview || "No synopsis available.";
-      const short = full.length > 140 ? full.slice(0, 140) + "…" : full;
-      const needsToggle = full.length > 140;
-
-      suggestionCard.innerHTML =
-        (pick.poster ? '<img src="' + pick.poster + '" alt="">' : '') +
-        '<div class="stitle">' + pick.title + '</div>' +
-        '<div class="syear">' + pick.year + '</div>' +
-        '<div id="pickRuntime" class="runtime-badge hidden-block"></div>' +
-        '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
-        (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
-        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn">ⓘ Based on&hellip;</button>' : '') +
-        '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
-        '<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
-        '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
-
-      function renderMarkWatchedArea() {
-        const area = document.getElementById("markWatchedArea");
-        if (!area) return;
-        if (isWatched(pick.id)) {
-          area.innerHTML = '<button class="synopsis-toggle" id="markWatchedBtn" disabled style="display:block; margin:0 auto; opacity:0.6;">✓ Marked as watched</button>';
-        } else {
-          area.innerHTML = '<button class="synopsis-toggle" id="markWatchedBtn" style="display:block; margin:0 auto;">✓ Already seen this — mark as watched</button>';
-          document.getElementById("markWatchedBtn").onclick = async () => {
-            addWatched(pick);
-            const rating = await promptForRating(pick.title);
-            if (rating !== null) setWatchedRating(pick.id, rating);
-            renderMarkWatchedArea();
-          };
-        }
-      }
-      renderMarkWatchedArea();
-
-      if (whyText) {
-        document.getElementById("whyPickedBtn").onclick = () => showWhyPicked(whyText);
-      }
-
-      if (needsToggle) {
-        let expanded = false;
-        document.getElementById("synopsisToggle").onclick = (ev) => {
-          expanded = !expanded;
-          document.getElementById("synopsisText").textContent = expanded ? full : short;
-          ev.target.textContent = expanded ? "Show less" : "Read more";
-        };
-      }
-
-      document.getElementById("trailerBtn").onclick = async (ev) => {
-        const btn = ev.target;
-        btn.textContent = "Loading…";
-        btn.disabled = true;
-        const trailerKey = await fetchTrailerKey(pick.id);
-        if (trailerKey && currentPick === pick) {
-          const embed = document.createElement("div");
-          embed.className = "trailer-embed";
-          embed.innerHTML =
-            '<iframe src="https://www.youtube.com/embed/' + trailerKey +
-            '?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
-          btn.replaceWith(embed);
-        } else {
-          btn.textContent = "No trailer found";
-          btn.disabled = true;
-        }
-      };
-
-      fetchWatchProviders(pick.id).then((providers) => {
-        if (currentPick === pick) {
-          document.getElementById("watchArea").innerHTML = renderWatchBadges(providers);
-        }
-      });
-
-      fetchMovieRuntime(pick.id).then((minutes) => {
-        const formatted = formatRuntime(minutes);
-        if (currentPick === pick && formatted) {
-          const badgeEl = document.getElementById("pickRuntime");
-          if (badgeEl) {
-            badgeEl.textContent = formatted;
-            badgeEl.classList.remove("hidden-block");
-          }
-        }
-      });
-    }
-
-    async function loadSuggestion() {
-      suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
-      currentPick = null;
-      try {
-        const pick = await fetchRandomMovie(currentMode, seenIds);
-        if (!pick) {
-          suggestionCard.innerHTML = '<div class="search-status">No luck — try again.</div>';
-          return;
-        }
-        renderPick(pick);
-      } catch (e) {
-        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-      }
-    }
-
-    function readCuratedFilters() {
-      return {
-        genre: curatedGenreSel.value,
-        vibe: curatedVibeInput.value.trim(),
-        themes: curatedThemesInput.value.trim(),
-        decade: curatedDecadeSel.value,
-        runtime: curatedRuntimeSel.value,
-        director: curatedDirectorInput.value,
-        actor: curatedActorInput.value
-      };
-    }
-
-    async function runCuratedSearch(filters) {
-      suggestionCard.innerHTML = '<div class="search-status">Finding something good&hellip;</div>';
-      currentPick = null;
-      curatedForm.classList.add("hidden-block");
-      editFiltersBtn.textContent = "✎ Edit filters and search again";
-      editFiltersBtn.classList.remove("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      try {
-        const pick = await fetchCuratedMovie(filters, seenIds);
-        if (!pick) {
-          suggestionCard.innerHTML = '<div class="search-status">Couldn\'t match that to anything specific — try rephrasing the vibe/plot description, or pair it with a genre or decade.</div>';
-          return;
-        }
-        renderPick(pick);
-      } catch (e) {
-        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-      }
-    }
-
-    async function runFinishTheSetSearch() {
-      suggestionCard.innerHTML = '<div class="search-status">Checking your Watched List for series with more to see&hellip;</div>';
-      currentPick = null;
-      try {
-        const result = await fetchFinishTheSetPick(seenIds);
-        if (!result.pick) {
-          let msg = "No franchises with something left to see yet — mark more watched movies first, especially ones that are part of a series.";
-          if (result.reason === "complete") {
-            msg = "Looks like you've already seen every entry in \"" + result.collectionName + "\" — nice work! Try marking another series as watched.";
-          } else if (result.reason === "no-key") {
-            msg = "Connect your TMDB key in Settings first.";
-          }
-          suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
-          return;
-        }
-        renderPick(result.pick, 'This is part of "' + result.collectionName + '," which you have other entries from in your Watched List — this one just isn\'t marked watched yet.');
-      } catch (e) {
-        console.error("Finish the Set failed", e);
-        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-      }
-    }
-
-    async function runYoullLikeSearch() {
-      suggestionCard.innerHTML = '<div class="search-status">Looking at what you\'ve loved&hellip;</div>';
-      currentPick = null;
-      try {
-        const result = await fetchYoullLikePick(seenIds, null);
-        if (!result.pick) {
-          const msg = result.reason === "no-high-rated"
-            ? "Rate a few watched movies 8 or higher on your Watched List first, then this can make picks based on what you loved."
-            : "Couldn't find a good match right now — try again in a moment.";
-          suggestionCard.innerHTML = '<div class="search-status">' + msg + '</div>';
-          return;
-        }
-        renderPick(result.pick, 'You rated "' + result.seedTitle + '" 8 or higher, so this was pulled from TMDB\'s recommendations for that movie — similar genre, cast, or style.');
-      } catch (e) {
-        console.error("You'll Like failed", e);
-        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-      }
-    }
-
-    async function runSimilarSearch(baseId, baseTitle, runtimeFilter) {
-      suggestionCard.innerHTML = '<div class="search-status">Finding something similar to "' + baseTitle + '"&hellip;</div>';
-      currentPick = null;
-      similarForm.classList.add("hidden-block");
-      lastSimilarBaseId = baseId;
-      lastSimilarTitle = baseTitle;
-      lastSimilarRuntime = runtimeFilter;
-      editFiltersBtn.textContent = "🔄 Pick a different movie";
-      editFiltersBtn.classList.remove("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      try {
-        const list = await fetchSimilarMovies(baseId, baseTitle, runtimeFilter);
-        if (!list.length) {
-          suggestionCard.innerHTML = '<div class="search-status">Couldn\'t find anything similar to that one.</div>';
-          return;
-        }
-        const pick = pickPreferringUnseen(list, seenIds);
-        renderPick(pick);
-      } catch (e) {
-        suggestionCard.innerHTML = '<div class="search-status">Couldn\'t load suggestions — check your connection.</div>';
-      }
-    }
-
-    similarSearchInput.oninput = () => {
-      clearTimeout(similarDebounceTimer);
-      similarDebounceTimer = setTimeout(async () => {
-        const q = similarSearchInput.value.trim();
-        if (!q || q.length < 2) {
-          similarSearchResults.classList.add("hidden-block");
-          similarSearchStatus.classList.add("hidden-block");
-          return;
-        }
-        similarSearchStatus.textContent = "Searching…";
-        similarSearchStatus.classList.remove("hidden-block");
-        similarSearchResults.classList.add("hidden-block");
-        try {
-          const results = await searchMovies(q);
-          similarSearchStatus.classList.add("hidden-block");
-          if (results.length === 0) {
-            similarSearchStatus.textContent = "No matches.";
-            similarSearchStatus.classList.remove("hidden-block");
-            return;
-          }
-          similarSearchResults.innerHTML = "";
-          results.forEach((m) => {
-            const row = document.createElement("div");
-            row.className = "result-row";
-            row.innerHTML =
-              '<img src="' + m.poster + '" alt="">' +
-              '<div><div class="rtitle">' + m.title + '</div>' +
-              '<div class="ryear">' + m.year + '</div></div>';
-            row.onclick = () => runSimilarSearch(m.id, m.title, similarRuntimeSel.value);
-            similarSearchResults.appendChild(row);
-          });
-          similarSearchResults.classList.remove("hidden-block");
-        } catch (e) {
-          similarSearchStatus.textContent = "Search failed — check your connection.";
-          similarSearchStatus.classList.remove("hidden-block");
-        }
-      }, 350);
-    };
-
-    const ALL_MODE_BTNS = [modePopular, modeIndie, modeCurated, modeSimilar, modeFinishSet, modeYoullLike];
-    function setActiveModeBtn(activeBtn) {
-      ALL_MODE_BTNS.forEach((b) => b.classList.toggle("active", b === activeBtn));
-    }
-
-    function enterPopular() {
-      currentMode = "popular";
-      setActiveModeBtn(modePopular);
-      curatedForm.classList.add("hidden-block");
-      similarForm.classList.add("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      loadSuggestion();
-    }
-    function enterIndie() {
-      currentMode = "indie";
-      setActiveModeBtn(modeIndie);
-      curatedForm.classList.add("hidden-block");
-      similarForm.classList.add("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      loadSuggestion();
-    }
-    function enterCurated() {
-      currentMode = "curated";
-      setActiveModeBtn(modeCurated);
-      similarForm.classList.add("hidden-block");
-      resetCuratedForm();
-      curatedForm.classList.remove("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.add("hidden-block");
-      suggestionCard.innerHTML = '<div class="search-status">Answer as many or as few as you like, then tap Find a film.</div>';
-      currentPick = null;
-    }
-    function enterSimilar() {
-      currentMode = "similar";
-      setActiveModeBtn(modeSimilar);
-      curatedForm.classList.add("hidden-block");
-      resetSimilarForm();
-      similarForm.classList.remove("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.add("hidden-block");
-      suggestionCard.innerHTML = '<div class="search-status">Search for a movie you like below.</div>';
-      currentPick = null;
-    }
-    function enterFinishSet() {
-      currentMode = "finishset";
-      setActiveModeBtn(modeFinishSet);
-      curatedForm.classList.add("hidden-block");
-      similarForm.classList.add("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      runFinishTheSetSearch();
-    }
-    function enterYoullLike() {
-      currentMode = "youlllike";
-      setActiveModeBtn(modeYoullLike);
-      curatedForm.classList.add("hidden-block");
-      similarForm.classList.add("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      resultButtons.classList.remove("hidden-block");
-      runYoullLikeSearch();
-    }
-
-    modePopular.onclick = enterPopular;
-    modeIndie.onclick = enterIndie;
-    modeCurated.onclick = enterCurated;
-    modeSimilar.onclick = enterSimilar;
-    modeFinishSet.onclick = enterFinishSet;
-    modeYoullLike.onclick = enterYoullLike;
-
-    curatedSubmit.onclick = () => {
-      lastCuratedFilters = readCuratedFilters();
-      runCuratedSearch(lastCuratedFilters);
-    };
-    // Lets you tweak your answers and search again without leaving curated
-    // mode or losing your place - the filter values are still in the form.
-    editFiltersBtn.onclick = () => {
-      suggestionCard.innerHTML = "";
-      resultButtons.classList.add("hidden-block");
-      editFiltersBtn.classList.add("hidden-block");
-      if (currentMode === "similar") {
-        similarForm.classList.remove("hidden-block");
-      } else {
-        curatedForm.classList.remove("hidden-block");
-      }
-      const dialogEl = curatedForm.closest(".dialog");
-      if (dialogEl) dialogEl.scrollTop = 0;
-    };
-
-    surpriseBtn.onclick = async () => {
-      const key = await ensureTmdbKey();
-      if (!key) return;
-      searchView.classList.add("hidden-block");
-      surpriseView.classList.remove("hidden-block");
-      // Always re-enter on a clean, known-good state rather than resuming
-      // whatever mode/leftover result was showing before "Back to search".
-      enterPopular();
-    };
-    surpriseAnother.onclick = () => {
-      if (currentMode === "curated" && lastCuratedFilters) {
-        runCuratedSearch(lastCuratedFilters);
-      } else if (currentMode === "similar" && lastSimilarBaseId) {
-        runSimilarSearch(lastSimilarBaseId, lastSimilarTitle, lastSimilarRuntime);
-      } else if (currentMode === "finishset") {
-        runFinishTheSetSearch();
-      } else if (currentMode === "youlllike") {
-        runYoullLikeSearch();
-      } else {
-        loadSuggestion();
-      }
-    };
-    surpriseUse.onclick = () => {
-      if (currentPick) finish({ title: currentPick.title, poster: currentPick.poster, id: currentPick.id });
-    };
-    surpriseBack.onclick = () => {
-      surpriseView.classList.add("hidden-block");
-      searchView.classList.remove("hidden-block");
-    };
-  });
-}
-
-async function handleSlotClick(i) {
-  const current = slots[i];
-  if (current) {
-    // Legacy slots saved before we tracked TMDB ids won't have one yet — resolve it once.
-    if (!current.id) {
-      const meta = await fetchMovieMeta(current.title);
-      if (meta.id) {
-        current.id = meta.id;
-        if (!current.poster) current.poster = meta.poster;
-        saveSlots();
-      }
-    }
-    const ok = await showConfirm(current, 'Remove "' + current.title + '" from slot ' + (i + 1) + "?");
-    if (!ok) return;
-    slots[i] = null;
-    render();
-    saveSlots();
-  }
-
-  const picked = await showMovieSearch(
-    current ? "Add a replacement" : "Add a movie",
-    current ? "What movie is replacing it?" : "What movie goes in slot " + (i + 1) + "?"
-  );
-  if (!picked) return;
-
-  slots[i] = { title: picked.title, poster: picked.poster, id: picked.id || null };
-  render();
-  saveSlots();
-
-  if (!picked.poster || !picked.id) {
-    const meta = await fetchMovieMeta(picked.title);
-    if (slots[i] && slots[i].title === picked.title) {
-      slots[i].poster = slots[i].poster || meta.poster;
-      slots[i].id = slots[i].id || meta.id;
-      render();
-      saveSlots();
-    }
-  }
-}
-
-// --- Draw a Movie: spin the reel, then pop a capsule open to reveal the pick ---
-const drawBtn = document.getElementById("drawBtn");
-const drawOverlay = document.getElementById("drawOverlay");
-const drawHeading = document.getElementById("drawHeading");
-const drawEmptyMsg = document.getElementById("drawEmptyMsg");
-const reelWindow = document.getElementById("reelWindow");
-const reelStrip = document.getElementById("reelStrip");
-const capsuleStage = document.getElementById("capsuleStage");
-const capsuleEl = document.getElementById("capsule");
-const revealPoster = document.getElementById("revealPoster");
-const revealPosterImg = document.getElementById("revealPosterImg");
-const drawTitleEl = document.getElementById("drawTitle");
-const drawButtons = document.getElementById("drawButtons");
-const drawAgainBtn = document.getElementById("drawAgainBtn");
-const drawCloseBtn = document.getElementById("drawCloseBtn");
-const drawEmptyButtons = document.getElementById("drawEmptyButtons");
-const drawEmptyClose = document.getElementById("drawEmptyClose");
-
-let lastDrawIndex = null;
-
-function runDrawAnimation() {
-  const filledEntries = slots
-    .map((m, i) => (m ? { movie: m, index: i } : null))
-    .filter(Boolean);
-
-  drawHeading.classList.remove("hidden-block");
-  reelWindow.classList.remove("fading");
-  reelWindow.classList.add("hidden-block");
-  capsuleStage.classList.remove("visible");
-  capsuleStage.classList.add("hidden-block");
-  drawTitleEl.classList.add("hidden-block");
-  drawButtons.classList.add("hidden-block");
-  drawEmptyMsg.classList.add("hidden-block");
-  drawEmptyButtons.classList.add("hidden-block");
-  revealPoster.classList.remove("show");
-  revealPoster.classList.add("hidden-block");
-  capsuleEl.classList.remove("opening");
-
-  drawOverlay.classList.remove("hidden");
-
-  if (filledEntries.length === 0) {
-    drawHeading.classList.add("hidden-block");
-    drawEmptyMsg.classList.remove("hidden-block");
-    drawEmptyButtons.classList.remove("hidden-block");
-    return;
-  }
-
-  const winnerEntry = filledEntries[Math.floor(Math.random() * filledEntries.length)];
-  const winner = winnerEntry.movie;
-  lastDrawIndex = winnerEntry.index;
-
-  // Build a long reel to scroll through. Importantly, where the reel stops
-  // has nothing to do with which movie actually won - that's decided
-  // separately and only revealed when the capsule opens. Otherwise the
-  // last poster you see scroll past IS the answer, and the capsule reveal
-  // is pointless.
-  const posterPool = filledEntries.map((e) => e.movie.poster).filter(Boolean);
-  if (posterPool.length === 0) posterPool.push(winner.poster || "");
-  let stripImgs = [];
-  for (let i = 0; i < 6; i++) {
-    stripImgs = stripImgs.concat(posterPool.slice().sort(() => Math.random() - 0.5));
-  }
-
-  reelWindow.classList.remove("hidden-block");
-  reelStrip.innerHTML = stripImgs.map((src) => '<img src="' + src + '" alt="">').join("");
-
-  const itemWidth = 116; // poster width (108) + gap (8)
-  const maxDistance = Math.max((stripImgs.length - 3) * itemWidth, itemWidth);
-  // Random stopping point with no relationship to the winner - somewhere
-  // in the back half of the strip so it still feels like a full spin.
-  const distance = Math.floor(maxDistance * (0.55 + Math.random() * 0.4));
-  reelStrip.style.setProperty("--reel-distance", "-" + distance + "px");
-
-  // Restart the CSS animation reliably (toggling the class alone can be
-  // flaky, especially on mobile Safari - explicitly clearing the animation
-  // and forcing two paint frames before restarting fixes the "every other
-  // time it doesn't spin" issue).
-  reelStrip.classList.remove("spinning");
-  reelStrip.style.animation = "none";
-  reelStrip.style.transform = "translateX(0)";
-  void reelStrip.offsetWidth;
-  reelStrip.style.animation = "";
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      reelStrip.classList.add("spinning");
-    });
-  });
-
-  setTimeout(() => {
-    // Fade the reel out, then leave a brief empty beat before the capsule
-    // drops in - a clean hand-off instead of one thing instantly becoming
-    // another in the same spot.
-    reelWindow.classList.add("fading");
-
-    setTimeout(() => {
-      reelWindow.classList.add("hidden-block");
-
-      setTimeout(() => {
-        capsuleStage.classList.remove("hidden-block");
-        revealPosterImg.src = winner.poster || "";
-        capsuleEl.style.animation = "none";
-        void capsuleEl.offsetWidth;
-        capsuleEl.style.animation = "";
-        requestAnimationFrame(() => {
-          capsuleStage.classList.add("visible");
-        });
-
-        setTimeout(() => {
-          capsuleEl.classList.add("opening");
-          setTimeout(() => {
-            revealPoster.classList.remove("hidden-block");
-            revealPoster.classList.add("show");
-            drawTitleEl.textContent = winner.title;
-            drawTitleEl.classList.remove("hidden-block");
-            drawButtons.classList.remove("hidden-block");
-          }, 350);
-        }, 750);
-      }, 300);
-    }, 350);
-  }, 1650);
-}
-
-drawBtn.onclick = runDrawAnimation;
-drawAgainBtn.onclick = runDrawAnimation;
-drawCloseBtn.onclick = () => {
-  drawOverlay.classList.add("hidden");
-  if (lastDrawIndex !== null) handleSlotClick(lastDrawIndex);
-};
-drawEmptyClose.onclick = () => drawOverlay.classList.add("hidden");
-document.getElementById("drawCloseX").onclick = () => drawOverlay.classList.add("hidden");
-
-loadSlots();
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
+  // ======================================================================
+  // 2. PASTE YOUR GEMINI API KEY HERE (see README.md — free, from Google AI Studio)
+  // ======================================================================
+  const GEMINI_API_KEY = "AQ.Ab8RN6Kebxpb8DrB6R4xyqC9bBcZeUiC4KIozpZlXUTXjevZyw";
+  const GEMINI_MODEL = "gemini-2.5-flash"; // current model with Google Search grounding — 2.0/2.5 flash are being phased out
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.firestore();
 </script>
 
+<script>
+"use strict";
+const { useState, useEffect, useMemo, useCallback } = React;
+// ---------- Seed data (from the original spreadsheet) ----------
+const base = { neighborhood: "", description: "", tags: [], happyHour: "", capacity: null, mapsLink: "", detailsFetched: false, notes: "" };
+const seedBars = [
+    { id: "b1", name: "ShyShy", status: "visited", vibe: 8, value: 7, service: 9, food: 6, drinks: 7, bathroomBonus: 0, notes: "", ...base },
+    { id: "b2", name: "Jungle Bird", status: "visited", vibe: 6, value: 6, service: 7, food: 9, drinks: 7, bathroomBonus: 0, notes: "Spacious but really loud, nice food, options bad", ...base },
+    { id: "b3", name: "P.S. Kitchen", status: "visited", vibe: 4, value: 5, service: 5, food: 7, drinks: 7, bathroomBonus: 0, notes: "Vegan restaurant, decent food, decent drinks, super loud", ...base },
+    { id: "b4", name: "Rose Vale", status: "visited", vibe: 10, value: 7, service: 6, food: 6.5, drinks: 7, bathroomBonus: 0, notes: "", ...base },
+    { id: "b5", name: "Fig 19", status: "visited", vibe: 9, value: 7, service: 8, food: 3, drinks: 9, bathroomBonus: 0, notes: "", ...base },
+    { id: "b6", name: "Sir Henrys", status: "visited", vibe: 5.5, value: 7, service: 7, food: 7, drinks: 7, bathroomBonus: 2, notes: "", ...base },
+    { id: "b7", name: "The WooWoo", status: "visited", vibe: 9, value: 7.5, service: 6, food: 6, drinks: 6, bathroomBonus: 0, notes: "", ...base },
+    { id: "b8", name: "Malachy Back Room", status: "visited", vibe: 4, value: 10, service: 10, food: 4.5, drinks: 8, bathroomBonus: 0, notes: "", ...base },
+    { id: "b9", name: "Pineapple Club", status: "visited", vibe: 7, value: 8, service: 8, food: 5, drinks: 6, bathroomBonus: 0, notes: "", ...base },
+    { id: "b10", name: "Mr. Paradise", status: "visited", vibe: 6.5, value: 5, service: 6, food: 8, drinks: 6.5, bathroomBonus: 0, notes: "", ...base },
+    { id: "b11", name: "Banshee", status: "visited", vibe: 8.5, value: 8.5, service: 6, food: 3.5, drinks: 7, bathroomBonus: 0, notes: "really nice atmosphere but the food was very mid", ...base },
+    { id: "b12", name: "Old Town Bar", status: "visited", vibe: 6.5, value: 3.5, service: 6, food: 6.5, drinks: 7, bathroomBonus: 0, notes: "", ...base },
+    { id: "b13", name: "Lillie's Victorian Establishment", status: "visited", vibe: 9, value: 6, service: 9, food: 6.5, drinks: 6, bathroomBonus: 0, notes: "", ...base },
+    { id: "b14", name: "929", status: "visited", vibe: 9, value: 5.5, service: 8, food: 8.5, drinks: 8, bathroomBonus: 0, notes: "20/10, hot guy there", ...base },
+    { id: "b15", name: "Célon (Bryant Park Hotel Basement)", status: "visited", vibe: 9, value: 4, service: 9, food: 8, drinks: 8, bathroomBonus: 0, notes: "", ...base },
+    { id: "b16", name: "Sid Golds Request Room", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/f6FM5FQSTSxA8L8F6" },
+    { id: "b17", name: "Please Don't Tell (Hotdog Speakeasy)", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/Y1ZcLk9hWY8mk5Vv9?g_st=ac" },
+    { id: "b18", name: "A10 Kitchen", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/L16byLwbc1kHYUYr5" },
+    { id: "b19", name: "Ten Degrees", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/mYhdYHCaMBDSKwm6A?g_st=ac" },
+    { id: "b20", name: "Angels Share", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/FPoVDSXT5j3a8qHw9?g_st=ac" },
+    { id: "b21", name: "Katana Kitten", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/8o7mvD7TGBkBHoHGA" },
+    { id: "b22", name: "Izakaya MEW", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/hc3V1X4nY4vrAoBz6?g_st=ac" },
+    { id: "b23", name: "Lucky Cat", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/dU2moYJoBgjvcQ966?g_st=ac" },
+    { id: "b24", name: "Ippudo NY", status: "to-try", vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "", ...base, mapsLink: "https://maps.app.goo.gl/j1p1VbJUSEbTvKZW6?g_st=ac" },
+];
+const DOC_PATH = { collection: "tourDeAlcoholism", doc: "sharedList" };
+function avgWithFood(b) {
+    const vals = [b.vibe, b.value, b.service, b.food, b.drinks].filter((v) => v !== null && v !== "" && !isNaN(v));
+    if (vals.length < 5)
+        return null;
+    return vals.reduce((a, c) => a + Number(c), 0) / vals.length;
+}
+function avgWithoutFood(b) {
+    const vals = [b.vibe, b.value, b.service, b.drinks].filter((v) => v !== null && v !== "" && !isNaN(v));
+    if (vals.length < 4)
+        return null;
+    return vals.reduce((a, c) => a + Number(c), 0) / vals.length;
+}
+function fmt(n) {
+    return n === null || n === undefined || isNaN(n) ? "—" : Number(n).toFixed(2);
+}
+// ---------- Gemini API helpers (live Google Search grounding) ----------
+function safeParse(text, isArray) {
+    const cleaned = (text || "").replace(/```json|```/g, "").trim();
+    try {
+        return JSON.parse(cleaned);
+    }
+    catch (e) { }
+    const re = isArray ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+    const m = cleaned.match(re);
+    if (m) {
+        try {
+            return JSON.parse(m[0]);
+        }
+        catch (e) { }
+    }
+    return null;
+}
+async function callGemini(prompt) {
+    var _a, _b, _c;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            tools: [{ google_search: {} }],
+        }),
+    });
+    const data = await response.json();
+    const parts = ((_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) || [];
+    return parts.map((p) => p.text || "").join("\n");
+}
+async function fetchBarDetails(name, hint) {
+    const prompt = `You are a concierge with live web search. Find the real bar called "${name}"${hint ? ` (near ${hint})` : ""} in New York City. Search the web to confirm it. Respond with ONLY raw JSON, no markdown fences, no commentary, in exactly this shape:
+{"mapsLink": "a google maps search url for it", "neighborhood": "short neighborhood name", "description": "two sentences covering the vibe, typical price range ($, $$, $$$, or $$$$), and location", "tags": ["3 to 5 short lowercase vibe words like cozy, loud, speakeasy, dancing, classy, dive, games"], "happyHour": "short description of happy hour deal with days/times, or null if none found", "capacityHint": an integer estimate of how many people comfortably fit for a casual visit}
+If you cannot find a confirmed real match, make a reasonable best-effort guess from the name and keep the description honest about the uncertainty.`;
+    try {
+        const text = await callGemini(prompt);
+        return safeParse(text, false);
+    }
+    catch (e) {
+        return null;
+    }
+}
+async function fetchBarSuggestions(vibeQuery, groupSize, excludeNames) {
+    const prompt = `You are a concierge with live web search. Suggest 4 real, currently open bars in New York City matching this vibe request: "${vibeQuery || "a great night out"}". They should comfortably work for a group of about ${groupSize} people. Do not suggest any of these bars we already know: ${excludeNames.join(", ") || "none"}. Respond with ONLY raw JSON, no markdown fences, no commentary: an array of up to 4 objects, each in exactly this shape:
+{"name": "string", "neighborhood": "short neighborhood name", "description": "two sentences covering vibe, price range ($ $$ $$$ $$$$), and location", "tags": ["3 to 5 short lowercase vibe words"], "happyHour": "short string or null", "capacityHint": integer, "mapsLink": "a google maps search url for it"}`;
+    try {
+        const text = await callGemini(prompt);
+        const parsed = safeParse(text, true);
+        return Array.isArray(parsed) ? parsed : [];
+    }
+    catch (e) {
+        return [];
+    }
+}
+async function fetchRandomBar(groupSize, excludeNames) {
+    const prompt = `You are a concierge with live web search. Pick exactly one real, currently open bar in New York City as a fun surprise recommendation — any vibe, your choice. It should comfortably work for a group of about ${groupSize} people. Do not suggest any of these bars we already know: ${excludeNames.join(", ") || "none"}. Respond with ONLY raw JSON, no markdown fences, no commentary, in exactly this shape:
+{"name": "string", "neighborhood": "short neighborhood name", "description": "two sentences covering vibe, price range ($ $$ $$$ $$$$), and location", "tags": ["3 to 5 short lowercase vibe words"], "happyHour": "short string or null", "capacityHint": integer, "mapsLink": "a google maps search url for it"}`;
+    try {
+        const text = await callGemini(prompt);
+        return safeParse(text, false);
+    }
+    catch (e) {
+        return null;
+    }
+}
+const emptyVisitedForm = { id: null, name: "", vibe: "", value: "", service: "", food: "", drinks: "", bathroomBonus: "", notes: "" };
+const emptyWishForm = { id: null, name: "", neighborhood: "", notes: "" };
+function App() {
+    const [bars, setBars] = useState(null);
+    const [groupSize, setGroupSizeState] = useState(4);
+    const [loading, setLoading] = useState(true);
+    const [connError, setConnError] = useState(false);
+    const [tab, setTab] = useState("leaderboard");
+    const [search, setSearch] = useState("");
+    const [foodMode, setFoodMode] = useState("with");
+    const [showVisitedForm, setShowVisitedForm] = useState(false);
+    const [visitedForm, setVisitedForm] = useState(emptyVisitedForm);
+    const [showWishForm, setShowWishForm] = useState(false);
+    const [wishForm, setWishForm] = useState(emptyWishForm);
+    const [saveError, setSaveError] = useState(false);
+    const [vibeQuery, setVibeQuery] = useState("");
+    const [fitsGroupOnly, setFitsGroupOnly] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+    const [searchDone, setSearchDone] = useState(false);
+    const [detailsModal, setDetailsModal] = useState(null);
+    const [fetchingIds, setFetchingIds] = useState(new Set());
+    const docRef = db.collection(DOC_PATH.collection).doc(DOC_PATH.doc);
+    // live sync from Firestore — updates instantly for everyone with this page open
+    useEffect(() => {
+        const unsub = docRef.onSnapshot((snap) => {
+            if (snap.exists) {
+                const data = snap.data();
+                setBars(data.bars || []);
+                if (data.groupSize)
+                    setGroupSizeState(data.groupSize);
+            }
+            else {
+                docRef.set({ bars: seedBars, groupSize: 4 }).catch(() => setConnError(true));
+                setBars(seedBars);
+            }
+            setLoading(false);
+        }, (err) => { console.error(err); setConnError(true); setBars(seedBars); setLoading(false); });
+        return () => unsub();
+        // eslint-disable-next-line
+    }, []);
+    const persist = useCallback((next) => {
+        setBars(next);
+        docRef.set({ bars: next }, { merge: true }).then(() => setSaveError(false)).catch(() => setSaveError(true));
+        // eslint-disable-next-line
+    }, []);
+    const persistGroup = useCallback((n) => {
+        setGroupSizeState(n);
+        docRef.set({ groupSize: n }, { merge: true }).catch(() => { });
+        // eslint-disable-next-line
+    }, []);
+    const updateBar = useCallback((id, patch) => {
+        setBars((prev) => {
+            const next = prev.map((b) => (b.id === id ? { ...b, ...patch } : b));
+            docRef.set({ bars: next }, { merge: true }).catch(() => setSaveError(true));
+            return next;
+        });
+        // eslint-disable-next-line
+    }, []);
+    const runDetailsFetch = useCallback((bar) => {
+        setFetchingIds((s) => new Set(s).add(bar.id));
+        fetchBarDetails(bar.name, bar.neighborhood).then((data) => {
+            if (data) {
+                updateBar(bar.id, {
+                    mapsLink: data.mapsLink || bar.mapsLink,
+                    neighborhood: data.neighborhood || bar.neighborhood,
+                    description: data.description || bar.description,
+                    tags: data.tags && data.tags.length ? data.tags : bar.tags,
+                    happyHour: data.happyHour !== undefined ? data.happyHour : bar.happyHour,
+                    capacity: data.capacityHint || bar.capacity,
+                    detailsFetched: true,
+                });
+            }
+            else {
+                updateBar(bar.id, { detailsFetched: true });
+            }
+            setFetchingIds((s) => { const n = new Set(s); n.delete(bar.id); return n; });
+            setDetailsModal((dm) => (dm && dm.bar.id === bar.id ? { ...dm, loading: false } : dm));
+        });
+    }, [updateBar]);
+    function openDetails(bar) {
+        setDetailsModal({ bar, loading: !bar.detailsFetched });
+        if (!bar.detailsFetched && !fetchingIds.has(bar.id))
+            runDetailsFetch(bar);
+    }
+    function refreshDetails(bar) {
+        setDetailsModal({ bar, loading: true });
+        runDetailsFetch({ ...bar, detailsFetched: false });
+    }
+    const visited = useMemo(() => (bars || []).filter((b) => b.status === "visited"), [bars]);
+    const toTry = useMemo(() => (bars || []).filter((b) => b.status === "to-try"), [bars]);
+    const filteredVisited = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        let list = visited.filter((b) => {
+            if (!q)
+                return true;
+            return b.name.toLowerCase().includes(q) || (b.notes || "").toLowerCase().includes(q) || (b.tags || []).some((t) => t.toLowerCase().includes(q));
+        });
+        list.sort((a, b) => {
+            const av = foodMode === "with" ? avgWithFood(a) : avgWithoutFood(a);
+            const bv = foodMode === "with" ? avgWithFood(b) : avgWithoutFood(b);
+            return (bv || 0) - (av || 0);
+        });
+        return list;
+    }, [visited, search, foodMode]);
+    const filteredToTry = useMemo(() => {
+        const q = vibeQuery.trim().toLowerCase();
+        return toTry.filter((b) => {
+            if (fitsGroupOnly && b.capacity && Number(b.capacity) < groupSize)
+                return false;
+            if (!q)
+                return true;
+            return b.name.toLowerCase().includes(q) || (b.description || "").toLowerCase().includes(q) || (b.tags || []).some((t) => t.toLowerCase().includes(q));
+        });
+    }, [toTry, vibeQuery, fitsGroupOnly, groupSize]);
+    async function runSearch() {
+        setSearching(true);
+        setSearchDone(false);
+        const exclude = (bars || []).map((b) => b.name);
+        const results = await fetchBarSuggestions(vibeQuery, groupSize, exclude);
+        const filtered = fitsGroupOnly ? results.filter((r) => !r.capacityHint || r.capacityHint >= groupSize) : results;
+        setSearchResults(filtered);
+        setSearching(false);
+        setSearchDone(true);
+    }
+    async function runRandomSearch() {
+        setSearching(true);
+        setSearchDone(false);
+        const exclude = (bars || []).map((b) => b.name);
+        const pick = await fetchRandomBar(groupSize, exclude);
+        setSearchResults(pick ? [pick] : []);
+        setSearching(false);
+        setSearchDone(true);
+    }
+    function addSuggestionToWishlist(s) {
+        const record = {
+            id: `b${Date.now()}`, name: s.name, status: "to-try",
+            vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0, notes: "",
+            neighborhood: s.neighborhood || "", description: s.description || "", tags: s.tags || [],
+            happyHour: s.happyHour || "", capacity: s.capacityHint || null, mapsLink: s.mapsLink || "", detailsFetched: true,
+        };
+        persist([...(bars || []), record]);
+        setSearchResults((prev) => prev.filter((r) => r.name !== s.name));
+    }
+    function saveVisitedForm(e) {
+        e.preventDefault();
+        if (!visitedForm.name.trim())
+            return;
+        const cleanNum = (v) => (v === "" || v === null ? null : Number(v));
+        const isNew = !visitedForm.id;
+        const id = visitedForm.id || `b${Date.now()}`;
+        const patch = {
+            name: visitedForm.name.trim(), status: "visited",
+            vibe: cleanNum(visitedForm.vibe), value: cleanNum(visitedForm.value), service: cleanNum(visitedForm.service),
+            food: cleanNum(visitedForm.food), drinks: cleanNum(visitedForm.drinks),
+            bathroomBonus: cleanNum(visitedForm.bathroomBonus) || 0, notes: visitedForm.notes.trim(),
+        };
+        let next, record;
+        if (isNew) {
+            record = { ...base, ...patch, id, tags: [] };
+            next = [...bars, record];
+        }
+        else {
+            next = bars.map((b) => (b.id === id ? { ...b, ...patch } : b));
+            record = next.find((b) => b.id === id);
+        }
+        persist(next);
+        setShowVisitedForm(false);
+        setVisitedForm(emptyVisitedForm);
+        if (!record.detailsFetched)
+            runDetailsFetch(record);
+    }
+    function saveWishForm(e) {
+        e.preventDefault();
+        if (!wishForm.name.trim())
+            return;
+        const isNew = !wishForm.id;
+        const id = wishForm.id || `b${Date.now()}`;
+        const patch = { name: wishForm.name.trim(), status: "to-try", notes: wishForm.notes.trim() };
+        let next, record;
+        if (isNew) {
+            record = { ...base, ...patch, id, tags: [], vibe: null, value: null, service: null, food: null, drinks: null, bathroomBonus: 0 };
+            next = [...bars, record];
+        }
+        else {
+            next = bars.map((b) => (b.id === id ? { ...b, ...patch } : b));
+            record = next.find((b) => b.id === id);
+        }
+        persist(next);
+        setShowWishForm(false);
+        setWishForm(emptyWishForm);
+        if (!record.detailsFetched)
+            runDetailsFetch(record);
+    }
+    function markVisited(b) {
+        setVisitedForm({ id: b.id, name: b.name, vibe: "", value: "", service: "", food: "", drinks: "", bathroomBonus: "", notes: b.notes || "" });
+        setShowVisitedForm(true);
+    }
+    function editVisited(b) {
+        var _a, _b, _c, _d, _e, _f;
+        setVisitedForm({ id: b.id, name: b.name, vibe: (_a = b.vibe) !== null && _a !== void 0 ? _a : "", value: (_b = b.value) !== null && _b !== void 0 ? _b : "", service: (_c = b.service) !== null && _c !== void 0 ? _c : "", food: (_d = b.food) !== null && _d !== void 0 ? _d : "", drinks: (_e = b.drinks) !== null && _e !== void 0 ? _e : "", bathroomBonus: (_f = b.bathroomBonus) !== null && _f !== void 0 ? _f : "", notes: b.notes || "" });
+        setShowVisitedForm(true);
+    }
+    function removeBar(id) { persist(bars.filter((b) => b.id !== id)); }
+    if (loading) {
+        return (React.createElement("div", { style: { minHeight: "100vh", background: "#0E0D10", display: "flex", alignItems: "center", justifyContent: "center" } },
+            React.createElement("div", { style: { color: "#B8965F", fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.85rem", letterSpacing: "0.05em" } }, connError ? "couldn't connect — check your Firebase config in index.html" : "setting the table…")));
+    }
+    return (React.createElement("div", { className: "tda-root" },
+        React.createElement("style", null, `
+        .tda-root { min-height: 100vh; background: linear-gradient(180deg, #14121A 0%, #0E0D10 55%); color: #EDE6D9; font-family: 'Inter', sans-serif; padding-bottom: 4rem; }
+        .tda-container { max-width: 980px; margin: 0 auto; padding: 0 1.25rem; }
+        .tda-header { padding: 3rem 0 1.75rem; text-align: center; border-bottom: 1px solid #262029; }
+        .tda-title { font-family: 'Fraunces', serif; font-weight: 500; font-size: clamp(1.9rem, 5.5vw, 2.9rem); letter-spacing: -0.01em; color: #EDE6D9; margin: 0; }
+        .tda-title .accent { color: #C9A876; font-style: italic; font-weight: 500; }
+        .tda-sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #857C8E; margin-top: 0.7rem; }
+
+        .tda-tabs { display: flex; gap: 0.5rem; justify-content: center; margin: 1.75rem 0; flex-wrap: wrap; }
+        .tda-tab { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.6rem 1.3rem; border-radius: 3px; border: 1px solid #302938; background: transparent; color: #A79EB2; cursor: pointer; transition: all 0.15s ease; }
+        .tda-tab:hover { border-color: #B8965F; color: #EDE6D9; }
+        .tda-tab.active { background: #B8965F; color: #16130F; border-color: #B8965F; font-weight: 600; }
+
+        .tda-champion { border: 1px solid #B8965F; border-radius: 4px; padding: 1.1rem 1.4rem; margin: 1.75rem 0 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: linear-gradient(135deg, rgba(184,150,95,0.08), transparent); flex-wrap: wrap; }
+        .tda-champion-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #C9A876; }
+        .tda-champion-name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.6rem; margin-top: 0.25rem; }
+        .tda-champion-score { font-family: 'IBM Plex Mono', monospace; font-size: 2rem; color: #C9A876; font-weight: 600; }
+
+        .tda-controls { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 1rem 0; background: #17141B; border: 1px solid #262029; border-radius: 8px; padding: 0.9rem 1rem; }
+        .tda-input, .tda-select { background: #0E0D10; border: 1px solid #302938; color: #EDE6D9; border-radius: 5px; padding: 0.5rem 0.7rem; font-family: 'Inter', sans-serif; font-size: 0.85rem; }
+        .tda-input:focus, .tda-select:focus { outline: none; border-color: #B8965F; }
+        .tda-toggle { display: inline-flex; border: 1px solid #302938; border-radius: 999px; overflow: hidden; }
+        .tda-toggle button { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; padding: 0.4rem 0.85rem; background: transparent; color: #A79EB2; border: none; cursor: pointer; }
+        .tda-toggle button.active { background: #B8965F; color: #16130F; font-weight: 600; }
+        .tda-chip { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; padding: 0.38rem 0.75rem; border-radius: 999px; border: 1px solid #302938; background: transparent; color: #A79EB2; cursor: pointer; }
+        .tda-chip.active { background: #3F5D4E; border-color: #3F5D4E; color: #EDE6D9; }
+        .tda-group-stepper { display: flex; align-items: center; gap: 0.4rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+        .tda-group-btn { width: 26px; height: 26px; border-radius: 5px; border: 1px solid #302938; background: #0E0D10; color: #B8965F; cursor: pointer; font-size: 1rem; line-height: 1; }
+
+        .tda-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1rem; }
+        .tda-card { background: #17141B; border: 1px solid #262029; border-radius: 8px; padding: 1rem 1.2rem; }
+        .tda-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+        .tda-rank { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; font-weight: 600; border: 1.5px solid #302938; color: #A79EB2; margin-right: 0.6rem; flex-shrink: 0; }
+        .tda-rank.gold { border-color: #C9A876; color: #C9A876; }
+        .tda-rank.silver { border-color: #B9B6BC; color: #C9C6CE; }
+        .tda-rank.bronze { border-color: #A9784F; color: #C08E5F; }
+        .tda-name-row { display: flex; align-items: center; }
+        .tda-card-name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.1rem; cursor: pointer; }
+        .tda-card-name:hover { color: #C9A876; }
+        .tda-card-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.3rem; margin-left: 2.5rem; }
+        .tda-avg { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; color: #C9A876; text-align: right; }
+        .tda-avg-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; color: #857C8E; text-align: right; }
+        .tda-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.7rem; margin-left: 2.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: #A79EB2; }
+        .tda-stats span b { color: #EDE6D9; }
+        .tda-comment { margin-top: 0.5rem; margin-left: 2.5rem; font-size: 0.85rem; color: #A79EB2; font-style: italic; }
+        .tda-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .tda-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; padding: 0.14rem 0.55rem; border-radius: 999px; background: #262029; color: #A79EB2; }
+        .tda-card-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; margin-left: 2.5rem; flex-wrap: wrap; }
+        .tda-link-btn, .tda-edit-btn, .tda-del-btn, .tda-visit-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; padding: 0.35rem 0.7rem; border-radius: 5px; border: 1px solid #302938; background: transparent; color: #A79EB2; cursor: pointer; text-decoration: none; }
+        .tda-link-btn:hover, .tda-edit-btn:hover, .tda-visit-btn:hover { border-color: #B8965F; color: #EDE6D9; }
+        .tda-del-btn:hover { border-color: #9A4B4B; color: #C77676; }
+        .tda-fetching { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: #857C8E; margin-left: 2.5rem; margin-top: 0.4rem; }
+
+        .tda-add-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; padding: 0.6rem 1.1rem; border-radius: 5px; border: 1px dashed #302938; background: transparent; color: #B8965F; cursor: pointer; width: 100%; margin-top: 0.75rem; }
+        .tda-add-btn:hover { border-color: #B8965F; background: rgba(184,150,95,0.05); }
+
+        .tda-search-panel { background: #17141B; border: 1px solid #262029; border-radius: 8px; padding: 1.1rem; margin: 1rem 0; }
+        .tda-search-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+        .tda-find-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; padding: 0.6rem 1.2rem; border-radius: 999px; border: none; background: #B8965F; color: #16130F; font-weight: 600; cursor: pointer; }
+        .tda-find-btn:hover { background: #C9A876; }
+        .tda-find-btn:disabled { opacity: 0.5; cursor: default; }
+        .tda-surprise-btn { background: transparent; border: 1px solid #B8965F; color: #C9A876; }
+        .tda-surprise-btn:hover { background: rgba(184,150,95,0.12); }
+
+        .tda-suggestion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 1.1rem; }
+        .tda-suggestion-card { border: 1px solid #302938; border-radius: 8px; padding: 0.9rem; background: #0E0D10; }
+        .tda-suggestion-name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.05rem; }
+        .tda-suggestion-hood { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: #857C8E; margin-top: 0.1rem; }
+        .tda-suggestion-desc { font-size: 0.82rem; color: #A79EB2; margin-top: 0.5rem; line-height: 1.4; }
+        .tda-suggestion-add { margin-top: 0.7rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; padding: 0.4rem 0.8rem; border-radius: 5px; border: 1px solid #3F5D4E; background: transparent; color: #7FA88E; cursor: pointer; width: 100%; }
+        .tda-suggestion-add:hover { background: #3F5D4E; color: #EDE6D9; }
+
+        .tda-empty { text-align: center; padding: 2.5rem 1rem; color: #857C8E; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+        .tda-section-heading { display: flex; align-items: center; gap: 0.8rem; margin: 2.25rem 0 0.25rem; }
+        .tda-section-heading h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.15rem; margin: 0; color: #EDE6D9; white-space: nowrap; }
+        .tda-section-heading .tda-rule { flex: 1; height: 1px; background: #262029; }
+        .tda-section-count { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: #857C8E; }
+
+        .tda-modal-backdrop { position: fixed; inset: 0; background: rgba(6,5,7,0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+        .tda-modal { background: #17141B; border: 1px solid #302938; border-radius: 10px; padding: 1.5rem; max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto; }
+        .tda-modal h3 { font-family: 'Fraunces', serif; font-weight: 500; margin-top: 0; }
+        .tda-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.7rem; }
+        .tda-field label { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: #857C8E; }
+        .tda-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .tda-modal-actions { display: flex; gap: 0.6rem; margin-top: 1rem; }
+        .tda-primary-btn { flex: 1; font-family: 'IBM Plex Mono', monospace; font-weight: 600; padding: 0.65rem; border-radius: 5px; border: none; background: #B8965F; color: #16130F; cursor: pointer; }
+        .tda-secondary-btn { flex: 1; font-family: 'IBM Plex Mono', monospace; padding: 0.65rem; border-radius: 5px; border: 1px solid #302938; background: transparent; color: #A79EB2; cursor: pointer; }
+
+        .tda-details-hood { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: #C9A876; text-transform: uppercase; letter-spacing: 0.08em; }
+        .tda-details-desc { margin-top: 0.7rem; line-height: 1.55; color: #D8D1C4; font-size: 0.92rem; }
+        .tda-details-row { margin-top: 0.9rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: #A79EB2; display: flex; flex-direction: column; gap: 0.35rem; }
+        .tda-spinner { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #857C8E; padding: 1.5rem 0; text-align: center; }
+
+        .tda-footnote { text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: #5D5666; margin-top: 2.5rem; }
+      `),
+        React.createElement("div", { className: "tda-container" },
+            React.createElement("div", { className: "tda-header" },
+                React.createElement("h1", { className: "tda-title" },
+                    "Tour de ",
+                    React.createElement("span", { className: "accent" }, "Alcoholism")),
+                React.createElement("div", { className: "tda-sub" }, "a running record of the bars we've survived")),
+            React.createElement("div", { className: "tda-tabs" },
+                React.createElement("button", { className: `tda-tab ${tab === "leaderboard" ? "active" : ""}`, onClick: () => setTab("leaderboard") }, "Current Leaderboard"),
+                React.createElement("button", { className: `tda-tab ${tab === "find" ? "active" : ""}`, onClick: () => setTab("find") }, "Find a New Bar")),
+            tab === "leaderboard" && (React.createElement(React.Fragment, null,
+                filteredVisited.length > 0 && (() => {
+                    const champ = filteredVisited[0];
+                    const score = foodMode === "with" ? avgWithFood(champ) : avgWithoutFood(champ);
+                    return (React.createElement("div", { className: "tda-champion" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "tda-champion-eyebrow" }, "\uD83C\uDFC6 Reigning Champion"),
+                            React.createElement("div", { className: "tda-champion-name" }, champ.name)),
+                        React.createElement("div", { className: "tda-champion-score" }, fmt(score))));
+                })(),
+                React.createElement("div", { className: "tda-controls" },
+                    React.createElement("input", { className: "tda-input", placeholder: "Search name or notes\u2026", value: search, onChange: (e) => setSearch(e.target.value), style: { flex: "1 1 200px" } }),
+                    React.createElement("div", { className: "tda-toggle" },
+                        React.createElement("button", { className: foodMode === "with" ? "active" : "", onClick: () => setFoodMode("with") }, "With food"),
+                        React.createElement("button", { className: foodMode === "without" ? "active" : "", onClick: () => setFoodMode("without") }, "Without food"))),
+                React.createElement("div", { className: "tda-list" },
+                    filteredVisited.length === 0 && React.createElement("div", { className: "tda-empty" }, "No stages match that search yet."),
+                    filteredVisited.map((b, i) => (React.createElement(BarCard, { key: b.id, b: b, rank: i + 1, score: foodMode === "with" ? avgWithFood(b) : avgWithoutFood(b), scoreLabel: foodMode === "with" ? "with food" : "no food", isFetching: fetchingIds.has(b.id), onNameClick: () => openDetails(b), onEdit: () => editVisited(b), onDelete: () => removeBar(b.id) })))),
+                React.createElement("button", { className: "tda-add-btn", onClick: () => { setVisitedForm(emptyVisitedForm); setShowVisitedForm(true); } }, "+ Log a stage we rode (rank a bar we visited)"))),
+            tab === "find" && (React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "tda-search-panel" },
+                    React.createElement("div", { className: "tda-search-row" },
+                        React.createElement("input", { className: "tda-input", placeholder: "Describe a vibe (optional)", value: vibeQuery, onChange: (e) => setVibeQuery(e.target.value), style: { flex: "1 1 220px" } }),
+                        React.createElement("div", { className: "tda-group-stepper" },
+                            React.createElement("span", { style: { color: "#857C8E" } }, "Group of"),
+                            React.createElement("button", { className: "tda-group-btn", onClick: () => persistGroup(Math.max(1, groupSize - 1)) }, "\u2212"),
+                            React.createElement("b", { style: { color: "#EDE6D9" } }, groupSize),
+                            React.createElement("button", { className: "tda-group-btn", onClick: () => persistGroup(groupSize + 1) }, "+")),
+                        React.createElement("button", { className: `tda-chip ${fitsGroupOnly ? "active" : ""}`, onClick: () => setFitsGroupOnly(!fitsGroupOnly) }, "Fits our group"),
+                        React.createElement("button", { className: "tda-find-btn", onClick: runSearch, disabled: searching }, searching ? "Searching…" : "Find bars"),
+                        React.createElement("button", { className: "tda-find-btn tda-surprise-btn", onClick: runRandomSearch, disabled: searching }, searching ? "Searching…" : "🎲 Surprise us")),
+                    searching && React.createElement("div", { className: "tda-spinner" }, "scouting the city\u2026"),
+                    searchDone && !searching && searchResults.length === 0 && (React.createElement("div", { className: "tda-empty" }, "No fresh matches came back \u2014 try a different vibe.")),
+                    searchResults.length > 0 && (React.createElement("div", { className: "tda-suggestion-grid" }, searchResults.map((s) => (React.createElement("div", { key: s.name, className: "tda-suggestion-card" },
+                        React.createElement("div", { className: "tda-suggestion-name" }, s.name),
+                        s.neighborhood && React.createElement("div", { className: "tda-suggestion-hood" }, s.neighborhood),
+                        s.tags && s.tags.length > 0 && React.createElement("div", { className: "tda-tags", style: { marginTop: "0.5rem" } }, s.tags.map((t) => React.createElement("span", { key: t, className: "tda-tag" }, t))),
+                        React.createElement("div", { className: "tda-suggestion-desc" }, s.description),
+                        s.happyHour && React.createElement("div", { className: "tda-suggestion-desc", style: { color: "#C9A876" } },
+                            "\uD83D\uDD54 ",
+                            s.happyHour),
+                        React.createElement("button", { className: "tda-suggestion-add", onClick: () => addSuggestionToWishlist(s) }, "+ Add to our list"))))))),
+                React.createElement("div", { className: "tda-section-heading" },
+                    React.createElement("h2", null, "Our Wishlist"),
+                    React.createElement("div", { className: "tda-rule" }),
+                    React.createElement("span", { className: "tda-section-count" },
+                        filteredToTry.length,
+                        " bar",
+                        filteredToTry.length === 1 ? "" : "s")),
+                React.createElement("div", { className: "tda-list" },
+                    filteredToTry.length === 0 && React.createElement("div", { className: "tda-empty" }, "Nothing on the list yet \u2014 search above or add one below."),
+                    filteredToTry.map((b) => (React.createElement(BarCard, { key: b.id, b: b, isFetching: fetchingIds.has(b.id), onNameClick: () => openDetails(b), onEdit: () => markVisited(b), editLabel: "Mark visited", onDelete: () => removeBar(b.id) })))),
+                React.createElement("button", { className: "tda-add-btn", onClick: () => { setWishForm(emptyWishForm); setShowWishForm(true); } }, "+ Add a bar by name (we'll fill in the rest)"))),
+            saveError && React.createElement("div", { className: "tda-footnote", style: { color: "#C77676" } }, "Couldn't save that change \u2014 check your connection and try again."),
+            React.createElement("div", { className: "tda-footnote" }, "Shared list \u2014 anyone with this page can add stages, rank bars, and edit entries.")),
+        showVisitedForm && (React.createElement("div", { className: "tda-modal-backdrop", onClick: () => setShowVisitedForm(false) },
+            React.createElement("div", { className: "tda-modal", onClick: (e) => e.stopPropagation() },
+                React.createElement("h3", null, visitedForm.id ? "Rank this bar" : "Log a stage"),
+                React.createElement("form", { onSubmit: saveVisitedForm },
+                    React.createElement("div", { className: "tda-field" },
+                        React.createElement("label", null, "Name"),
+                        React.createElement("input", { className: "tda-input", required: true, value: visitedForm.name, onChange: (e) => setVisitedForm({ ...visitedForm, name: e.target.value }) })),
+                    React.createElement("div", { className: "tda-field-row" },
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Vibe (0-10)"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.vibe, onChange: (e) => setVisitedForm({ ...visitedForm, vibe: e.target.value }) })),
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Value (0-10)"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.value, onChange: (e) => setVisitedForm({ ...visitedForm, value: e.target.value }) }))),
+                    React.createElement("div", { className: "tda-field-row" },
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Service (0-10)"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.service, onChange: (e) => setVisitedForm({ ...visitedForm, service: e.target.value }) })),
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Food (0-10)"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.food, onChange: (e) => setVisitedForm({ ...visitedForm, food: e.target.value }) }))),
+                    React.createElement("div", { className: "tda-field-row" },
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Drinks (0-10)"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.drinks, onChange: (e) => setVisitedForm({ ...visitedForm, drinks: e.target.value }) })),
+                        React.createElement("div", { className: "tda-field" },
+                            React.createElement("label", null, "Bathroom bonus"),
+                            React.createElement("input", { className: "tda-input", type: "number", step: "0.5", min: "0", max: "10", value: visitedForm.bathroomBonus, onChange: (e) => setVisitedForm({ ...visitedForm, bathroomBonus: e.target.value }) }))),
+                    React.createElement("div", { className: "tda-field" },
+                        React.createElement("label", null, "Notes"),
+                        React.createElement("input", { className: "tda-input", value: visitedForm.notes, onChange: (e) => setVisitedForm({ ...visitedForm, notes: e.target.value }) })),
+                    React.createElement("div", { className: "tda-modal-actions" },
+                        React.createElement("button", { type: "button", className: "tda-secondary-btn", onClick: () => setShowVisitedForm(false) }, "Cancel"),
+                        React.createElement("button", { type: "submit", className: "tda-primary-btn" }, visitedForm.id ? "Save ranking" : "Add to leaderboard")))))),
+        showWishForm && (React.createElement("div", { className: "tda-modal-backdrop", onClick: () => setShowWishForm(false) },
+            React.createElement("div", { className: "tda-modal", onClick: (e) => e.stopPropagation() },
+                React.createElement("h3", null, "Add a bar"),
+                React.createElement("form", { onSubmit: saveWishForm },
+                    React.createElement("div", { className: "tda-field" },
+                        React.createElement("label", null, "Name"),
+                        React.createElement("input", { className: "tda-input", required: true, value: wishForm.name, onChange: (e) => setWishForm({ ...wishForm, name: e.target.value }) })),
+                    React.createElement("div", { className: "tda-field" },
+                        React.createElement("label", null, "Neighborhood (optional, helps us find the right one)"),
+                        React.createElement("input", { className: "tda-input", value: wishForm.neighborhood, onChange: (e) => setWishForm({ ...wishForm, neighborhood: e.target.value }) })),
+                    React.createElement("div", { className: "tda-field" },
+                        React.createElement("label", null, "Notes"),
+                        React.createElement("input", { className: "tda-input", value: wishForm.notes, onChange: (e) => setWishForm({ ...wishForm, notes: e.target.value }) })),
+                    React.createElement("div", { className: "tda-modal-actions" },
+                        React.createElement("button", { type: "button", className: "tda-secondary-btn", onClick: () => setShowWishForm(false) }, "Cancel"),
+                        React.createElement("button", { type: "submit", className: "tda-primary-btn" }, "Add to the list")))))),
+        detailsModal && (React.createElement("div", { className: "tda-modal-backdrop", onClick: () => setDetailsModal(null) },
+            React.createElement("div", { className: "tda-modal", onClick: (e) => e.stopPropagation() },
+                React.createElement("h3", null, detailsModal.bar.name),
+                detailsModal.loading ? (React.createElement("div", { className: "tda-spinner" }, "looking it up\u2026")) : (React.createElement(React.Fragment, null,
+                    detailsModal.bar.neighborhood && React.createElement("div", { className: "tda-details-hood" }, detailsModal.bar.neighborhood),
+                    React.createElement("div", { className: "tda-details-desc" }, detailsModal.bar.description || "No description found yet."),
+                    React.createElement("div", { className: "tda-details-row" },
+                        detailsModal.bar.happyHour && React.createElement("span", null,
+                            "\uD83D\uDD54 ",
+                            detailsModal.bar.happyHour),
+                        detailsModal.bar.capacity && React.createElement("span", null,
+                            "Comfortably fits about ",
+                            detailsModal.bar.capacity,
+                            " people")),
+                    detailsModal.bar.tags && detailsModal.bar.tags.length > 0 && React.createElement("div", { className: "tda-tags", style: { marginTop: "0.7rem" } }, detailsModal.bar.tags.map((t) => React.createElement("span", { key: t, className: "tda-tag" }, t))),
+                    React.createElement("div", { className: "tda-modal-actions" },
+                        detailsModal.bar.mapsLink && React.createElement("a", { className: "tda-secondary-btn", style: { textAlign: "center", textDecoration: "none" }, href: detailsModal.bar.mapsLink, target: "_blank", rel: "noreferrer" }, "Open map \u2197"),
+                        React.createElement("button", { className: "tda-secondary-btn", onClick: () => refreshDetails(detailsModal.bar) }, "Refresh"),
+                        React.createElement("button", { className: "tda-primary-btn", onClick: () => setDetailsModal(null) }, "Close")))))))));
+}
+function BarCard({ b, rank, score, scoreLabel, isFetching, onNameClick, onEdit, editLabel, onDelete }) {
+    const rankClass = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
+    return (React.createElement("div", { className: "tda-card" },
+        React.createElement("div", { className: "tda-card-top" },
+            React.createElement("div", { className: "tda-name-row" },
+                rank && React.createElement("span", { className: `tda-rank ${rankClass}` }, rank),
+                React.createElement("div", { className: "tda-card-name", onClick: onNameClick }, b.name)),
+            score !== undefined && score !== null && (React.createElement("div", null,
+                React.createElement("div", { className: "tda-avg" }, fmt(score)),
+                React.createElement("div", { className: "tda-avg-label" }, scoreLabel)))),
+        b.tags && b.tags.length > 0 && React.createElement("div", { className: "tda-card-badges" },
+            React.createElement("div", { className: "tda-tags" }, b.tags.map((t) => React.createElement("span", { key: t, className: "tda-tag" }, t)))),
+        b.status === "visited" && (React.createElement("div", { className: "tda-stats" },
+            React.createElement("span", null,
+                "Vibe ",
+                React.createElement("b", null, fmt(b.vibe))),
+            React.createElement("span", null,
+                "Value ",
+                React.createElement("b", null, fmt(b.value))),
+            React.createElement("span", null,
+                "Service ",
+                React.createElement("b", null, fmt(b.service))),
+            React.createElement("span", null,
+                "Food ",
+                React.createElement("b", null, fmt(b.food))),
+            React.createElement("span", null,
+                "Drinks ",
+                React.createElement("b", null, fmt(b.drinks))),
+            b.bathroomBonus > 0 && React.createElement("span", null,
+                "\uD83D\uDEBB bonus ",
+                React.createElement("b", null, fmt(b.bathroomBonus))))),
+        b.happyHour && React.createElement("div", { className: "tda-comment" },
+            "\uD83D\uDD54 ",
+            b.happyHour),
+        b.notes && React.createElement("div", { className: "tda-comment" },
+            "\"",
+            b.notes,
+            "\""),
+        isFetching && React.createElement("div", { className: "tda-fetching" }, "finding details\u2026"),
+        React.createElement("div", { className: "tda-card-actions" },
+            b.mapsLink && React.createElement("a", { className: "tda-link-btn", href: b.mapsLink, target: "_blank", rel: "noreferrer" }, "Map \u2197"),
+            React.createElement("button", { className: "tda-edit-btn", onClick: onNameClick }, "Details"),
+            React.createElement("button", { className: "tda-visit-btn", onClick: onEdit }, editLabel || "Edit"),
+            React.createElement("button", { className: "tda-del-btn", onClick: onDelete }, "Remove"))));
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App, null));
+
+</script>
 </body>
 </html>

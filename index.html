@@ -149,7 +149,6 @@ padding: 20px;
 z-index: 50;
 }
 .overlay.hidden { display: none; }
-#keyOverlay, #geminiKeyOverlay, #rateMovieOverlay {
 #keyOverlay, #geminiKeyOverlay, #rateMovieOverlay, #whyPickedOverlay {
 z-index: 60;
 }
@@ -970,7 +969,7 @@ then paste it in via the ⚙ Settings button.
 </p>
 <p style="margin:0; font-size:13px; color:#555;">
 <strong>Gemini (optional)</strong> — makes the Vibe and Plot/themes
-fields in Curated understand abstract descriptions ("trippy,"
+fields in Curated understand more abstract descriptions ("trippy,"
 "cheesy," "coming of age") that TMDB's own search can't. Free to
 start. Get a key at
 <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>,
@@ -1756,9 +1755,6 @@ return parts.some((p) => p.includes(lower) || lower.includes(p));
 });
 }
 
-// Excludes anything on the permanent Watched List first (hard exclude),
-// then prefers a result not already shown this session on top of that.
-// Falls back gracefully at each step so a small library never dead-ends.
 // Excludes anything not actually released yet (announced sequels, TBD
 // dates, etc. that TMDB's collection/recommendation data often includes
 // alongside real releases). Unlike the watched-list filter, this has no
@@ -1772,6 +1768,9 @@ return !!dateStr && dateStr <= today;
 });
 }
 
+// Excludes anything on the permanent Watched List first (hard exclude),
+// then prefers a result not already shown this session on top of that.
+// Falls back gracefully at each step so a small library never dead-ends.
 function pickPreferringUnseen(results, seenIds) {
 if (!results.length) return null;
 const released = filterOutUnreleased(results);
@@ -2598,8 +2597,7 @@ suggestionCard.innerHTML =
 '<div id="pickRuntime" class="runtime-badge hidden-block"></div>' +
 '<div class="ssynopsis" id="synopsisText">' + short + '</div>' +
 (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
-        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn" style="display:block; margin:0 auto 10px;">ⓘ Based on&hellip;</button>' : '') +
-        (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn">ⓘ Based on&hellip;</button>' : '') +
+(whyText ? '<button class="synopsis-toggle" id="whyPickedBtn">ⓘ Based on&hellip;</button>' : '') +
 '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
 '<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
 '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';

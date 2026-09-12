@@ -213,6 +213,7 @@ h1 {
 .slot:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--navy); }
 .slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .slot .num {
+  display: none;
   position: absolute;
   top: 4px;
   left: 4px;
@@ -484,10 +485,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .suggestion-card::before {
   content: "";
   position: absolute;
-  top: -18px;
-  right: 18px;
-  width: 76px;
-  height: 76px;
+  top: -24px;
+  right: calc(50% - 87px);
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: repeating-conic-gradient(var(--yellow) 0deg 22.5deg, var(--white) 22.5deg 45deg);
   box-shadow: 0 0 0 3px var(--red), 0 0 0 6px var(--navy), 3px 3px 0 var(--navy);
@@ -498,14 +499,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   content: "ADMIT\A ONE";
   white-space: pre;
   position: absolute;
-  top: 3px;
-  right: 24px;
-  width: 64px;
+  top: -10px;
+  right: calc(50% - 87px);
+  width: 56px;
   z-index: 3;
   text-align: center;
   font-family: 'Baloo 2', sans-serif;
   font-weight: 800;
-  font-size: 11.5px;
+  font-size: 10.5px;
   line-height: 1.25;
   color: var(--navy);
   transform: rotate(-10deg);
@@ -901,7 +902,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   border: 2px solid var(--navy);
 }
 .watch-badge.free { background: var(--turquoise); color: var(--white); border-color: var(--navy); }
-.watch-badge.sub { background: var(--navy); color: var(--white); border-color: var(--navy); }
+.watch-badge.sub { background: var(--orange); color: var(--white); border-color: var(--navy); }
 .watch-status { font-size: 12.5px; font-weight: 700; color: var(--muted-ink); text-align: left; margin-bottom: 12px; }
 .confirm-poster {
   display: block;

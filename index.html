@@ -819,6 +819,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   transform: translate(-50%, -50%);
   border-radius: 3px;
 }
+.capsule.opening {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -59px 0 0 -59px;
+}
 .capsule.opening .capsule-top { animation: capsuleTopOpen 0.5s ease-in forwards; }
 @keyframes capsuleTopOpen { to { transform: translateY(-90px) rotate(-110deg); opacity: 0; } }
 .capsule.opening .capsule-bottom { animation: capsuleBottomOpen 0.5s ease-in forwards; }

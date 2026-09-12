@@ -1,5 +1,13 @@
-const CACHE = "movie-machine-v2";
-const FILES = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const CACHE = "movie-machine-v3";
+const FILES = [
+  "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
+  "./fonts/bebas-neue-400.woff2",
+  "./fonts/ibm-plex-mono-400.woff2",
+  "./fonts/ibm-plex-mono-500.woff2",
+  "./fonts/ibm-plex-mono-600.woff2",
+  "./fonts/ibm-plex-mono-700.woff2",
+  "./fonts/inter-var.woff2"
+];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));

@@ -9,233 +9,545 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0b0a08">
+<meta name="theme-color" content="#1f1b16">
 <style>
 @font-face {
-  font-family: 'Luckiest Guy';
+  font-family: 'Shrikhand';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("fonts/luckiest-guy-400.woff2") format("woff2");
+  src: url("fonts/shrikhand-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Baloo 2';
+  font-family: 'Limelight';
   font-style: normal;
-  font-weight: 500 800;
+  font-weight: 400;
   font-display: swap;
-  src: url("fonts/baloo2-var.woff2") format("woff2-variations");
+  src: url("fonts/limelight-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Nunito';
+  font-family: 'Special Elite';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/special-elite-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: 'Bitter';
   font-style: normal;
   font-weight: 400 800;
   font-display: swap;
-  src: url("fonts/nunito-var.woff2") format("woff2-variations");
+  src: url("fonts/bitter-var.woff2") format("woff2-variations");
 }
+
+/* =========================================================
+   The Movie Vending Machine - a 1930s rubber-hose picture
+   ---------------------------------------------------------
+   Palette: aged paper, printer's ink, and a few inks that
+   look like they came off a three-color press.
+   ========================================================= */
 :root {
-  --cream: #fdf3de;
-  --cream-2: #ffeac2;
-  --cream-line: #f0dcae;
-  --white: #ffffff;
-  --red: #e6483c;
-  --red-dark: #c23328;
-  --yellow: #ffc845;
-  --yellow-dark: #e6a61e;
-  --turquoise: #3ec6c0;
-  --turquoise-dark: #259690;
-  --orange: #f4923b;
-  --navy: #223354;
-  --navy-2: #16233d;
-  --muted-ink: #5b6b8c;
-  --radius-lg: 26px;
-  --radius-md: 18px;
-  --radius-sm: 12px;
+  --paper: #f1e3c2;
+  --paper-2: #e6d2a4;
+  --paper-hi: #fbf4e2;
+  --ink: #1f1b16;
+  --ink-soft: #54483a;
+  --red: #b3402d;
+  --red-deep: #87301f;
+  --mustard: #d9a13a;
+  --mustard-deep: #a97a1f;
+  --teal: #3f7877;
+  --teal-deep: #2b5655;
+  --velvet: #7e2a1f;
+  --danger: var(--red-deep);
+
+  /* Hand-drawn corners - no two sides quite agree. */
+  --wob-lg: 22px 12px 26px 14px / 14px 24px 12px 22px;
+  --wob-md: 14px 8px 16px 9px / 9px 15px 8px 14px;
+  --wob-sm: 10px 5px 11px 6px / 6px 10px 5px 11px;
+
+  --font-title: 'Shrikhand', 'Georgia', serif;
+  --font-deco: 'Limelight', 'Georgia', serif;
+  --font-type: 'Special Elite', 'Courier New', monospace;
+  --font-body: 'Bitter', 'Georgia', serif;
+
+  /* Paper grain + halftone, reused on paper surfaces. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .26 0 0 0 0 .13 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+  --blotch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.008' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .4 0 0 0 0 .18 0 0 0 .9 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
+  --halftone: radial-gradient(circle, rgba(31,27,22,0.10) 0.9px, transparent 1.3px);
 }
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; background: var(--paper); }
 body {
   position: relative;
   margin: 0;
   min-height: 100vh;
-  background: var(--cream);
-  background-image: radial-gradient(circle, rgba(34,51,84,0.05) 1.6px, transparent 1.6px);
-  background-size: 22px 22px;
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: var(--navy);
-  padding: calc(20px + env(safe-area-inset-top)) 14px calc(50px + env(safe-area-inset-bottom));
+  background-color: var(--paper);
+  background-image: var(--grain), var(--blotch);
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--ink);
+  padding: calc(18px + env(safe-area-inset-top)) 16px calc(50px + env(safe-area-inset-bottom));
   overflow-x: hidden;
 }
 
-/* ---------- Marquee header ---------- */
+/* ---------- Film grain + the odd scratch, over everything ---------- */
+.film-grain {
+  position: fixed;
+  inset: -50px;
+  z-index: 90;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  animation: grainShift 0.5s steps(1) infinite;
+}
+.film-grain::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 31%;
+  width: 1px;
+  background: rgba(31,27,22,0.35);
+  opacity: 0;
+  animation: scratch 7s steps(1) infinite;
+}
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-18px, 11px); }
+  50% { transform: translate(9px, -16px); }
+  75% { transform: translate(-7px, 20px); }
+}
+@keyframes scratch {
+  0%, 100% { opacity: 0; }
+  61% { opacity: 1; left: 31%; }
+  63% { opacity: 0.6; left: 33%; }
+  65% { opacity: 0; }
+  88% { opacity: 0.7; left: 72%; }
+  89% { opacity: 0; }
+}
+
+/* Faded edges, like an old print */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, transparent 58%, rgba(110,76,30,0.22) 100%);
+}
+
+/* ---------- Opening iris - the cartoon opens on the lobby ---------- */
+.iris-intro {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 0 0 200vmax var(--ink);
+  transform: translate(-50%, -50%);
+  animation: irisOpen 0.9s steps(9) 0.15s forwards;
+}
+@keyframes irisOpen {
+  to { width: 260vmax; height: 260vmax; visibility: hidden; }
+}
+
+/* ---------- The marquee sign (header) ---------- */
 header {
   position: relative;
   text-align: center;
-  margin: 0 auto 30px;
+  margin: 0 auto 84px;
   max-width: 480px;
-  padding: 28px 48px 20px;
-  background: var(--white);
-  border: 4px solid var(--navy);
-  border-radius: var(--radius-lg);
-  box-shadow: 6px 6px 0 var(--navy);
+  padding: 26px 52px 22px;
+  background-color: var(--paper-hi);
+  background-image:
+    var(--grain),
+    repeating-conic-gradient(from 0deg at 50% 118%, rgba(217,161,58,0.22) 0deg 5deg, transparent 5deg 10deg);
+  border: 4px solid var(--ink);
+  border-radius: var(--wob-lg);
+  box-shadow: 5px 6px 0 var(--ink);
 }
+/* Chasing marquee bulbs, top and bottom - they step, not glide. */
 header::before, header::after {
   content: "";
   position: absolute;
-  left: 20px;
-  right: 20px;
-  height: 9px;
+  left: 18px;
+  right: 18px;
+  height: 10px;
   background-image:
-    radial-gradient(circle, var(--red) 0 3.2px, transparent 3.4px),
-    radial-gradient(circle, var(--yellow) 0 3.2px, transparent 3.4px),
-    radial-gradient(circle, var(--turquoise) 0 3.2px, transparent 3.4px);
-  background-size: 48px 9px, 48px 9px, 48px 9px;
-  background-position: 0 0, 16px 0, 32px 0;
+    radial-gradient(circle, var(--mustard) 0 3.2px, var(--ink) 3.4px 4.4px, transparent 4.6px),
+    radial-gradient(circle, var(--paper-hi) 0 3.2px, var(--ink) 3.4px 4.4px, transparent 4.6px);
+  background-size: 30px 10px, 30px 10px;
+  background-position: 0 0, 15px 0;
   background-repeat: repeat-x;
-  animation: bulbTwinkle 2.4s ease-in-out infinite;
+  animation: bulbChase 0.66s steps(1) infinite;
 }
-header::before { top: -2px; }
-header::after { bottom: -2px; animation-delay: 0.8s; }
-@keyframes bulbTwinkle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+header::before { top: 6px; }
+header::after { bottom: 6px; animation-direction: reverse; }
+@keyframes bulbChase {
+  0% { background-position: 0 0, 15px 0; }
+  50% { background-position: 15px 0, 0 0; }
 }
 .eyebrow {
+  position: relative;
   display: inline-block;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-deco);
+  font-size: 14px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--paper-hi);
+  background: var(--red);
+  border: 3px solid var(--ink);
+  padding: 3px 14px 2px;
+  margin-top: 4px;
+  rotate: -2deg;
 }
+/* Ribbon tails */
+.eyebrow::before, .eyebrow::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 16px;
+  height: 100%;
+  background: var(--red-deep);
+  border: 3px solid var(--ink);
+  z-index: -1;
+}
+.eyebrow::before { left: -13px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 35% 50%); }
+.eyebrow::after { right: -13px; clip-path: polygon(0 0, 100% 0, 65% 50%, 100% 100%, 0 100%); }
 h1 {
-  font-family: 'Luckiest Guy', 'Baloo 2', cursive, sans-serif;
+  font-family: var(--font-title);
   font-weight: 400;
-  font-size: 34px;
-  line-height: 1.1;
-  margin: 8px 0 8px;
-  letter-spacing: 0.01em;
+  font-size: 35px;
+  line-height: 1.02;
+  margin: 12px 0 10px;
+  letter-spacing: 0.005em;
   color: var(--red);
-  text-shadow: 3px 3px 0 var(--navy);
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 var(--ink);
+  rotate: -1.2deg;
+}
+h1 .h1-small {
+  display: block;
+  font-family: var(--font-deco);
+  font-size: 15px;
+  letter-spacing: 0.3em;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  margin-bottom: 2px;
 }
 .sub {
   position: relative;
   display: inline-block;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--muted-ink);
+  font-family: var(--font-type);
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }
 .sub::before, .sub::after {
-  content: "✦";
-  color: var(--turquoise);
-  font-size: 11px;
-  margin: 0 8px;
+  content: "\2726";
+  color: var(--red);
+  font-size: 9px;
+  margin: 0 5px;
+  vertical-align: 2px;
 }
 .settings-btn {
   position: absolute;
-  top: 14px;
-  right: 12px;
+  top: 22px;
+  right: 10px;
   width: 38px;
   height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--cream);
-  border: 3px solid var(--navy);
+  background: var(--mustard);
+  background-image: radial-gradient(circle at 35% 30%, rgba(251,244,226,0.8) 0 3px, transparent 3.5px);
+  border: 3px solid var(--ink);
   border-radius: 50%;
-  box-shadow: 2px 2px 0 var(--navy);
-  font-size: 16px;
-  color: var(--navy);
+  box-shadow: 2px 3px 0 var(--ink);
+  font-family: var(--font-title);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink);
   cursor: pointer;
   padding: 0;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  z-index: 2;
 }
-.settings-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 var(--navy);
+.settings-btn svg { width: 22px; height: 22px; display: block; }
+.settings-btn:active { translate: 1px 2px; box-shadow: 1px 1px 0 var(--ink); }
+.info-btn { right: auto; left: 10px; }
+@media (hover: hover) {
+  .settings-btn:hover svg { animation: gearTick 0.5s steps(3) infinite; }
 }
-.info-btn { right: auto; left: 12px; font-size: 17px; }
+@keyframes gearTick { to { rotate: 45deg; } }
 
-/* ---------- The display case (machine) ---------- */
+/* ---------- Rubber-hose mascots ---------- */
+.mascot { position: absolute; display: block; overflow: visible; pointer-events: none; z-index: 3; }
+.mascot .hose { fill: none; stroke: var(--ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.mascot .inked { stroke: var(--ink); stroke-linejoin: round; }
+.boil { animation: boil 0.5s steps(1) infinite; }
+@keyframes boil {
+  0% { filter: url(#boilA); }
+  33% { filter: url(#boilB); }
+  66% { filter: url(#boilC); }
+}
+.blink { transform-box: fill-box; transform-origin: center; animation: blink 5.2s steps(1) infinite; }
+@keyframes blink {
+  0%, 93% { transform: scaleY(1); }
+  94% { transform: scaleY(0.15); }
+  97% { transform: scaleY(1); }
+}
+
+/* Reely - the film reel who works the lobby. Stands on the machine. */
+.reely {
+  width: 92px;
+  height: 115px;
+  top: -104px;
+  left: 2px;
+  animation: idleBob 1.6s steps(1) infinite;
+}
+.reely .wave-arm { transform-origin: 96px 58px; animation: wave 5s steps(1) infinite; }
+.reely .reel-face-spin { transform-box: fill-box; transform-origin: center; }
+@keyframes wave {
+  0%, 64% { rotate: 0deg; }
+  66% { rotate: -22deg; }
+  69% { rotate: 10deg; }
+  72% { rotate: -22deg; }
+  75% { rotate: 10deg; }
+  78% { rotate: -10deg; }
+  81%, 100% { rotate: 0deg; }
+}
+@keyframes idleBob {
+  0% { translate: 0 0; }
+  50% { translate: 0 -2px; }
+}
+.reely.hop { animation: mascotHop 0.5s steps(6) 1; }
+@keyframes mascotHop {
+  0% { translate: 0 0; scale: 1 1; }
+  20% { translate: 0 2px; scale: 1.12 0.86; }
+  50% { translate: 0 -16px; scale: 0.92 1.1; }
+  80% { translate: 0 1px; scale: 1.1 0.9; }
+  100% { translate: 0 0; scale: 1 1; }
+}
+
+/* Kernel - the popcorn box who points you to the big button. */
+.kernel {
+  width: 100px;
+  height: 123px;
+  left: -6px;
+  bottom: calc(100% - 17px);
+  transform-origin: 50% 100%;
+}
+.kernel .point-hand { animation: jab 1.4s steps(1) infinite; }
+@keyframes jab {
+  0%, 50% { translate: 0 0; }
+  60% { translate: 3px 3px; }
+  75% { translate: 0 0; }
+  85% { translate: 3px 3px; }
+}
+.kernel .pop { transform-box: fill-box; transform-origin: center; opacity: 0; animation: pop 3.6s steps(1) infinite; }
+.kernel .pop.two { animation-delay: 1.7s; }
+@keyframes pop {
+  0%, 78% { opacity: 0; translate: 0 0; }
+  80% { opacity: 1; translate: 0 -6px; rotate: 20deg; }
+  84% { opacity: 1; translate: 3px -14px; rotate: 90deg; }
+  88% { opacity: 1; translate: 6px -18px; rotate: 160deg; }
+  92% { opacity: 1; translate: 9px -12px; rotate: 250deg; }
+  96%, 100% { opacity: 0; translate: 11px -4px; }
+}
+.kernel.cheer { animation: mascotHop 0.5s steps(6) 2; }
+
+/* Flicker - the projector who runs the draw. */
+.flicker {
+  position: relative;
+  width: 104px;
+  height: 66px;
+  margin: 0 auto -4px;
+}
+.flicker .spin { transform-box: fill-box; transform-origin: center; animation: reelTurn 0.9s steps(6) infinite; }
+.flicker .beam { animation: beamFlicker 0.25s steps(1) infinite; }
+@keyframes reelTurn { to { rotate: 360deg; } }
+@keyframes beamFlicker {
+  0% { opacity: 0.55; }
+  50% { opacity: 0.35; }
+}
+
+/* ---------- The concession machine ---------- */
 .machine {
   position: relative;
-  background: linear-gradient(180deg, var(--red), var(--red-dark));
-  border: 4px solid var(--navy);
-  border-radius: var(--radius-lg);
-  padding: 16px 12px 14px;
-  box-shadow: 7px 7px 0 var(--navy);
   max-width: 480px;
   margin: 0 auto;
+  padding: 0 12px 14px;
+  background-color: var(--red);
+  background-image:
+    var(--grain),
+    radial-gradient(circle, var(--mustard) 0 2.4px, var(--ink) 2.6px 3.4px, transparent 3.6px),
+    radial-gradient(circle, var(--mustard) 0 2.4px, var(--ink) 2.6px 3.4px, transparent 3.6px),
+    radial-gradient(circle, var(--mustard) 0 2.4px, var(--ink) 2.6px 3.4px, transparent 3.6px),
+    radial-gradient(circle, var(--mustard) 0 2.4px, var(--ink) 2.6px 3.4px, transparent 3.6px);
+  background-size: auto, 10px 10px, 10px 10px, 10px 10px, 10px 10px;
+  background-position: 0 0, 6px 58px, calc(100% - 6px) 58px, 6px calc(100% - 8px), calc(100% - 6px) calc(100% - 8px);
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  border: 4px solid var(--ink);
+  border-radius: 30px 30px 16px 18px / 26px 26px 14px 16px;
+  box-shadow: inset 0 0 0 4px var(--red-deep), inset 0 0 0 7px var(--mustard), inset 0 0 0 9px var(--ink), 7px 8px 0 var(--ink);
 }
-.machine::before, .machine::after {
-  content: "★";
+/* Marquee band across the top of the machine */
+.machine-marquee {
+  position: relative;
+  margin: 12px 4px 12px;
+  padding: 9px 44px 8px;
+  text-align: center;
+  background: var(--ink);
+  border-radius: 14px 14px 6px 6px / 12px 12px 5px 5px;
+  box-shadow: 0 0 0 3px var(--mustard), 0 0 0 5px var(--ink);
+}
+.machine-marquee .marquee-text {
+  display: block;
+  font-family: var(--font-deco);
+  font-size: 17px;
+  letter-spacing: 0.22em;
+  color: var(--mustard);
+  text-shadow: 0 0 1px var(--mustard);
+  animation: marqueeFlicker 4s steps(1) infinite;
+}
+.machine-marquee .marquee-sub {
+  display: block;
+  font-family: var(--font-type);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--paper-2);
+  margin-top: 1px;
+}
+@keyframes marqueeFlicker {
+  0%, 46%, 50%, 100% { opacity: 1; }
+  47% { opacity: 0.55; }
+  49% { opacity: 0.85; }
+}
+.machine-marquee .side-reel {
   position: absolute;
-  top: 10px;
-  font-size: 18px;
-  color: var(--yellow);
-  text-shadow: 1px 1px 0 var(--navy-2);
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  animation: reelTurn 1.8s steps(8) infinite;
 }
-.machine::before { left: 14px; }
-.machine::after { right: 14px; }
+.machine-marquee .side-reel.left { left: 8px; }
+.machine-marquee .side-reel.right { right: 8px; animation-direction: reverse; }
+
+/* The glass display case */
 .grid {
   position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  background: var(--cream);
-  box-shadow: inset 0 0 0 3px var(--navy);
+  gap: 10px 9px;
+  padding: 13px 11px;
+  border-radius: 12px 8px 13px 9px / 9px 13px 8px 12px;
+  background-color: var(--teal-deep);
+  background-image: radial-gradient(circle, rgba(251,244,226,0.10) 1px, transparent 1.4px);
+  background-size: 7px 7px;
+  box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 6px var(--mustard-deep), inset 0 0 0 8px var(--ink);
+}
+/* Cartoon glass glint */
+.grid::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  width: 16px;
+  height: 46%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(251,244,226,0.16) 0 5px, transparent 5px 9px, rgba(251,244,226,0.12) 9px 11px, transparent 11px);
+  rotate: 16deg;
+  pointer-events: none;
+  z-index: 3;
 }
 
-/* ---------- Movie slots (attractions in the case) ---------- */
+/* ---------- Movie slots: tiny one-sheets in the case ---------- */
 .slot {
   position: relative;
   aspect-ratio: 2/3;
-  border-radius: 10px;
-  background: var(--white);
+  border-radius: 6px 9px 5px 8px / 8px 5px 9px 6px;
+  background: var(--paper-hi);
   overflow: hidden;
-  border: 3px solid var(--navy);
-  padding: 0;
+  border: 3px solid var(--ink);
+  padding: 3px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 3px 3px 0 var(--navy);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-body);
+  color: var(--ink);
 }
+.slot:nth-child(4n+1) { rotate: -0.8deg; }
+.slot:nth-child(4n+2) { rotate: 0.6deg; }
+.slot:nth-child(4n+3) { rotate: -0.3deg; }
+.slot:nth-child(4n) { rotate: 0.9deg; }
 .slot.empty {
-  background:
-    radial-gradient(circle, rgba(34,51,84,0.06) 0 15px, transparent 16px) center / 100% 100% no-repeat,
-    var(--cream);
+  background-color: var(--paper-2);
+  background-image: var(--halftone), var(--grain);
+  background-size: 5px 5px, auto;
+  border-style: dashed;
+  box-shadow: none;
+  opacity: 0.92;
 }
-.slot:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--navy); }
-.slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.slot .num {
-  display: none;
+.slot:active { translate: 1px 2px; box-shadow: 1px 1px 0 var(--ink); }
+.slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 3px;
+  outline: 1.5px solid var(--ink);
+  filter: sepia(0.16) saturate(0.88) contrast(1.04);
+}
+/* Faint press halftone over each poster */
+.slot:not(.empty)::after {
+  content: "";
   position: absolute;
-  top: 4px;
-  left: 4px;
-  z-index: 2;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 10px;
-  letter-spacing: 0.01em;
-  color: var(--navy);
-  background: var(--yellow);
-  padding: 1.5px 5px;
-  border: 1.5px solid var(--navy);
-  border-radius: 5px;
+  inset: 3px;
+  background-image: var(--halftone);
+  background-size: 4px 4px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 1;
 }
+.slot .num { display: none; }
 .slot.empty::before {
   content: "+";
   position: relative;
   z-index: 1;
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--muted-ink);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-title);
+  font-size: 22px;
   line-height: 1;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 2.5px solid var(--ink);
+  border-radius: 50% 46% 52% 48%;
+}
+.slot.empty::after {
+  content: "Vacant";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 9%;
+  font-family: var(--font-type);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
 }
 .slot .title-fallback {
   position: relative;
@@ -244,76 +556,144 @@ h1 {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
   overflow: hidden;
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--font-title);
+  font-size: 12px;
   text-align: center;
-  padding: 8px;
-  color: var(--navy);
-  line-height: 1.3;
-  font-family: 'Baloo 2', sans-serif;
+  padding: 8px 5px;
+  color: var(--red);
+  line-height: 1.15;
+}
+.slot:has(.title-fallback) {
+  background-image: repeating-conic-gradient(from 0deg at 50% 50%, rgba(217,161,58,0.28) 0deg 8deg, transparent 8deg 16deg);
 }
 .slot .title-fallback + .label { display: none; }
 .slot .label {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 3px;
+  left: 3px;
+  right: 3px;
   z-index: 2;
-  background: linear-gradient(0deg, rgba(22,35,61,0.92), transparent);
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 9.5px;
-  font-weight: 700;
+  background: var(--paper-hi);
+  border-top: 2px solid var(--ink);
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
-  color: var(--white);
-  padding: 14px 5px 5px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  padding: 3px 3px 2px;
   text-align: center;
-  line-height: 1.25;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  border-radius: 0 0 3px 3px;
 }
 @media (hover: hover) {
-  .slot:not(.empty):hover { box-shadow: 3px 3px 0 var(--turquoise); }
+  .slot:not(.empty):hover { animation: wiggle 0.34s steps(1) infinite; }
+  .slot:not(.empty):hover img { filter: none; }
+  .slot.empty:hover { opacity: 1; border-color: var(--paper-hi); }
+}
+.slot:focus-visible img { filter: none; }
+@keyframes wiggle {
+  0% { rotate: -1.6deg; }
+  50% { rotate: 1.6deg; }
 }
 
-.coin-slot {
-  position: relative;
-  margin: 18px auto 4px;
-  width: 4px;
-  height: 4px;
+/* Control panel under the case */
+.machine-base {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 8px 2px;
 }
-.coin-slot::after {
-  content: "★ BOX OFFICE ★";
+.knob {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--mustard);
+  border: 3px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  position: relative;
+}
+.knob::after {
+  content: "";
   position: absolute;
-  top: 0;
   left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
+  top: 2px;
+  width: 3px;
+  height: 10px;
+  margin-left: -1.5px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+.knob.right::after { transform-origin: 50% 11px; rotate: 60deg; }
+.ticket-slot {
+  flex: 1;
+  position: relative;
+  text-align: center;
+}
+.ticket-slot .slot-mouth {
+  height: 11px;
+  margin: 0 10%;
+  background: var(--ink);
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px var(--mustard), 0 0 0 5px var(--ink);
+}
+.ticket-slot .ticket-peek {
+  display: inline-block;
+  position: relative;
+  margin-top: -3px;
+  padding: 4px 16px 3px;
+  background: var(--paper-hi);
+  border: 2px solid var(--ink);
+  border-top: none;
+  font-family: var(--font-type);
   font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--cream);
-  opacity: 0.85;
+  letter-spacing: 0.16em;
+  color: var(--red);
+  rotate: -1.5deg;
+  animation: ticketNudge 3.2s steps(1) infinite;
+}
+@keyframes ticketNudge {
+  0%, 86% { translate: 0 0; }
+  88% { translate: 0 3px; }
+  92% { translate: 0 1px; }
+  95% { translate: 0 3px; }
 }
 
 footer {
   text-align: center;
-  margin-top: 30px;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 700;
+  margin-top: 28px;
+  font-family: var(--font-type);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+footer .credit {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-deco);
   font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--muted-ink);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0.85;
 }
 
-.loading { font-size: 9px; color: #888; }
+.loading { font-size: 9px; color: var(--ink-soft); }
 
-/* ---------- Overlays / dialogs (tickets) ---------- */
+/* ---------- Overlays: iris in, like a cartoon cut ---------- */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(22,35,61,0.55);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background-color: rgba(31,27,22,0.72);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.25) 1px, transparent 1.5px);
+  background-size: 5px 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,276 +703,347 @@ footer {
 }
 .overlay.hidden { display: none; }
 #keyOverlay, #geminiKeyOverlay, #rateMovieOverlay, #whyPickedOverlay { z-index: 60; }
+.overlay:not(.hidden) .dialog { animation: irisIn 0.42s steps(6) backwards; }
+@keyframes irisIn {
+  from { clip-path: circle(0% at 50% 45%); }
+  to { clip-path: circle(120% at 50% 45%); }
+}
 
 .dialog {
   position: relative;
-  background: var(--cream);
-  color: var(--navy);
-  border: 4px solid var(--navy);
-  border-radius: var(--radius-md);
-  padding: 26px 20px 20px;
+  background-color: var(--paper-hi);
+  background-image: var(--grain);
+  background-attachment: local;
+  color: var(--ink);
+  border: 4px solid var(--ink);
+  border-radius: var(--wob-md);
+  padding: 24px 20px 20px;
   width: 100%;
-  max-width: 340px;
+  max-width: 350px;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 6px 6px 0 var(--navy);
-}
-.dialog::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 12px;
-  border-radius: calc(var(--radius-md) - 3px) calc(var(--radius-md) - 3px) 0 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle, var(--red) 0 3px, transparent 3.2px),
-    radial-gradient(circle, var(--yellow) 0 3px, transparent 3.2px),
-    radial-gradient(circle, var(--turquoise) 0 3px, transparent 3.2px);
-  background-size: 42px 12px, 42px 12px, 42px 12px;
-  background-position: 0 0, 14px 0, 28px 0;
-  background-repeat: repeat-x;
-  opacity: 0.9;
+  text-align: left;
+  box-shadow: inset 0 0 0 5px var(--paper-hi), inset 0 0 0 6.5px var(--ink), 6px 7px 0 var(--ink);
 }
 .dialog h2 {
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 22px;
-  letter-spacing: 0;
-  margin: 6px 0 8px;
-  padding-bottom: 10px;
-  border-bottom: 3px dashed var(--cream-line);
-  color: var(--navy);
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: 25px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  margin: 2px 0 12px;
+  text-align: center;
+  color: var(--red);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.dialog h2::after {
+  content: "\2726";
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 10px;
+  color: var(--mustard-deep);
+  text-shadow: none;
+  background:
+    linear-gradient(var(--ink), var(--ink)) left center / 40% 2px no-repeat,
+    linear-gradient(var(--ink), var(--ink)) right center / 40% 2px no-repeat;
 }
 .dialog p {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--muted-ink);
+  font-size: 14px;
+  color: var(--ink-soft);
   margin: 0 0 14px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
-.dialog input {
+.dialog p.note { font-size: 13px; text-align: center; font-style: italic; margin-bottom: 12px; }
+.dialog p.small { font-size: 12.5px; margin: 0 0 8px; }
+.dialog p strong { color: var(--ink); }
+.dialog input, .dialog select, .rate-select {
   width: 100%;
-  padding: 12px 12px;
+  padding: 11px 12px;
   font-size: 15px;
-  font-family: 'Nunito', sans-serif;
-  font-weight: 700;
-  border: 3px solid var(--navy);
-  background: var(--white);
-  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  border: 3px solid var(--ink);
+  background: #fffaf0;
+  border-radius: var(--wob-sm);
   margin-bottom: 14px;
-  box-sizing: border-box;
-  color: var(--navy);
+  color: var(--ink);
+  box-shadow: inset 2px 2px 0 rgba(31,27,22,0.12);
 }
+.dialog input::placeholder { color: #8d7f6c; font-style: italic; font-weight: 400; }
 .dialog input:focus, .dialog select:focus {
-  outline: 3px solid var(--turquoise);
+  outline: 3px solid var(--mustard);
   outline-offset: 1px;
 }
-.dialog-buttons { display: flex; gap: 10px; }
-.dialog-buttons button, .btn-cancel, .btn-primary, .btn-danger {
-  flex: 1;
-  padding: 12px 10px;
-  border: 3px solid var(--navy);
-  border-radius: var(--radius-sm);
-  font-family: 'Baloo 2', sans-serif;
+.rate-select {
+  display: block;
+  width: 150px;
+  margin: 0 auto 18px;
+  font-size: 17px;
+  text-align: center;
+}
+.close-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-hi);
+  border: 2.5px solid var(--ink);
+  border-radius: 50% 45% 52% 47%;
+  font-family: var(--font-body);
   font-weight: 800;
   font-size: 15px;
-  letter-spacing: 0;
+  color: var(--ink);
   cursor: pointer;
-  box-shadow: 3px 3px 0 var(--navy);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  padding: 0;
+  z-index: 4;
+}
+.close-x:active { translate: 1px 1px; }
+
+.dialog-buttons { display: flex; gap: 10px; }
+.dialog-buttons.spaced { margin-top: 14px; }
+.dialog-buttons.tight { margin-top: 8px; }
+.dialog-buttons button, .btn-cancel, .btn-primary, .btn-danger {
+  flex: 1;
+  padding: 12px 10px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 12px 6px 13px 7px / 7px 12px 6px 13px;
+  font-family: var(--font-deco);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  min-height: 46px;
 }
 .dialog-buttons button:active, .btn-cancel:active, .btn-primary:active, .btn-danger:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--navy);
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 var(--ink);
 }
-.btn-cancel { background: var(--white); color: var(--navy); }
-.btn-danger { background: var(--red-dark); color: var(--white); }
-.btn-primary { background: var(--red); color: var(--white); }
+.btn-cancel { background: var(--paper); color: var(--ink); }
+.btn-danger { background: var(--ink); color: var(--paper-hi); }
+.btn-primary { background: var(--red); color: var(--paper-hi); text-shadow: 1px 1px 0 var(--ink); }
+.btn-full { width: 100%; }
+@media (hover: hover) {
+  .btn-primary:hover, .btn-cancel:hover, .draw-btn:hover, .watched-btn:hover, .surprise-btn:hover, .mode-btn:hover, .key-btn:hover, .trailer-btn:hover {
+    animation: jitter 0.3s steps(1) infinite;
+  }
+}
+@keyframes jitter {
+  0% { rotate: -0.8deg; }
+  50% { rotate: 0.8deg; }
+}
 
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
-  outline: 3px solid var(--turquoise);
+  outline: 3px solid var(--mustard);
   outline-offset: 2px;
 }
 
-.search-results { max-height: 220px; overflow-y: auto; margin: -6px 0 14px; border-radius: var(--radius-sm); }
+/* Squash-and-stretch, added by JS on press. Twelve drawings a second. */
+.boing { animation: boing 0.34s steps(1) 1 !important; }
+@keyframes boing {
+  0% { scale: 1.08 0.86; }
+  25% { scale: 0.95 1.08; }
+  50% { scale: 1.03 0.97; }
+  75% { scale: 0.99 1.01; }
+  100% { scale: 1 1; }
+}
+
+.search-results { max-height: 230px; overflow-y: auto; margin: -6px 0 14px; padding: 2px; }
 .result-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 6px;
-  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+  margin-bottom: 4px;
+  border: 2px dashed transparent;
+  border-radius: var(--wob-sm);
   cursor: pointer;
-  min-height: 44px;
+  min-height: 48px;
 }
-.result-row:active { background: var(--cream-2); }
+.result-row:active, .result-row:hover { background: var(--paper); border-color: var(--ink); }
 .result-row img {
   display: block;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 50px;
   object-fit: cover;
-  border-radius: 6px;
-  background: var(--cream-2);
+  border-radius: 3px;
+  background: var(--paper-2);
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px var(--navy);
+  border: 2px solid var(--ink);
+  rotate: -2deg;
 }
-.result-row .rtitle { font-size: 13.5px; line-height: 1.3; font-weight: 800; font-family: 'Baloo 2', sans-serif; }
-.result-row .ryear { font-size: 11px; font-weight: 700; color: var(--muted-ink); }
-.search-status { font-size: 12.5px; font-weight: 700; color: var(--muted-ink); margin: -6px 0 14px; }
+.result-row .rtitle { font-size: 14px; line-height: 1.25; font-weight: 700; font-family: var(--font-body); }
+.result-row .ryear { font-family: var(--font-type); font-size: 11.5px; color: var(--ink-soft); }
+.search-status { font-size: 13.5px; font-style: italic; color: var(--ink-soft); margin: -6px 0 14px; line-height: 1.45; }
 .divider {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 4px 0 14px;
-  font-size: 11px;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  color: var(--muted-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--font-title);
+  font-size: 15px;
+  color: var(--red);
 }
-.divider::before, .divider::after { content: ""; flex: 1; height: 3px; background: var(--cream-line); border-radius: 2px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 0; border-top: 2.5px dashed var(--ink); opacity: 0.6; }
 .surprise-btn {
   width: 100%;
   padding: 12px;
-  border: 3px dashed var(--navy);
-  background: var(--white);
-  border-radius: var(--radius-sm);
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--navy);
+  border: 3px solid var(--ink);
+  background: var(--mustard);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 8px, rgba(251,244,226,0.25) 8px 12px);
+  border-radius: var(--wob-sm);
+  font-family: var(--font-deco);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
   cursor: pointer;
   margin-bottom: 4px;
-  min-height: 44px;
+  min-height: 48px;
+  box-shadow: 3px 3px 0 var(--ink);
 }
-.surprise-btn:active { background: var(--cream-2); }
+.surprise-btn:active { translate: 2px 2px; box-shadow: 1px 1px 0 var(--ink); }
 
-/* ---------- Tonight's feature card ---------- */
+/* ---------- Tonight's feature card (surprise pick) ---------- */
 .suggestion-card { position: relative; text-align: center; }
 .suggestion-card img {
   display: block;
   width: 150px;
   aspect-ratio: 2/3;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 3px solid var(--navy);
-  box-shadow: 4px 4px 0 var(--navy);
-  margin: 0 auto 16px;
-  animation: cardPop 0.4s cubic-bezier(0.34,1.4,0.64,1) both;
+  padding: 5px;
+  background: var(--paper-hi);
+  border-radius: 4px;
+  border: 3px solid var(--ink);
+  box-shadow: 4px 5px 0 var(--ink);
+  margin: 6px auto 16px;
+  rotate: -1.5deg;
+  animation: cardPop 0.45s steps(6) both;
 }
+/* Box-office rubber stamp */
 .suggestion-card::before {
   content: "";
   position: absolute;
-  top: -24px;
-  right: calc(50% - 87px);
-  width: 56px;
-  height: 56px;
+  top: -8px;
+  right: calc(50% - 98px);
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
-  background: repeating-conic-gradient(var(--yellow) 0deg 22.5deg, var(--white) 22.5deg 45deg);
-  box-shadow: 0 0 0 3px var(--red), 0 0 0 6px var(--navy), 3px 3px 0 var(--navy);
-  transform: rotate(-10deg);
+  border: 2.5px solid var(--red);
+  box-shadow: inset 0 0 0 3px var(--paper-hi), inset 0 0 0 4.5px var(--red);
+  background: rgba(251,244,226,0.9);
+  rotate: 14deg;
   z-index: 2;
 }
 .suggestion-card::after {
-  content: "ADMIT\A ONE";
+  content: "ADMIT\A ONE\A \2605";
   white-space: pre;
   position: absolute;
-  top: -10px;
-  right: calc(50% - 87px);
-  width: 56px;
+  top: 5px;
+  right: calc(50% - 98px);
+  width: 62px;
   z-index: 3;
   text-align: center;
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
+  font-family: var(--font-type);
   font-size: 10.5px;
-  line-height: 1.25;
-  color: var(--navy);
-  transform: rotate(-10deg);
+  line-height: 1.15;
+  color: var(--red);
+  rotate: 14deg;
   pointer-events: none;
 }
 .suggestion-card:has(.search-status)::before,
-.suggestion-card:has(.search-status)::after { display: none; }
+.suggestion-card:has(.search-status)::after,
+.suggestion-card:empty::before,
+.suggestion-card:empty::after { display: none; }
 @keyframes cardPop {
-  from { opacity: 0; transform: scale(0.9) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  0% { opacity: 0; scale: 0.6; }
+  30% { opacity: 1; scale: 1.1 0.92; }
+  60% { scale: 0.96 1.05; }
+  100% { opacity: 1; scale: 1; }
 }
 .suggestion-card .stitle {
-  font-family: 'Luckiest Guy', 'Baloo 2', cursive, sans-serif;
+  font-family: var(--font-title);
   font-size: 26px;
-  font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.08;
   color: var(--red);
-  text-shadow: 2px 2px 0 var(--navy);
+  text-shadow: 2px 2px 0 var(--ink);
   margin-bottom: 4px;
 }
 .suggestion-card .syear {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted-ink);
-  margin-bottom: 14px;
+  font-family: var(--font-type);
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
 }
 .hidden-block { display: none !important; }
 
-.mode-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.mode-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
 .mode-btn {
-  padding: 10px 4px;
-  border: 3px solid var(--navy);
-  background: var(--white);
-  border-radius: var(--radius-sm);
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
+  padding: 9px 4px 7px;
+  border: 2.5px solid var(--ink);
+  background: var(--paper);
+  border-radius: 8px 4px 9px 5px / 5px 8px 4px 9px;
+  font-family: var(--font-deco);
   font-size: 12.5px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: var(--navy);
+  letter-spacing: 0.05em;
+  color: var(--ink);
   cursor: pointer;
   min-height: 42px;
-  box-shadow: 2px 2px 0 var(--navy);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 2px 2px 0 var(--ink);
 }
-.mode-btn:active { transform: translate(2px,2px); box-shadow: 0 0 0 var(--navy); }
+.mode-btn:active { translate: 2px 2px; box-shadow: 0 0 0 var(--ink); }
+/* Lit marquee letters for the selected tab */
 .mode-btn.active {
-  background: var(--turquoise);
-  color: var(--white);
-  border-color: var(--navy);
+  background: var(--ink);
+  color: var(--mustard);
+  text-shadow: 0 0 1px var(--mustard);
+  background-image:
+    radial-gradient(circle, var(--mustard) 0 1.6px, transparent 2px),
+    radial-gradient(circle, var(--mustard) 0 1.6px, transparent 2px);
+  background-size: 10px 6px, 10px 6px;
+  background-position: 0 1px, 5px calc(100% - 1px);
+  background-repeat: repeat-x;
 }
-.key-link { color: var(--red); text-decoration: underline; font-weight: 700; }
-.ssynopsis { font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.5; text-align: left; margin: 0 0 12px; }
+.key-link { color: var(--red); text-decoration: underline; text-decoration-thickness: 2px; font-weight: 700; }
+.ssynopsis { font-size: 14px; color: var(--ink); line-height: 1.55; text-align: left; margin: 0 0 10px; }
 .trailer-btn {
   display: inline-block;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: var(--white);
-  background: var(--turquoise);
-  border: 3px solid var(--navy);
-  border-radius: 20px;
-  padding: 8px 16px;
+  font-family: var(--font-deco);
+  font-size: 13.5px;
+  letter-spacing: 0.06em;
+  color: var(--paper-hi);
+  background: var(--teal);
+  border: 3px solid var(--ink);
+  border-radius: 20px 14px 22px 12px / 14px 20px 12px 22px;
+  padding: 8px 18px 6px;
   cursor: pointer;
   margin-bottom: 12px;
-  min-height: 36px;
-  box-shadow: 2px 2px 0 var(--navy);
+  min-height: 40px;
+  box-shadow: 2px 3px 0 var(--ink);
 }
+.trailer-btn:disabled { background: var(--paper-2); color: var(--ink-soft); }
 .trailer-embed {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
   margin-bottom: 12px;
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   overflow: hidden;
   background: #000;
-  border: 3px solid var(--navy);
+  border: 4px solid var(--ink);
+  box-shadow: 0 0 0 3px var(--mustard), 0 0 0 5px var(--ink);
 }
 .trailer-embed iframe { width: 100%; height: 100%; border: none; }
 .synopsis-toggle {
   display: inline-block;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 12px;
-  font-weight: 800;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  font-style: italic;
   color: var(--red);
   background: none;
   border: none;
@@ -600,158 +1051,253 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   margin-right: 14px;
   cursor: pointer;
   text-decoration: underline;
+  text-decoration-style: wavy;
+  text-underline-offset: 3px;
 }
+.synopsis-toggle:disabled { cursor: default; text-decoration: none; opacity: 0.6; }
+.mark-watched { display: block; margin: 0 auto; }
+#markWatchedArea { margin-bottom: 10px; }
+.remove-row { text-align: center; margin-bottom: 8px; }
+#confirmOk { color: var(--danger); }
 .watch-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-family: var(--font-deco);
+  font-size: 12px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted-ink);
+  color: var(--ink);
   text-align: center;
   margin-bottom: 8px;
 }
+.watch-label.left { text-align: left; margin-top: 16px; }
 .watch-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 12px; }
 .runtime-badge {
   display: block;
   width: fit-content;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11.5px;
-  font-weight: 800;
-  padding: 5px 13px;
-  border-radius: 20px;
-  background: var(--yellow);
-  color: var(--navy);
-  border: 2px solid var(--navy);
-  margin: 0 auto 10px;
+  font-family: var(--font-type);
+  font-size: 12.5px;
+  padding: 5px 16px 4px;
+  background: var(--mustard);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  margin: 0 auto 12px;
+  /* Ticket notches */
+  -webkit-mask: radial-gradient(circle at 0 50%, transparent 5px, #000 5.5px) left / 51% 100% no-repeat,
+                radial-gradient(circle at 100% 50%, transparent 5px, #000 5.5px) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle at 0 50%, transparent 5px, #000 5.5px) left / 51% 100% no-repeat,
+        radial-gradient(circle at 100% 50%, transparent 5px, #000 5.5px) right / 51% 100% no-repeat;
 }
+.runtime-badge::before { content: "Running time \00B7  "; }
 
-/* ---------- Pick my movie (CTA) ---------- */
+/* ---------- Pick My Movie: the big ticket ---------- */
+.cta-stage {
+  position: relative;
+  max-width: 480px;
+  margin: 112px auto 0;
+}
+.cta-sign {
+  position: absolute;
+  right: 6px;
+  bottom: calc(100% + 16px);
+  padding: 5px 12px 4px;
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--paper-hi);
+  border: 3px solid var(--ink);
+  border-radius: 16px 10px 18px 8px / 10px 16px 8px 18px;
+  box-shadow: 2px 3px 0 var(--ink);
+  rotate: 3deg;
+  pointer-events: none;
+}
+/* Little speech-balloon tail pointing back to Kernel */
+.cta-sign::after {
+  content: "";
+  position: absolute;
+  left: -12px;
+  bottom: 6px;
+  width: 14px;
+  height: 12px;
+  background: var(--paper-hi);
+  border-left: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  rotate: 8deg;
+}
 .draw-btn {
+  position: relative;
   display: block;
   width: 100%;
-  max-width: 480px;
-  margin: 20px auto 0;
-  padding: 17px;
-  background: var(--yellow);
-  color: var(--navy);
-  border: 4px solid var(--navy);
-  border-radius: var(--radius-md);
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 19px;
-  letter-spacing: 0;
+  padding: 12px 34px 14px;
+  background: var(--mustard);
+  background-image: var(--grain);
+  color: var(--ink);
+  border: 4px solid var(--ink);
+  border-radius: 12px 7px 13px 8px / 8px 13px 7px 12px;
   cursor: pointer;
-  box-shadow: 5px 5px 0 var(--navy);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  box-shadow: 5px 6px 0 var(--ink);
+  text-align: center;
 }
-.draw-btn:active {
-  transform: translate(4px, 4px);
-  box-shadow: 1px 1px 0 var(--navy);
+/* Ticket notches with an inked edge */
+.draw-btn::before, .draw-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 4px solid var(--ink);
 }
+.draw-btn::before { left: -13px; clip-path: inset(0 0 0 50%); }
+.draw-btn::after { right: -13px; clip-path: inset(0 50% 0 0); }
+.draw-btn:active { translate: 3px 4px; box-shadow: 1px 1px 0 var(--ink); }
+.draw-kicker {
+  display: block;
+  font-family: var(--font-type);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red-deep);
+  padding-bottom: 5px;
+  margin: 0 8px 6px;
+  border-bottom: 2px dashed var(--ink);
+}
+.draw-label {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 27px;
+  line-height: 1.05;
+  color: var(--red);
+  -webkit-text-stroke: 1px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
 .watched-btn {
   position: relative;
   display: block;
   width: 100%;
   max-width: 480px;
-  margin: 14px auto 0;
-  padding: 13px;
-  background: var(--white);
-  color: var(--navy);
-  border: 3px dashed var(--navy);
-  border-radius: var(--radius-sm);
-  font-family: 'Baloo 2', sans-serif;
-  font-weight: 800;
-  font-size: 14px;
+  margin: 16px auto 0;
+  padding: 11px 44px 10px;
+  background: var(--red);
+  background-image: var(--grain);
+  color: var(--paper-hi);
+  border: 3px solid var(--ink);
+  border-radius: 6px 4px 7px 4px / 4px 7px 4px 6px;
+  font-family: var(--font-deco);
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  text-shadow: 1px 1px 0 var(--ink);
   cursor: pointer;
+  box-shadow: 3px 4px 0 var(--ink);
 }
-.watched-btn::before, .watched-btn::after {
-  content: "";
+/* Perforated stub line on the left */
+.watched-btn .stub-no {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--cream);
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-type);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  color: var(--paper-hi);
+  text-shadow: none;
+  border-left: 3px dotted var(--paper-hi);
+  opacity: 0.9;
 }
-.watched-btn::before { left: -7px; }
-.watched-btn::after { right: -7px; }
-.watched-btn:active { background: var(--cream-2); }
+.watched-btn:active { translate: 2px 2px; box-shadow: 1px 1px 0 var(--ink); }
 
-.watched-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 3px dashed var(--cream-line); min-height: 44px; }
+.watched-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 2px dashed rgba(31,27,22,0.4); min-height: 48px; }
 .watched-row img, .watched-row-noposter {
   display: block;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 46px;
   object-fit: cover;
-  border-radius: 6px;
-  background: var(--cream-2);
+  border-radius: 3px;
+  background: var(--paper-2);
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px var(--navy);
+  border: 2px solid var(--ink);
 }
-.watched-row .wtitle { flex: 1; font-size: 13.5px; font-weight: 800; font-family: 'Baloo 2', sans-serif; }
+.watched-row:nth-child(odd) img, .watched-row:nth-child(odd) .watched-row-noposter { rotate: -2deg; }
+.watched-row:nth-child(even) img, .watched-row:nth-child(even) .watched-row-noposter { rotate: 1.5deg; }
+.watched-row .wtitle { flex: 1; font-size: 14px; font-weight: 700; font-family: var(--font-body); line-height: 1.25; }
 .rating-select {
-  width: 62px;
+  width: 64px;
   padding: 7px 3px;
   font-size: 13px;
   font-weight: 700;
-  font-family: 'Nunito', sans-serif;
-  border: 2px solid var(--navy);
-  border-radius: 8px;
-  background: var(--white);
-  color: var(--navy);
+  font-family: var(--font-type);
+  border: 2px solid var(--ink);
+  border-radius: 7px 4px 8px 5px;
+  background: #fffaf0;
+  color: var(--ink);
   flex-shrink: 0;
   margin-bottom: 0;
 }
+.dialog .rating-select { width: 64px; padding: 7px 3px; font-size: 13px; margin-bottom: 0; border-width: 2px; }
 .watched-row button {
   background: none;
   border: none;
   color: var(--red);
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11.5px;
-  font-weight: 800;
+  font-family: var(--font-type);
+  font-size: 12px;
   text-transform: uppercase;
+  text-decoration: underline;
   cursor: pointer;
-  padding: 6px;
-  min-height: 32px;
+  padding: 6px 2px;
+  min-height: 36px;
 }
-.watched-empty { font-size: 13.5px; font-weight: 700; color: var(--muted-ink); text-align: center; padding: 18px 0; }
+.watched-empty { font-size: 14px; font-style: italic; color: var(--ink-soft); text-align: center; padding: 18px 0; }
 
+/* ---------- The draw: reel, curtain, reveal ---------- */
 .draw-dialog { text-align: center; }
+.draw-dialog h2 { font-size: 23px; }
 
+/* A strip of film running through the gate */
 .reel-window {
   position: relative;
   width: 100%;
   height: 210px;
   overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: var(--navy);
-  border: 3px solid var(--navy);
-  margin: 8px 0;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  border-radius: 6px;
+  background: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 0 0 0 3px var(--mustard), 0 0 0 5px var(--ink);
+  margin: 10px 0 12px;
+  transition: opacity 0.35s steps(4), transform 0.35s steps(4);
 }
 .reel-window.fading { opacity: 0; transform: scale(0.94); }
 .reel-window::before, .reel-window::after {
   content: "";
   position: absolute;
-  top: 0; bottom: 0;
-  width: 34px;
+  left: 0;
+  right: 0;
+  height: 8px;
   z-index: 2;
   pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 7px, var(--paper-2) 7px 15px, transparent 15px 22px);
+  border-radius: 2px;
 }
-.reel-window::before { left: 0; background: linear-gradient(90deg, var(--navy), transparent); }
-.reel-window::after { right: 0; background: linear-gradient(270deg, var(--navy), transparent); }
-.reel-strip { display: flex; gap: 8px; padding: 8px; height: 100%; box-sizing: border-box; }
+.reel-window::before { top: 6px; }
+.reel-window::after { bottom: 6px; }
+.reel-strip { display: flex; gap: 8px; padding: 20px 8px; height: 100%; box-sizing: border-box; }
 .reel-strip img {
   display: block;
   width: 108px;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 3px;
   flex-shrink: 0;
-  border: 3px solid var(--white);
-  box-shadow: 0 0 0 2px var(--navy);
+  border: 2px solid var(--paper-2);
+  filter: sepia(0.3) contrast(1.05);
 }
 .reel-strip.spinning { animation: reelSpin 1.6s cubic-bezier(0.11, 0.85, 0.16, 1) forwards; }
 @keyframes reelSpin {
@@ -759,91 +1305,98 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   to { transform: translateX(var(--reel-distance, -1800px)); }
 }
 
+/* The little stage: the capsule is now a pair of velvet curtains */
 .capsule-stage {
   position: relative;
-  height: 210px;
+  height: 256px;
+  margin: 10px 0 4px;
+  padding: 34px 0 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 8px 0;
-  background: radial-gradient(ellipse at center, rgba(62,198,192,0.14), transparent 65%);
-  border-radius: 16px;
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 60px 60px 6px 6px / 36px 36px 6px 6px;
+  background-color: var(--velvet);
+  background-image:
+    radial-gradient(ellipse 60% 55% at 50% 58%, rgba(251,244,226,0.30), transparent 70%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 6px, transparent 6px 14px);
+  box-shadow: 0 0 0 3px var(--mustard), 0 0 0 5px var(--ink);
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s steps(3);
+}
+/* Stage floorboards */
+.capsule-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  background: var(--mustard-deep);
+  background-image: repeating-linear-gradient(90deg, transparent 0 22px, rgba(31,27,22,0.5) 22px 24px);
+  border-top: 3px solid var(--ink);
+  z-index: 0;
 }
 .capsule-stage.visible { opacity: 1; }
 .capsule {
-  width: 118px;
-  height: 118px;
-  position: relative;
-  transform: translateY(-240px) rotate(-20deg);
-  animation: capsuleDrop 0.6s cubic-bezier(0.5,0,0.3,1.4) forwards;
-}
-@keyframes capsuleDrop {
-  0% { transform: translateY(-240px) rotate(-20deg); }
-  60% { transform: translateY(8px) rotate(6deg); }
-  80% { transform: translateY(-10px) rotate(-3deg); }
-  100% { transform: translateY(0) rotate(0deg); }
-}
-.capsule-top, .capsule-bottom { position: absolute; left: 0; right: 0; height: 59px; overflow: hidden; }
-.capsule-top {
-  top: 0;
-  border-radius: 59px 59px 0 0;
-  background: linear-gradient(155deg, #ffffff, #eef2f8 60%, #d9e2ec);
-  border: 3px solid var(--navy);
-  border-bottom: none;
-  transform-origin: center bottom;
-}
-.capsule-top::after {
-  content: "";
   position: absolute;
-  top: 12px; left: 16px;
-  width: 30px; height: 8px;
-  background: rgba(255,255,255,0.85);
-  border-radius: 50%;
-  filter: blur(1.5px);
-  transform: rotate(-20deg);
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: curtainDrop 0.6s steps(7) forwards;
 }
-.capsule-bottom {
+@keyframes curtainDrop {
+  0% { translate: 0 -105%; }
+  55% { translate: 0 4%; }
+  75% { translate: 0 -3%; }
+  100% { translate: 0 0; }
+}
+.capsule-top, .capsule-bottom {
+  position: absolute;
+  top: 0;
   bottom: 0;
-  border-radius: 0 0 59px 59px;
-  background: linear-gradient(180deg, var(--turquoise), var(--turquoise-dark));
-  border: 3px solid var(--navy);
+  width: 51%;
+  background-color: var(--red);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.26) 0 5px, transparent 5px 12px, rgba(251,244,226,0.14) 12px 15px, transparent 15px 20px),
+    linear-gradient(180deg, transparent 88%, var(--mustard) 88% 92%, var(--ink) 92% 93.5%, transparent 93.5%);
+  border: 3px solid var(--ink);
   border-top: none;
 }
+.capsule-top { left: -3px; border-radius: 0 0 22px 0; transform-origin: 0 50%; }
+.capsule-bottom { right: -3px; border-radius: 0 0 0 22px; transform-origin: 100% 50%; }
+/* Scalloped valance across the top */
 .capsule-shine {
   position: absolute;
-  top: 50%; left: 50%;
-  width: 126px; height: 6px;
-  background: var(--navy);
-  transform: translate(-50%, -50%);
-  border-radius: 3px;
+  top: 0;
+  left: -4px;
+  right: -4px;
+  height: 34px;
+  z-index: 2;
+  background:
+    radial-gradient(circle at 50% 0, var(--red-deep) 0 16px, var(--ink) 16.5px 19px, transparent 19.5px) 0 12px / 34px 22px repeat-x,
+    linear-gradient(var(--red-deep), var(--red-deep)) 0 0 / 100% 14px no-repeat,
+    radial-gradient(circle, var(--mustard) 0 2.5px, transparent 3px) 0 3px / 14px 8px repeat-x;
+  border-bottom: none;
 }
-.capsule.opening {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: -59px 0 0 -59px;
-}
-.capsule.opening .capsule-top { animation: capsuleTopOpen 0.5s ease-in forwards; }
-@keyframes capsuleTopOpen { to { transform: translateY(-90px) rotate(-110deg); opacity: 0; } }
-.capsule.opening .capsule-bottom { animation: capsuleBottomOpen 0.5s ease-in forwards; }
-@keyframes capsuleBottomOpen { to { transform: translateY(90px) rotate(20deg); opacity: 0; } }
-.capsule.opening .capsule-shine { animation: capsuleShineOut 0.25s ease-in forwards; }
-@keyframes capsuleShineOut { to { opacity: 0; transform: translate(-50%, -50%) scaleX(0); } }
+.capsule.opening .capsule-top { animation: curtainLeft 0.55s steps(6) forwards; }
+.capsule.opening .capsule-bottom { animation: curtainRight 0.55s steps(6) forwards; }
+@keyframes curtainLeft { to { transform: translateX(-72%) scaleX(0.55); } }
+@keyframes curtainRight { to { transform: translateX(72%) scaleX(0.55); } }
 .reveal-poster {
   position: relative;
-  width: 134px;
-  aspect-ratio: 2/3;
-  border-radius: var(--radius-sm);
-  overflow: visible;
+  z-index: 1;
+  width: 124px;
+  height: 186px;
   transform: scale(0);
   opacity: 0;
 }
-.reveal-poster.show { animation: posterPop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.reveal-poster.show { animation: posterPop 0.55s steps(7) forwards; }
 @keyframes posterPop {
   0% { transform: scale(0) rotate(-15deg); opacity: 0; }
-  70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
+  60% { transform: scale(1.14, 0.94) rotate(4deg); opacity: 1; }
+  80% { transform: scale(0.96, 1.05) rotate(-1deg); opacity: 1; }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 .reveal-poster img {
@@ -851,108 +1404,120 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 3px solid var(--navy);
-  box-shadow: 4px 4px 0 var(--navy);
+  padding: 4px;
+  background: var(--paper-hi);
+  border-radius: 4px;
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
 }
+/* "Tonite!" rosette */
 .reveal-poster::before {
-  content: "★";
+  content: "TO\ANITE!";
+  white-space: pre;
   position: absolute;
   top: -14px;
-  right: -10px;
-  width: 40px;
-  height: 40px;
+  right: -18px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   border-radius: 50%;
-  background: var(--yellow);
-  box-shadow: 0 0 0 3px var(--navy);
-  transform: rotate(12deg);
+  background: var(--mustard);
+  background-image: repeating-conic-gradient(rgba(251,244,226,0.45) 0deg 15deg, transparent 15deg 30deg);
+  border: 3px solid var(--ink);
+  rotate: 14deg;
   z-index: 2;
-  font-size: 18px;
-  color: var(--navy);
+  font-family: var(--font-deco);
+  font-size: 10px;
+  line-height: 1.05;
+  color: var(--ink);
 }
 
 .draw-title {
   position: relative;
-  font-family: 'Luckiest Guy', 'Baloo 2', cursive, sans-serif;
-  font-size: 25px;
-  font-weight: 400;
-  line-height: 1.15;
-  margin-top: 20px;
+  font-family: var(--font-title);
+  font-size: 26px;
+  line-height: 1.1;
+  margin: 16px 0 16px;
   color: var(--red);
-  text-shadow: 2px 2px 0 var(--navy);
+  text-shadow: 2px 2px 0 var(--ink);
+  animation: titleCard 0.5s steps(5) both;
 }
 .draw-title::before {
-  content: "🎬 Tonight's Pick";
+  content: "\2726  Now Showing  \2726";
   display: block;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-family: var(--font-deco);
+  font-size: 12px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted-ink);
+  color: var(--ink);
   text-shadow: none;
   margin-bottom: 6px;
 }
+@keyframes titleCard {
+  from { opacity: 0; letter-spacing: 0.3em; }
+  to { opacity: 1; letter-spacing: 0; }
+}
 
 .watch-badge {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11.5px;
-  font-weight: 800;
-  padding: 6px 11px;
-  border-radius: 20px;
-  background: var(--white);
-  color: var(--navy);
-  border: 2px solid var(--navy);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px 4px;
+  border-radius: 4px 7px 4px 6px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }
-.watch-badge.free { background: var(--turquoise); color: var(--white); border-color: var(--navy); }
-.watch-badge.sub { background: var(--orange); color: var(--white); border-color: var(--navy); }
-.watch-status { font-size: 12.5px; font-weight: 700; color: var(--muted-ink); text-align: left; margin-bottom: 12px; }
+.watch-badge.free { background: var(--teal); color: var(--paper-hi); }
+.watch-badge.sub { background: var(--mustard); color: var(--ink); }
+.swatch { font-weight: 700; padding: 0 5px; border: 1.5px solid var(--ink); border-radius: 3px; }
+.swatch.free { background: var(--teal); color: var(--paper-hi); }
+.swatch.sub { background: var(--mustard); color: var(--ink); }
+.swatch.none { background: var(--paper); color: var(--ink); }
+.watch-status { font-size: 13px; font-style: italic; color: var(--ink-soft); text-align: left; margin-bottom: 12px; }
 .confirm-poster {
   display: block;
-  width: 96px;
+  width: 100px;
   aspect-ratio: 2/3;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 3px solid var(--navy);
-  margin: 0 auto 10px;
-  box-shadow: 3px 3px 0 var(--navy);
+  padding: 4px;
+  background: var(--paper);
+  border-radius: 3px;
+  border: 3px solid var(--ink);
+  margin: 0 auto 12px;
+  box-shadow: 3px 4px 0 var(--ink);
+  rotate: 1.5deg;
 }
 .curated-form { text-align: left; }
 .curated-field { margin-bottom: 14px; }
 .curated-field label {
   display: block;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-deco);
+  font-size: 12px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted-ink);
-  margin-bottom: 5px;
-  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 6px;
 }
+.curated-field p { font-size: 13.5px; margin: 0; }
+.curated-field p + p { margin-top: 6px; }
 .curated-field select, .curated-field input {
   width: 100%;
-  padding: 11px 10px;
-  font-size: 14px;
-  font-family: 'Nunito', sans-serif;
-  font-weight: 700;
-  border: 3px solid var(--navy);
-  border-radius: var(--radius-sm);
-  box-sizing: border-box;
-  background: var(--white);
-  color: var(--navy);
-  min-height: 44px;
+  min-height: 46px;
 }
-.curated-hint { font-size: 12px; font-weight: 700; color: var(--muted-ink); margin: -6px 0 14px; }
+.curated-hint { font-size: 13px; font-style: italic; color: var(--ink-soft); margin: -6px 0 14px; }
 .edit-filters-btn {
   display: block;
   width: 100%;
   text-align: center;
-  font-size: 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
   font-weight: 700;
-  color: var(--muted-ink);
+  font-style: italic;
+  color: var(--ink-soft);
   background: none;
   border: none;
   text-decoration: underline;
@@ -960,110 +1525,265 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   margin-bottom: 10px;
   padding: 8px 0;
 }
-.service-row {
+.custom-service-row { display: flex; gap: 6px; margin-top: 8px; }
+.custom-service-row input { margin-bottom: 0; }
+.custom-service-row button { flex: 0 0 auto; padding: 9px 14px; }
+#customServiceChips { margin-top: 10px; }
+.curated-field .service-row {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin-bottom: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  min-height: 40px;
+  gap: 12px;
+  padding: 7px 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 42px;
+  border-bottom: 1.5px dotted rgba(31,27,22,0.35);
 }
-.service-row input[type="checkbox"] {
+/* Brass lever switches */
+.dialog .service-row input[type="checkbox"] {
+  min-height: 0;
+  margin-bottom: 0;
   appearance: none;
   -webkit-appearance: none;
-  width: 38px;
-  height: 22px;
+  width: 42px;
+  height: 24px;
   margin: 0;
+  padding: 0;
   flex-shrink: 0;
   position: relative;
-  border-radius: 12px;
-  background: var(--cream-2);
-  border: 2px solid var(--navy);
+  border-radius: 12px 10px 12px 10px;
+  background: var(--paper-2);
+  border: 2.5px solid var(--ink);
+  box-shadow: inset 2px 2px 0 rgba(31,27,22,0.15);
   cursor: pointer;
-  transition: background 0.15s ease;
 }
 .service-row input[type="checkbox"]::after {
   content: "";
   position: absolute;
-  top: 1px; left: 1px;
-  width: 16px; height: 16px;
+  top: 1px;
+  left: 1px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
-  background: var(--white);
-  border: 2px solid var(--navy);
-  transition: transform 0.15s ease;
+  background: var(--paper-hi);
+  border: 2.5px solid var(--ink);
+  transition: transform 0.15s steps(2);
 }
-.service-row input[type="checkbox"]:checked { background: var(--turquoise); }
-.service-row input[type="checkbox"]:checked::after { transform: translateX(15px); }
+.service-row input[type="checkbox"]:checked { background: var(--teal); }
+.service-row input[type="checkbox"]:checked::after { transform: translateX(17px); background: var(--mustard); }
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--turquoise);
-  color: var(--white);
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  padding: 6px 8px 6px 11px;
-  border: 2px solid var(--navy);
-  border-radius: 20px;
+  background: var(--teal);
+  color: var(--paper-hi);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 5px 8px 5px 11px;
+  border: 2px solid var(--ink);
+  border-radius: 5px 8px 5px 7px;
 }
-.chip button { background: none; border: none; color: var(--white); font-size: 13px; line-height: 1; cursor: pointer; padding: 2px; }
-.conn-status { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
-.conn-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cream-line); border: 2px solid var(--navy); flex-shrink: 0; }
-.conn-dot.on { background: var(--turquoise); }
+.chip button { background: none; border: none; color: var(--paper-hi); font-size: 13px; line-height: 1; cursor: pointer; padding: 2px; }
+.conn-status { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+/* A little marquee bulb: dark when off, lit when connected */
+.conn-dot { width: 13px; height: 13px; border-radius: 50%; background: var(--paper-2); border: 2.5px solid var(--ink); flex-shrink: 0; }
+.conn-dot.on { background: var(--mustard); box-shadow: 0 0 0 3px rgba(217,161,58,0.35); }
 .key-btn {
   display: inline-block;
-  font-family: 'Baloo 2', sans-serif;
+  font-family: var(--font-deco);
   font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--white);
+  letter-spacing: 0.06em;
+  color: var(--paper-hi);
   background: var(--red);
-  border: 3px solid var(--navy);
-  border-radius: 20px;
-  padding: 9px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 14px 8px 15px 9px / 9px 14px 8px 15px;
+  padding: 9px 16px 7px;
   cursor: pointer;
-  min-height: 40px;
-  box-shadow: 2px 2px 0 var(--navy);
+  min-height: 42px;
+  box-shadow: 2px 3px 0 var(--ink);
+}
+.key-btn:active { translate: 2px 2px; box-shadow: 0 1px 0 var(--ink); }
+
+@media (max-width: 380px) {
+  h1 { font-size: 30px; }
+  header { padding-left: 48px; padding-right: 48px; }
+  .draw-label { font-size: 23px; }
+  .machine-marquee .marquee-text { font-size: 15px; letter-spacing: 0.14em; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  header::before, header::after { animation: none; }
-  .suggestion-card img { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .film-grain, .iris-intro { display: none; }
+  .boil { filter: none; }
 }
-
 </style>
 </head>
 <body>
 
+<!-- Shared ink: line-boil filters + the glove every character wears -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<filter id="boilA"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="boilB"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="8"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="boilC"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="15"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<symbol id="glove" viewBox="0 0 30 30">
+<path d="M8.6 21 C4.6 19.4 3.6 14.6 6 11.6 C4.8 7.6 8.4 5.4 10.6 7.6 C10.4 3.4 14.6 2.4 15.6 6 C16.4 2.2 20.8 2.6 21 6.6 C23.6 4.6 27 7 25.4 10.6 C27.6 13.6 25.8 19.4 21.4 21 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M15.6 7 V13 M21 7.4 L20 13 M10.8 8.4 L11.6 13" stroke="#1f1b16" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+<path d="M8.2 20.6 H21.8 L22.8 27.4 H7.2 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M9.6 23.6 H20.4" stroke="#1f1b16" stroke-width="1.2" stroke-linecap="round"/>
+</symbol>
+<symbol id="glove-point" viewBox="0 0 42 26">
+<path d="M1.5 6.5 H9.5 V20.5 H1.5 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M4 10 V17" stroke="#1f1b16" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M9.5 6 C14 3.4 18.6 4 21 7.4 H37 C40.6 7.4 40.6 13 37 13 H23.4 C25.6 13.6 25.8 16.8 23.6 17.6 C25 18.8 24 22.4 20.6 22.4 H12 C10.4 22.4 9.5 21.6 9.5 20.6 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M22.6 13 H15.6 M22.8 17.6 H15.6" stroke="#1f1b16" stroke-width="1.3" stroke-linecap="round"/>
+</symbol>
+<symbol id="reel-icon" viewBox="0 0 40 40">
+<circle cx="20" cy="20" r="17.5" fill="#d9a13a" stroke="#1f1b16" stroke-width="3"/>
+<circle cx="20" cy="20" r="3.4" fill="#1f1b16"/>
+<circle cx="20" cy="9.5" r="4.4" fill="#1f1b16"/>
+<circle cx="30" cy="16.8" r="4.4" fill="#1f1b16"/>
+<circle cx="26.2" cy="28.5" r="4.4" fill="#1f1b16"/>
+<circle cx="13.8" cy="28.5" r="4.4" fill="#1f1b16"/>
+<circle cx="10" cy="16.8" r="4.4" fill="#1f1b16"/>
+</symbol>
+</defs>
+</svg>
+
+<div class="iris-intro" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="film-grain" aria-hidden="true"></div>
+
 <header>
-<button class="settings-btn info-btn" id="infoBtn" title="How this works">ⓘ</button>
-<button class="settings-btn" id="settingsBtn" title="TMDB settings">⚙</button>
-<div class="eyebrow">🍿 Movie Night!</div>
-<h1>The Movie Vending Machine</h1>
+<button class="settings-btn info-btn" id="infoBtn" title="How this works" aria-label="How this works">?</button>
+<button class="settings-btn" id="settingsBtn" title="TMDB settings" aria-label="Settings">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 2.5h3.6l.5 2.6 1.9.8 2.2-1.5 2.5 2.5-1.5 2.2.8 1.9 2.6.5v3.6l-2.6.5-.8 1.9 1.5 2.2-2.5 2.5-2.2-1.5-1.9.8-.5 2.6h-3.6l-.5-2.6-1.9-.8-2.2 1.5-2.5-2.5 1.5-2.2-.8-1.9-2.6-.5v-3.6l2.6-.5.8-1.9-1.5-2.2 2.5-2.5 2.2 1.5 1.9-.8z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.4" fill="#1f1b16"/></svg>
+</button>
+<div class="eyebrow">Movie Night!</div>
+<h1><span class="h1-small">The</span>Movie Vending Machine</h1>
 <div class="sub">Tap a poster to pick your movie</div>
 </header>
 
 <div class="machine">
-<div class="grid" id="grid"></div>
-<div class="coin-slot"></div>
+
+<!-- Reely: the film-reel usher who stands watch on top of the machine -->
+<svg class="mascot reely" viewBox="0 0 120 150" aria-hidden="true" focusable="false">
+<g class="boil">
+<path class="hose" d="M50 98 C48 112 44 122 38 132"/>
+<path class="hose" d="M70 98 C74 112 80 122 86 132"/>
+<ellipse cx="32" cy="137" rx="15" ry="8.5" fill="#1f1b16"/>
+<ellipse cx="26" cy="134" rx="4.5" ry="2" fill="#fbf4e2" opacity=".85"/>
+<ellipse cx="92" cy="137" rx="15" ry="8.5" fill="#1f1b16"/>
+<ellipse cx="97" cy="134" rx="4.5" ry="2" fill="#fbf4e2" opacity=".85"/>
+<path class="hose" d="M24 64 C8 66 4 84 18 90"/>
+<use href="#glove" x="6" y="78" width="24" height="24" transform="rotate(-70 18 90)"/>
+<g class="wave-arm">
+<path class="hose" d="M96 58 C108 52 112 40 108 26"/>
+<use href="#glove" x="95" y="3" width="26" height="26"/>
+</g>
+<circle cx="60" cy="60" r="40" fill="#fbf4e2" stroke="#1f1b16" stroke-width="5"/>
+<circle cx="60" cy="60" r="33" fill="none" stroke="#1f1b16" stroke-width="2"/>
+<circle cx="60" cy="35" r="4.5" fill="#2b5655"/>
+<circle cx="81.6" cy="47.5" r="4.5" fill="#2b5655"/>
+<circle cx="38.4" cy="47.5" r="4.5" fill="#2b5655"/>
+<circle cx="81.6" cy="72.5" r="4.5" fill="#2b5655"/>
+<circle cx="38.4" cy="72.5" r="4.5" fill="#2b5655"/>
+<circle cx="60" cy="86" r="4.5" fill="#2b5655"/>
+<g class="blink">
+<ellipse cx="52.5" cy="55" rx="5" ry="8" fill="#1f1b16"/>
+<path d="M52.5 55 L55.6 48.6 L51 47.4 Z" fill="#fbf4e2"/>
+<ellipse cx="67.5" cy="55" rx="5" ry="8" fill="#1f1b16"/>
+<path d="M67.5 55 L70.6 48.6 L66 47.4 Z" fill="#fbf4e2"/>
+</g>
+<ellipse cx="60" cy="65" rx="3.2" ry="2.3" fill="#1f1b16"/>
+<path d="M48 69 Q60 83 72 69 Q60 74 48 69 Z" fill="#1f1b16"/>
+<path d="M54 73.6 Q60 77 66 73.6 Q60 79.5 54 73.6 Z" fill="#b3402d"/>
+<circle cx="44" cy="66" r="3.6" fill="#b3402d" opacity=".55"/>
+<circle cx="76" cy="66" r="3.6" fill="#b3402d" opacity=".55"/>
+</g>
+</svg>
+
+<div class="machine-marquee" aria-hidden="true">
+<svg class="side-reel left" viewBox="0 0 40 40"><use href="#reel-icon"/></svg>
+<span class="marquee-text">NOW SHOWING</span>
+<span class="marquee-sub">16 features &middot; continuous</span>
+<svg class="side-reel right" viewBox="0 0 40 40"><use href="#reel-icon"/></svg>
 </div>
 
-<button class="draw-btn" id="drawBtn">🎟️ Pick My Movie!</button>
+<div class="grid" id="grid"></div>
 
-<button class="watched-btn" id="watchedBtn">🎫 Ticket Stubs</button>
+<div class="machine-base" aria-hidden="true">
+<span class="knob"></span>
+<div class="ticket-slot">
+<div class="slot-mouth"></div>
+<span class="ticket-peek">ADMIT ONE</span>
+</div>
+<span class="knob right"></span>
+</div>
+</div>
 
-<footer>16 seats &middot; tap empty to fill, tap full to swap</footer>
+<div class="cta-stage">
+<!-- Kernel: the popcorn box, pointing the way -->
+<svg class="mascot kernel" viewBox="0 0 130 160" aria-hidden="true" focusable="false">
+<g class="boil">
+<circle class="pop" cx="66" cy="12" r="6" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2.5"/>
+<circle class="pop two" cx="50" cy="16" r="5" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2.5"/>
+<path class="hose" d="M52 132 C52 140 49 145 46 148"/>
+<path class="hose" d="M78 132 C78 140 81 145 84 148"/>
+<ellipse cx="40" cy="151" rx="13" ry="6.5" fill="#1f1b16"/>
+<ellipse cx="35" cy="149" rx="3.8" ry="1.6" fill="#fbf4e2" opacity=".85"/>
+<ellipse cx="90" cy="151" rx="13" ry="6.5" fill="#1f1b16"/>
+<ellipse cx="95" cy="149" rx="3.8" ry="1.6" fill="#fbf4e2" opacity=".85"/>
+<path class="hose" d="M35 88 C20 90 14 102 20 114"/>
+<use href="#glove" x="8" y="104" width="22" height="22" transform="rotate(160 19 115)"/>
+<g fill="#fbf4e2" stroke="#1f1b16" stroke-width="3">
+<circle cx="40" cy="42" r="11"/><circle cx="90" cy="42" r="11"/>
+<circle cx="52" cy="31" r="12"/><circle cx="78" cy="31" r="12"/>
+<circle cx="65" cy="26" r="13"/>
+<circle cx="47" cy="47" r="9"/><circle cx="83" cy="47" r="9"/>
+<circle cx="65" cy="41" r="10"/>
+</g>
+<path d="M30 52 L100 52 L90 132 L40 132 Z" fill="#fbf4e2"/>
+<path d="M30 52 L44 52 L50 132 L40 132 Z M58 52 L72 52 L70 132 L60 132 Z M86 52 L100 52 L90 132 L80 132 Z" fill="#b3402d"/>
+<path d="M30 52 L100 52 L90 132 L40 132 Z" fill="none" stroke="#1f1b16" stroke-width="4" stroke-linejoin="round"/>
+<rect x="26" y="47" width="78" height="10" rx="4" fill="#d9a13a" stroke="#1f1b16" stroke-width="3"/>
+<ellipse cx="65" cy="92" rx="20" ry="17" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2.5"/>
+<g class="blink">
+<ellipse cx="58" cy="88" rx="3.6" ry="6" fill="#1f1b16"/>
+<path d="M58 88 L60.4 83.2 L57 82.4 Z" fill="#fbf4e2"/>
+<ellipse cx="72" cy="88" rx="3.6" ry="6" fill="#1f1b16"/>
+<path d="M72 88 L74.4 83.2 L71 82.4 Z" fill="#fbf4e2"/>
+</g>
+<path d="M56 97 Q65 107 74 97 Q65 101 56 97 Z" fill="#1f1b16"/>
+<circle cx="51" cy="96" r="2.8" fill="#b3402d" opacity=".55"/>
+<circle cx="79" cy="96" r="2.8" fill="#b3402d" opacity=".55"/>
+<path class="hose" d="M95 86 C108 82 116 88 118 98"/>
+<g class="point-hand"><use href="#glove-point" x="104" y="92" width="30" height="19" transform="rotate(62 112 100)"/></g>
+</g>
+</svg>
+<div class="cta-sign" aria-hidden="true">Step right up!</div>
+<button class="draw-btn" id="drawBtn"><span class="draw-kicker">Admit one &middot; Feature presentation</span><span class="draw-label">Pick My Movie!</span></button>
+</div>
+
+<button class="watched-btn" id="watchedBtn"><span class="stub-no" aria-hidden="true">No. 1936</span>Ticket Stubs</button>
+
+<footer>16 seats &middot; tap empty to fill, tap full to swap<span class="credit">&#10022; A Vending Machine Picture &#10022;</span></footer>
 
 <div class="overlay hidden" id="watchedOverlay">
-<div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left; position: relative;">
-<button id="watchedCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
-<h2 style="text-align:center;">Ticket Stubs</h2>
-<p style="margin:0 0 10px; font-size:12.5px; color:#888; text-align:center;">
+<div class="dialog">
+<button class="close-x" id="watchedCloseX" aria-label="Close">✕</button>
+<h2>Ticket Stubs</h2>
+<p class="note">
 Movies here are skipped by every Surprise Me tab.
 </p>
 
@@ -1071,19 +1791,37 @@ Movies here are skipped by every Surprise Me tab.
 <div class="search-status hidden-block" id="watchedSearchStatus"></div>
 <div class="search-results hidden-block" id="watchedSearchResults"></div>
 
-<div class="watch-label" style="text-align:left; margin-top:14px;">Already Marked (<span id="watchedCount">0</span>)</div>
+<div class="watch-label left">Already Marked (<span id="watchedCount">0</span>)</div>
 <div id="watchedListArea"></div>
 
-<div class="dialog-buttons" style="margin-top:14px;">
-<button class="btn-primary" id="watchedDone" style="width:100%;">Done</button>
+<div class="dialog-buttons spaced">
+<button class="btn-primary" id="watchedDone" >Done</button>
 </div>
 </div>
 </div>
 
 <div class="overlay hidden" id="drawOverlay">
-<div class="dialog draw-dialog" style="position:relative;">
-<button id="drawCloseX" style="position:absolute; top:14px; right:14px; background:none; border:none; font-size:20px; color:#999; cursor:pointer; padding:4px;">✕</button>
-<h2 id="drawHeading">Picking your movie&hellip;</h2>
+<div class="dialog draw-dialog">
+<button class="close-x" id="drawCloseX" aria-label="Close">✕</button>
+<!-- Flicker: the projector who runs tonight's show -->
+<svg class="mascot flicker" viewBox="0 0 140 92" aria-hidden="true" focusable="false">
+<g class="boil">
+<polygon class="beam" points="108,56 140,36 140,76" fill="#d9a13a"/>
+<g class="spin"><circle cx="40" cy="22" r="17" fill="#fbf4e2" stroke="#1f1b16" stroke-width="3.5"/><circle cx="40" cy="13" r="3.6" fill="#1f1b16"/><circle cx="48" cy="26" r="3.6" fill="#1f1b16"/><circle cx="32" cy="26" r="3.6" fill="#1f1b16"/><circle cx="40" cy="22" r="2.4" fill="#1f1b16"/></g>
+<g class="spin"><circle cx="76" cy="20" r="19" fill="#fbf4e2" stroke="#1f1b16" stroke-width="3.5"/><circle cx="76" cy="10" r="4" fill="#1f1b16"/><circle cx="85" cy="25" r="4" fill="#1f1b16"/><circle cx="67" cy="25" r="4" fill="#1f1b16"/><circle cx="76" cy="20" r="2.6" fill="#1f1b16"/></g>
+<path class="hose" d="M38 74 C36 80 33 84 29 86"/>
+<path class="hose" d="M76 74 C78 80 81 84 85 86"/>
+<ellipse cx="25" cy="87" rx="10" ry="4.5" fill="#1f1b16"/>
+<ellipse cx="89" cy="87" rx="10" ry="4.5" fill="#1f1b16"/>
+<rect x="20" y="38" width="76" height="38" rx="9" fill="#3f7877" stroke="#1f1b16" stroke-width="4"/>
+<rect x="94" y="46" width="12" height="20" fill="#1f1b16"/>
+<circle cx="107" cy="56" r="8" fill="#fbf4e2" stroke="#1f1b16" stroke-width="3.5"/>
+<ellipse cx="58" cy="57" rx="17" ry="13" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2.5"/>
+<g class="blink"><ellipse cx="52" cy="54" rx="3.4" ry="5.6" fill="#1f1b16"/><ellipse cx="64" cy="54" rx="3.4" ry="5.6" fill="#1f1b16"/></g>
+<path d="M50 62 Q58 70 66 62 Q58 65 50 62 Z" fill="#1f1b16"/>
+</g>
+</svg>
+<h2 id="drawHeading">Roll the reels&hellip;</h2>
 
 <div class="search-status hidden-block" id="drawEmptyMsg">No movies are loaded in the machine yet — add some to the grid first!</div>
 
@@ -1109,7 +1847,7 @@ Movies here are skipped by every Surprise Me tab.
 <button class="btn-primary" id="drawCloseBtn">▶ Watch</button>
 </div>
 <div class="dialog-buttons hidden-block" id="drawEmptyButtons">
-<button class="btn-primary" id="drawEmptyClose" style="flex:1;">Close</button>
+<button class="btn-primary" id="drawEmptyClose">Close</button>
 </div>
 </div>
 </div>
@@ -1121,12 +1859,12 @@ Movies here are skipped by every Surprise Me tab.
 <div id="confirmRuntime" class="runtime-badge hidden-block"></div>
 <div id="confirmWatchArea"></div>
 <p id="confirmText"></p>
-<div style="text-align:center; margin-bottom:8px;">
-<button class="synopsis-toggle" id="confirmOk" style="color:var(--danger);">Remove from slot</button>
+<div class="remove-row">
+<button class="synopsis-toggle" id="confirmOk">Remove from slot</button>
 </div>
 <div class="dialog-buttons">
 <button class="btn-cancel" id="confirmCancel">Cancel</button>
-<button class="btn-primary" id="confirmWatchedBtn" style="flex:1;">✓ Watched</button>
+<button class="btn-primary" id="confirmWatchedBtn">✓ Watched</button>
 </div>
 </div>
 </div>
@@ -1134,9 +1872,9 @@ Movies here are skipped by every Surprise Me tab.
 <div class="overlay hidden" id="whyPickedOverlay">
 <div class="dialog" style="text-align:center;">
 <h2>Why this pick?</h2>
-<p id="whyPickedText" style="font-size:14px; color:#555; margin:0 0 16px;"></p>
+<p id="whyPickedText"></p>
 <div class="dialog-buttons">
-<button class="btn-primary" id="whyPickedClose" style="width:100%;">Got it</button>
+<button class="btn-primary" id="whyPickedClose" >Got it</button>
 </div>
 </div>
 </div>
@@ -1144,13 +1882,13 @@ Movies here are skipped by every Surprise Me tab.
 <div class="overlay hidden" id="rateMovieOverlay">
 <div class="dialog" style="text-align:center;">
 <h2>Rate it</h2>
-<p id="rateMovieTitle" style="margin:0 0 16px; font-weight:700; font-size:16px;"></p>
-<select id="rateMovieSelect" style="display:block; width:150px; margin:0 auto 18px; padding:12px; font-size:17px; border:1px solid #ccc; border-radius:8px; background:white;">
+<p id="rateMovieTitle" style="margin:0 0 16px; font-weight:700; font-size:17px; color:var(--ink);"></p>
+<select id="rateMovieSelect" class="rate-select">
 <option value="">Skip for now</option>
 </select>
 <div class="dialog-buttons">
-<button class="btn-cancel" id="rateMovieSkip" style="flex:1;">Skip</button>
-<button class="btn-primary" id="rateMovieSave" style="flex:1;">Save</button>
+<button class="btn-cancel" id="rateMovieSkip">Skip</button>
+<button class="btn-primary" id="rateMovieSave">Save</button>
 </div>
 </div>
 </div>
@@ -1184,12 +1922,12 @@ Movies here are skipped by every Surprise Me tab.
 </div>
 
 <div class="overlay hidden" id="infoOverlay">
-<div class="dialog" style="max-height: 85vh; overflow-y: auto; text-align: left;">
+<div class="dialog">
 <h2>How This Works</h2>
 
 <div class="curated-field">
 <label>The Machine</label>
-<p style="margin:0; font-size:13px; color:#555;">
+<p>
 16 slots, one movie each. Tap an empty slot to add a movie, or tap a
 full one to see where to watch it and swap it for something else.
 Everything's saved on this device automatically.
@@ -1198,23 +1936,23 @@ Everything's saved on this device automatically.
 
 <div class="curated-field">
 <label>Adding a Movie</label>
-<p style="margin:0; font-size:13px; color:#555;">
-Search by title, or tap <strong>🎲 Surprise me</strong> for a random
+<p>
+Search by title, or tap <strong>Surprise me!</strong> for a random
 pick instead of typing one in.
 </p>
 </div>
 
 <div class="curated-field">
 <label>The Surprise Me Tabs</label>
-<p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Popular</strong> — well-known movies, spread across different decades rather than just what's trending now.</p>
-<p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Indie/obscure</strong> — well-reviewed but lower-profile titles you probably haven't heard of.</p>
-<p style="margin:0 0 6px; font-size:13px; color:#555;"><strong>Curated</strong> — a short survey (genre, vibe, decade, runtime, director, actor, plot/themes) - answer as few or as many as you like.</p>
-<p style="margin:0; font-size:13px; color:#555;"><strong>Similar to…</strong> — search a movie you like and get something in the same spirit.</p>
+<p><strong>Popular</strong> — well-known movies, spread across different decades rather than just what's trending now.</p>
+<p><strong>Indie/obscure</strong> — well-reviewed but lower-profile titles you probably haven't heard of.</p>
+<p><strong>Curated</strong> — a short survey (genre, vibe, decade, runtime, director, actor, plot/themes) - answer as few or as many as you like.</p>
+<p><strong>Similar to…</strong> — search a movie you like and get something in the same spirit.</p>
 </div>
 
 <div class="curated-field">
 <label>Pick My Movie!</label>
-<p style="margin:0; font-size:13px; color:#555;">
+<p>
 Picks at random from whatever's actually loaded in your 16 slots
 right now - good for "just tell me what to watch tonight."
 </p>
@@ -1222,44 +1960,44 @@ right now - good for "just tell me what to watch tonight."
 
 <div class="curated-field">
 <label>APIs This Uses</label>
-<p style="margin:0 0 6px; font-size:13px; color:#555;">
+<p>
 <strong>TMDB (required)</strong> — powers search, posters, synopses,
 trailers, and where-to-watch info. Free. Get a key at
 <a class="key-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a>,
-then paste it in via the ⚙ Settings button.
+then paste it in via the Settings (gear) button.
 </p>
-<p style="margin:0; font-size:13px; color:#555;">
+<p>
 <strong>Gemini (optional)</strong> — makes the Vibe and Plot/themes
 fields in Curated understand more abstract descriptions ("trippy,"
 "cheesy," "coming of age") that TMDB's own search can't. Free to
 start. Get a key at
 <a class="key-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>,
-then paste it in via ⚙ Settings. Everything works without it -
+then paste it in via Settings. Everything works without it -
 Curated just falls back to plainer matching.
 </p>
 </div>
 
 <div class="curated-field">
 <label>Streaming Services</label>
-<p style="margin:0; font-size:13px; color:#555;">
-In ⚙ Settings, check off what you actually have access to - paid or
-free. <span style="color:#2e7d4f; font-weight:700;">Green</span> means
+<p>
+In Settings, check off what you actually have access to - paid or
+free. <span class="swatch free">Teal</span> means
 no extra cost with what you already have,
-<span style="color:#33445c; font-weight:700;">blue</span> means you'd
+<span class="swatch sub">Mustard</span> means you'd
 pay extra even with an account you own (like renting on Amazon), and
-<span style="font-weight:700;">tan</span> means you don't have that
+<span class="swatch none">Plain</span> means you don't have that
 one. Nothing is assumed - only what you check shows as yours.
 </p>
 </div>
 
 <div class="dialog-buttons">
-<button class="btn-primary" id="infoDone" style="width:100%;">Got it</button>
+<button class="btn-primary" id="infoDone" >Got it</button>
 </div>
 </div>
 </div>
 
 <div class="overlay hidden" id="settingsOverlay">
-<div class="dialog" style="max-height: 85vh; overflow-y: auto;">
+<div class="dialog">
 <h2>Settings</h2>
 
 <div class="curated-field">
@@ -1270,24 +2008,24 @@ one. Nothing is assumed - only what you check shows as yours.
 
 <div class="curated-field">
 <label>AI-Powered Vibe Search (optional)</label>
-<p style="margin:0 0 8px; font-size:12px; color:#888;">Connect a free Gemini API key to make the Vibe and Plot/themes fields in Curated understand more abstract descriptions (get one at aistudio.google.com/apikey).</p>
+<p class="small">Connect a free Gemini API key to make the Vibe and Plot/themes fields in Curated understand more abstract descriptions (get one at aistudio.google.com/apikey).</p>
 <div class="conn-status"><span class="conn-dot" id="geminiKeyStatusDot"></span><span id="geminiKeyStatusText">Not connected</span></div>
 <button class="key-btn" id="changeGeminiKeyBtn">Change Gemini key</button>
 </div>
 
 <div class="curated-field">
 <label>My Streaming Services</label>
-<p style="margin:0 0 8px; font-size:12px; color:#888;">Check anything you actually have access to — paid or free. Only checked ones show up green; nothing is assumed.</p>
+<p class="small">Check anything you actually have access to — paid or free. Only checked ones show up teal; nothing is assumed.</p>
 <div id="serviceChecklist"></div>
-<div style="display:flex; gap:6px; margin-top:8px;">
-<input type="text" id="customServiceInput" placeholder="Add another service" autocomplete="off" style="margin-bottom:0;">
-<button class="btn-cancel" id="addCustomServiceBtn" style="flex:0 0 auto; padding:9px 14px;">Add</button>
+<div class="custom-service-row">
+<input type="text" id="customServiceInput" placeholder="Add another service" autocomplete="off">
+<button class="btn-cancel" id="addCustomServiceBtn">Add</button>
 </div>
-<div class="watch-badges" id="customServiceChips" style="margin-top:10px;"></div>
+<div class="watch-badges" id="customServiceChips"></div>
 </div>
 
 <div class="dialog-buttons">
-<button class="btn-primary" id="settingsDone" style="width:100%;">Done</button>
+<button class="btn-primary" id="settingsDone" >Done</button>
 </div>
 </div>
 </div>
@@ -1302,8 +2040,8 @@ one. Nothing is assumed - only what you check shows as yours.
 <div class="search-status hidden-block" id="searchStatus"></div>
 <div class="search-results hidden-block" id="searchResults"></div>
 <div class="divider">or</div>
-<button class="surprise-btn" id="surpriseBtn">🎲 Surprise me</button>
-<div class="dialog-buttons" style="margin-top:14px;">
+<button class="surprise-btn" id="surpriseBtn">&#10022; Surprise me! &#10022;</button>
+<div class="dialog-buttons spaced">
 <button class="btn-cancel" id="inputCancel">Cancel</button>
 <button class="btn-primary" id="inputOk">Use as typed</button>
 </div>
@@ -1385,8 +2123,8 @@ one. Nothing is assumed - only what you check shows as yours.
 <button class="btn-cancel" id="surpriseAnother">Try another</button>
 <button class="btn-primary" id="surpriseUse">Use this</button>
 </div>
-<div class="dialog-buttons" style="margin-top:8px;">
-<button class="btn-cancel" id="surpriseBack" style="flex:1;">Back to search</button>
+<div class="dialog-buttons tight">
+<button class="btn-cancel" id="surpriseBack">Back to search</button>
 </div>
 </div>
 
@@ -2860,16 +3598,16 @@ suggestionCard.innerHTML =
 (needsToggle ? '<button class="synopsis-toggle" id="synopsisToggle">Read more</button>' : '') +
 (whyText ? '<button class="synopsis-toggle" id="whyPickedBtn">ⓘ Based on&hellip;</button>' : '') +
 '<button class="trailer-btn" id="trailerBtn">▶ Watch trailer</button>' +
-'<div id="markWatchedArea" style="margin-bottom:10px;"></div>' +
+'<div id="markWatchedArea"></div>' +
 '<div id="watchArea"><div class="watch-status">Checking where to watch&hellip;</div></div>';
 
 function renderMarkWatchedArea() {
 const area = document.getElementById("markWatchedArea");
 if (!area) return;
 if (isWatched(pick.id)) {
-area.innerHTML = '<button class="synopsis-toggle" id="markWatchedBtn" disabled style="display:block; margin:0 auto; opacity:0.6;">✓ Marked as watched</button>';
+area.innerHTML = '<button class="synopsis-toggle mark-watched" id="markWatchedBtn" disabled>✓ Marked as watched</button>';
 } else {
-area.innerHTML = '<button class="synopsis-toggle" id="markWatchedBtn" style="display:block; margin:0 auto;">✓ Already seen this — mark as watched</button>';
+area.innerHTML = '<button class="synopsis-toggle mark-watched" id="markWatchedBtn">✓ Already seen this — mark as watched</button>';
 document.getElementById("markWatchedBtn").onclick = async () => {
 addWatched(pick);
 const rating = await promptForRating(pick.title);
@@ -3023,7 +3761,7 @@ similarForm.classList.add("hidden-block");
 lastSimilarBaseId = baseId;
 lastSimilarTitle = baseTitle;
 lastSimilarRuntime = runtimeFilter;
-editFiltersBtn.textContent = "🔄 Pick a different movie";
+editFiltersBtn.textContent = "☞ Pick a different movie";
 editFiltersBtn.classList.remove("hidden-block");
 resultButtons.classList.remove("hidden-block");
 try {
@@ -3228,6 +3966,7 @@ if (!picked) return;
 slots[i] = { title: picked.title, poster: picked.poster, id: picked.id || null };
 render();
 saveSlots();
+mascotReact(".reely", "hop");
 
 if (!picked.poster || !picked.id) {
 const meta = await fetchMovieMeta(picked.title);
@@ -3362,7 +4101,10 @@ drawButtons.classList.remove("hidden-block");
 }, 1650);
 }
 
-drawBtn.onclick = runDrawAnimation;
+drawBtn.onclick = () => {
+mascotReact(".kernel", "cheer");
+runDrawAnimation();
+};
 drawAgainBtn.onclick = runDrawAnimation;
 drawCloseBtn.onclick = () => {
 drawOverlay.classList.add("hidden");
@@ -3370,6 +4112,33 @@ if (lastDrawIndex !== null) handleSlotClick(lastDrawIndex);
 };
 drawEmptyClose.onclick = () => drawOverlay.classList.add("hidden");
 document.getElementById("drawCloseX").onclick = () => drawOverlay.classList.add("hidden");
+
+// --- Cartoon motion: squash-and-stretch on press, mascot reactions ---
+// Purely decorative - none of this touches app state.
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function mascotReact(selector, cls) {
+if (reduceMotion) return;
+const el = document.querySelector(selector);
+if (!el) return;
+el.classList.remove(cls);
+void el.getBoundingClientRect();
+el.classList.add(cls);
+}
+
+document.addEventListener("pointerdown", (e) => {
+if (reduceMotion) return;
+const el = e.target.closest("button, .result-row");
+if (!el || el.disabled) return;
+el.classList.remove("boing");
+void el.offsetWidth;
+el.classList.add("boing");
+});
+document.addEventListener("animationend", (e) => {
+if (e.animationName === "boing") e.target.classList.remove("boing");
+if (e.animationName === "mascotHop") e.target.classList.remove("hop", "cheer");
+});
+document.querySelector(".iris-intro").addEventListener("animationend", (e) => e.target.remove());
 
 loadSlots();
 

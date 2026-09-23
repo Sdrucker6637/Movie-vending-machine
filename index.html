@@ -479,11 +479,13 @@ h1 .h1-small {
   padding: 3px;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 3px 3px 0 var(--ink);
   font-family: var(--font-body);
   color: var(--ink);
+  --label-h: 26px;
 }
 .slot:nth-child(4n+1) { rotate: -0.8deg; }
 .slot:nth-child(4n+2) { rotate: 0.6deg; }
@@ -499,8 +501,9 @@ h1 .h1-small {
 }
 .slot:active { translate: 1px 2px; box-shadow: 1px 1px 0 var(--ink); }
 .slot img {
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
-  height: 100%;
   object-fit: cover;
   display: block;
   border-radius: 3px;
@@ -511,7 +514,7 @@ h1 .h1-small {
 .slot:not(.empty)::after {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 3px 3px calc(var(--label-h) + 6px);
   background-image: var(--halftone);
   background-size: 4px 4px;
   mix-blend-mode: multiply;
@@ -568,27 +571,35 @@ h1 .h1-small {
 }
 .slot .title-fallback + .label { display: none; }
 .slot .label {
-  position: absolute;
-  bottom: 3px;
-  left: 3px;
-  right: 3px;
-  z-index: 2;
-  background: var(--paper-hi);
+  flex: 0 0 var(--label-h);
+  width: 100%;
+  height: var(--label-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 3px;
+  padding: 0 2px;
   border-top: 2px solid var(--ink);
+  overflow: hidden;
   font-family: var(--font-body);
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0;
   color: var(--ink);
-  padding: 3px 2px 2px;
   text-align: center;
-  line-height: 1.12;
+  line-height: 1.1;
+}
+.slot .label span {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+/* Safety net if a title still won't fit at the smallest size */
+.slot .label span.clamped {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  overflow-wrap: break-word;
-  border-radius: 0 0 3px 3px;
 }
 @media (hover: hover) {
   .slot:not(.empty):hover { animation: wiggle 0.34s steps(1) infinite; }
@@ -3266,13 +3277,38 @@ btn.appendChild(fb);
 }
 const label = document.createElement("div");
 label.className = "label";
-label.textContent = movie.title;
+const labelText = document.createElement("span");
+labelText.textContent = movie.title;
+label.appendChild(labelText);
 btn.appendChild(label);
 }
 
 grid.appendChild(btn);
 });
+fitSlotLabels();
 }
+
+// Every title strip is the same height; long titles shrink their type to
+// fit it rather than growing the strip.
+function fitSlotLabels() {
+document.querySelectorAll(".slot .label span").forEach((span) => {
+const box = span.parentElement;
+let size = 9.5;
+span.style.fontSize = "";
+span.classList.remove("clamped");
+while (span.offsetHeight > box.clientHeight && size > 7) {
+size -= 0.5;
+span.style.fontSize = size + "px";
+}
+if (span.offsetHeight > box.clientHeight) span.classList.add("clamped");
+});
+}
+let fitLabelsTimer = null;
+window.addEventListener("resize", () => {
+clearTimeout(fitLabelsTimer);
+fitLabelsTimer = setTimeout(fitSlotLabels, 150);
+});
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSlotLabels);
 
 // --- Custom modal dialogs (replace native confirm/prompt) ---
 const confirmOverlay = document.getElementById("confirmOverlay");

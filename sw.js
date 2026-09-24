@@ -1,10 +1,18 @@
-const CACHE = "movie-machine-v6";
+const CACHE = "movie-machine-v7";
 const FILES = [
   "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
   "./fonts/shrikhand-400.woff2",
   "./fonts/limelight-400.woff2",
   "./fonts/special-elite-400.woff2",
-  "./fonts/bitter-var.woff2"
+  "./fonts/bitter-var.woff2",
+  "./fx/fx.css",
+  "./fx/engine.js",
+  "./fx/art.js",
+  "./fx/cues-classic.js",
+  "./fx/cues-animated.js",
+  "./fx/cues-dark.js",
+  "./fx/cues-action.js",
+  "./fx/cues-lighter.js"
 ];
 
 self.addEventListener("install", (e) => {

@@ -1,0 +1,737 @@
+/* =========================================================
+   Machine FX engine
+   ---------------------------------------------------------
+   A tiny runtime for one-off "reactions" the machine can have
+   when a particular movie is loaded into a slot. Reactions are
+   keyed by TMDB movie id and live in fx/cues.js; this file only
+   provides the plumbing:
+
+     - MachineFX.register([...cues])  add cues (keyed by TMDB id)
+     - MachineFX.onMovieAdded(movie, slotIndex)
+                                      called by the app after a
+                                      movie lands in a slot
+
+   A cue looks like:
+     {
+       id: 550,                  // TMDB id (or an array of ids)
+       repeat: "sometimes",      // "always" | "sometimes" | "session" | "once"
+       chance: 0.4,              // for "sometimes": odds after the first time
+       cooldown: 60000,          // ms before it can fire again
+       when: (stats) => bool,    // optional extra trigger condition
+       run: async (fx) => {...}  // the reaction itself
+     }
+
+   Everything here is decorative. Nothing touches app state, and
+   every failure is swallowed so adding a movie can never break.
+   ========================================================= */
+(function () {
+  "use strict";
+
+  const MEMORY_KEY = "mvm-fx-memory";
+  const MAX_RUN_MS = 15000;
+  const ABORT = { aborted: true };
+  const PAGE_PARTS = ["body > header", "body > .machine", "body > .cta-stage", "#watchedBtn", "body > footer"];
+
+  const cues = new Map();
+  const firedThisSession = new Set();
+  let current = null;
+
+  const prefersReduced = () =>
+    !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // ---------- memory (per-device repeat bookkeeping) ----------
+  function loadMemory() {
+    try {
+      return JSON.parse(localStorage.getItem(MEMORY_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveMemory(mem) {
+    try {
+      localStorage.setItem(MEMORY_KEY, JSON.stringify(mem));
+    } catch (e) {
+      // storage full/blocked - repeat rules just fall back to per-session
+    }
+  }
+
+  // ---------- audio: synthesized only, silent when unavailable ----------
+  const audio = {
+    ctx: null,
+    master: null,
+    noiseBuf: null,
+    unlock() {
+      try {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          this.ctx = new AC();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.2;
+          this.master.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      } catch (e) {
+        this.ctx = null;
+      }
+    },
+    ready() {
+      return !!(this.ctx && this.ctx.state === "running" && !document.hidden);
+    },
+    noise() {
+      if (!this.noiseBuf) {
+        const len = this.ctx.sampleRate * 2;
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        this.noiseBuf = buf;
+      }
+      return this.noiseBuf;
+    }
+  };
+  // Browsers only allow audio after a user gesture - piggyback on the
+  // taps people are already making.
+  ["pointerdown", "touchend", "keydown"].forEach((ev) =>
+    document.addEventListener(ev, () => audio.unlock(), { capture: true, passive: true })
+  );
+
+  const NOTE_INDEX = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 };
+  function noteFreq(n) {
+    if (typeof n === "number") return n;
+    const m = /^([A-G])([#b]?)(-?\d)$/.exec(n);
+    if (!m) return 440;
+    let semis = NOTE_INDEX[m[1]] + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0) + (parseInt(m[3], 10) - 4) * 12;
+    return 440 * Math.pow(2, semis / 12);
+  }
+
+  // ---------- the layer every effect draws into ----------
+  function layer() {
+    let el = document.getElementById("fx-layer");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "fx-layer";
+      el.setAttribute("aria-hidden", "true");
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  // ---------- the toolkit handed to each cue ----------
+  function makeFx(movie, slotIndex, stats) {
+    const cleanups = [];
+    const waiters = new Set();
+    const nodes = new Set();
+    let aborted = false;
+    const reduced = prefersReduced();
+
+    const fx = {
+      movie,
+      stats,
+      slotIndex,
+      reduced,
+      rand,
+      pick,
+      note: noteFreq,
+      get aborted() {
+        return aborted;
+      },
+
+      // --- timing ---
+      wait(ms) {
+        return new Promise((resolve, reject) => {
+          if (aborted) return reject(ABORT);
+          const w = { reject };
+          w.t = setTimeout(() => {
+            waiters.delete(w);
+            resolve();
+          }, ms);
+          waiters.add(w);
+        });
+      },
+      // Calls fn(progress 0..1) every frame for ms. Abort-aware.
+      tween(ms, fn, ease) {
+        return new Promise((resolve, reject) => {
+          if (aborted) return reject(ABORT);
+          const t0 = performance.now();
+          const e = ease || ((p) => p);
+          const w = { reject };
+          waiters.add(w);
+          const step = (now) => {
+            if (aborted) return;
+            const p = Math.min(1, (now - t0) / ms);
+            try { fn(e(p)); } catch (err) {}
+            if (p < 1) w.t = requestAnimationFrame(step);
+            else { waiters.delete(w); resolve(); }
+          };
+          w.t = requestAnimationFrame(step);
+          w.raf = true;
+        });
+      },
+      later(ms, fn) {
+        fx.wait(ms).then(fn, () => {});
+      },
+      onCleanup(fn) {
+        cleanups.push(fn);
+      },
+
+      // --- lookup ---
+      $(sel) {
+        return typeof sel === "string" ? document.querySelector(sel) : sel;
+      },
+      $$(sel) {
+        return Array.from(document.querySelectorAll(sel));
+      },
+      slot() {
+        return document.querySelectorAll("#grid .slot")[slotIndex] || null;
+      },
+      otherSlots(filledOnly) {
+        return fx.$$("#grid .slot").filter((s, i) => i !== slotIndex && (!filledOnly || !s.classList.contains("empty")));
+      },
+      rect(el) {
+        el = fx.$(el);
+        if (el && typeof el.x === "number" && !el.getBoundingClientRect) {
+          const w = el.width || 0, h = el.height || 0;
+          return { left: el.x - w / 2, top: el.y - h / 2, width: w, height: h, x: el.x, y: el.y };
+        }
+        if (!el) return { left: innerWidth / 2 - 40, top: innerHeight / 2 - 60, width: 80, height: 120, x: innerWidth / 2, y: innerHeight / 2 };
+        const r = el.getBoundingClientRect();
+        return { left: r.left, top: r.top, width: r.width, height: r.height, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      },
+      pageParts() {
+        return PAGE_PARTS.map((s) => document.querySelector(s)).filter(Boolean);
+      },
+
+      // --- DOM helpers (everything is removed on cleanup) ---
+      node(html, opts) {
+        opts = opts || {};
+        const el = document.createElement(opts.tag || "div");
+        if (opts.cls) el.className = opts.cls;
+        if (html) el.innerHTML = html;
+        if (opts.style) Object.assign(el.style, opts.style);
+        (opts.parent ? fx.$(opts.parent) : layer()).appendChild(el);
+        nodes.add(el);
+        if (opts.ms) fx.later(opts.ms, () => fx.remove(el));
+        return el;
+      },
+      remove(el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        nodes.delete(el);
+      },
+      // Places a node centered on a fixed-layer point.
+      put(html, x, y, opts) {
+        opts = opts || {};
+        const size = opts.size || 60;
+        const el = fx.node(html, Object.assign({}, opts, {
+          style: Object.assign({
+            position: "absolute",
+            left: x - size / 2 + "px",
+            top: y - size / 2 + "px",
+            width: size + "px",
+            height: (opts.h || size) + "px"
+          }, opts.style || {})
+        }));
+        el.classList.add("fx-sprite");
+        return el;
+      },
+      cls(target, name, ms) {
+        const els = typeof target === "string" ? fx.$$(target) : [].concat(target).filter(Boolean);
+        els.forEach((el) => el.classList.add(name));
+        const undo = () => els.forEach((el) => el.classList.remove(name));
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+        return els;
+      },
+      style(target, props, ms) {
+        const els = typeof target === "string" ? fx.$$(target) : [].concat(target).filter(Boolean);
+        const saved = els.map((el) => {
+          const old = {};
+          Object.keys(props).forEach((k) => (old[k] = el.style[k]));
+          Object.assign(el.style, props);
+          return [el, old];
+        });
+        const undo = () => saved.forEach(([el, old]) => Object.assign(el.style, old));
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+        return undo;
+      },
+      text(target, str, ms) {
+        const el = fx.$(target);
+        if (!el) return () => {};
+        const old = el.textContent;
+        el.textContent = str;
+        let done = false;
+        const undo = () => {
+          if (done) return;
+          done = true;
+          if (el.isConnected) el.textContent = old;
+        };
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+        return undo;
+      },
+      marquee(str, ms, sub) {
+        fx.text(".machine-marquee .marquee-text", str, ms);
+        if (sub !== undefined) fx.text(".machine-marquee .marquee-sub", sub, ms);
+      },
+
+      // --- motion (Web Animations; cancelled on cleanup) ---
+      anim(target, frames, opts) {
+        const els = typeof target === "string" ? fx.$$(target) : [].concat(target).filter(Boolean);
+        const anims = els.filter((el) => el.animate).map((el) => {
+          const a = el.animate(frames, Object.assign({ fill: "forwards" }, typeof opts === "number" ? { duration: opts } : opts));
+          cleanups.push(() => {
+            try { a.cancel(); } catch (e) {}
+          });
+          return a;
+        });
+        return Promise.all(anims.map((a) => a.finished.catch(() => {})));
+      },
+      // Motion that should simply not happen for reduced-motion users.
+      move(target, frames, opts) {
+        if (reduced) return Promise.resolve();
+        return fx.anim(target, frames, opts);
+      },
+      fadeIn(el, ms) {
+        return fx.anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: ms || 250, fill: "forwards" });
+      },
+      fadeOut(el, ms) {
+        return fx.anim(el, [{ opacity: 1 }, { opacity: 0 }], { duration: ms || 300, fill: "forwards" });
+      },
+      shake(level, ms) {
+        if (reduced) return Promise.resolve();
+        const px = level === "lg" ? 9 : level === "md" ? 5 : 2.5;
+        const n = Math.max(3, Math.round((ms || 400) / 50));
+        const frames = [];
+        for (let i = 0; i < n; i++) {
+          const f = 1 - i / n;
+          frames.push({ transform: "translate(" + rand(-px, px) * f + "px," + rand(-px, px) * f + "px)" });
+        }
+        frames.push({ transform: "translate(0,0)" });
+        return fx.anim(fx.pageParts(), frames, { duration: ms || 400, easing: "steps(" + n + ")", fill: "none" });
+      },
+      page(frames, opts) {
+        return fx.move(fx.pageParts(), frames, opts);
+      },
+      // Sprite that travels between two points (px, layer coordinates).
+      // Reduced motion: it just appears at the midpoint and fades.
+      fly(html, from, to, opts) {
+        opts = opts || {};
+        const size = opts.size || 60;
+        const el = fx.put(html, 0, 0, Object.assign({}, opts, { style: Object.assign({ left: "0px", top: "0px" }, opts.style || {}) }));
+        const dur = opts.dur || 1500;
+        if (reduced) {
+          const mx = (from[0] + to[0]) / 2 - size / 2;
+          const my = (from[1] + to[1]) / 2 - (opts.h || size) / 2;
+          el.style.transform = "translate(" + mx + "px," + my + "px)";
+          return fx.anim(el, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: dur }).then(() => fx.remove(el));
+        }
+        const mid = opts.via;
+        const frame = (p, r) =>
+          ({ transform: "translate(" + (p[0] - size / 2) + "px," + (p[1] - (opts.h || size) / 2) + "px) rotate(" + (r || 0) + "deg)" + (opts.flip ? " scaleX(-1)" : "") });
+        const frames = mid ? [frame(from, opts.r0), frame(mid, opts.r1), frame(to, opts.r2)] : [frame(from, opts.r0), frame(to, opts.r2)];
+        return fx.anim(el, frames, { duration: dur, easing: opts.easing || "linear" }).then(() => {
+          if (!opts.keep) fx.remove(el);
+          return el;
+        });
+      },
+
+      // --- screen-wide treatments ---
+      filter(css, ms, opts) {
+        opts = opts || {};
+        const el = fx.node("", { cls: "fx-filter", style: { backdropFilter: css, webkitBackdropFilter: css, background: opts.bg || "transparent" } });
+        if (opts.fade && !reduced) fx.fadeIn(el, opts.fade);
+        if (ms) {
+          fx.later(ms - (opts.fade || 0), () => {
+            if (opts.fade && !reduced) fx.fadeOut(el, opts.fade).then(() => fx.remove(el));
+            else fx.remove(el);
+          });
+        }
+        return el;
+      },
+      wash(color, ms, opts) {
+        opts = opts || {};
+        const el = fx.node("", { cls: "fx-filter", style: { background: color, mixBlendMode: opts.blend || "normal", opacity: opts.opacity == null ? 1 : opts.opacity } });
+        if (opts.fade) fx.fadeIn(el, opts.fade);
+        if (ms) {
+          fx.later(ms - (opts.fade || 0), () => {
+            if (opts.fade) fx.fadeOut(el, opts.fade).then(() => fx.remove(el));
+            else fx.remove(el);
+          });
+        }
+        return el;
+      },
+      // Photosensitivity: flashes are single, softened under reduced motion.
+      flash(color, ms) {
+        const el = fx.node("", { cls: "fx-filter", style: { background: color || "#fff" } });
+        const dur = ms || 220;
+        return fx.anim(el, [{ opacity: reduced ? 0.35 : 0.95 }, { opacity: 0 }], { duration: reduced ? dur * 2 : dur, easing: "ease-out" }).then(() => fx.remove(el));
+      },
+      letterbox(ms, size) {
+        const h = size || "11vh";
+        const top = fx.node("", { cls: "fx-bar", style: { top: 0, height: h } });
+        const bot = fx.node("", { cls: "fx-bar", style: { bottom: 0, height: h } });
+        if (!reduced) {
+          fx.anim(top, [{ transform: "translateY(-100%)" }, { transform: "none" }], 300);
+          fx.anim(bot, [{ transform: "translateY(100%)" }, { transform: "none" }], 300);
+        }
+        if (ms) fx.later(ms, () => { fx.remove(top); fx.remove(bot); });
+        return [top, bot];
+      },
+      pillarbox(ms, size) {
+        const w = size || "12vw";
+        const l = fx.node("", { cls: "fx-bar", style: { left: 0, top: 0, bottom: 0, width: w, height: "auto" } });
+        const r = fx.node("", { cls: "fx-bar", style: { right: 0, top: 0, bottom: 0, width: w, height: "auto", left: "auto" } });
+        if (!reduced) {
+          fx.anim(l, [{ transform: "translateX(-100%)" }, { transform: "none" }], 300);
+          fx.anim(r, [{ transform: "translateX(100%)" }, { transform: "none" }], 300);
+        }
+        if (ms) fx.later(ms, () => { fx.remove(l); fx.remove(r); });
+      },
+      caption(str, opts) {
+        opts = opts || {};
+        const el = fx.node("", { cls: "fx-caption fx-cap-" + (opts.style || "subtitle"), style: opts.css || {} });
+        el.textContent = str;
+        if (opts.at === "slot" && fx.slot()) {
+          const r = fx.rect(fx.slot());
+          Object.assign(el.style, { left: r.x + "px", top: r.top + r.height + 6 + "px", bottom: "auto", transform: "translateX(-50%)" });
+        }
+        fx.fadeIn(el, 180);
+        if (opts.ms) fx.later(opts.ms, () => fx.fadeOut(el, 250).then(() => fx.remove(el)));
+        return el;
+      },
+      // Overlays the glass case (the grid of slots).
+      glass(html, opts) {
+        opts = opts || {};
+        const grid = document.getElementById("grid");
+        if (!grid) return null;
+        const el = fx.node(html, { cls: "fx-glass " + (opts.cls || ""), parent: grid, style: opts.style });
+        if (opts.ms) fx.later(opts.ms, () => fx.remove(el));
+        return el;
+      },
+      // Adds temporary SVG artwork inside a mascot, in its own coordinates.
+      costume(sel, svg, ms) {
+        const host = fx.$(sel);
+        if (!host) return null;
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "fx-costume");
+        g.innerHTML = svg;
+        host.appendChild(g);
+        nodes.add(g);
+        if (ms) fx.later(ms, () => fx.remove(g));
+        return g;
+      },
+
+      // --- particles ---
+      // kind: "fall" | "rise" | "burst" | "drift" | "sweep"
+      particles(opts) {
+        opts = opts || {};
+        const W = innerWidth, H = innerHeight;
+        let count = opts.count || 20;
+        if (reduced) count = Math.max(3, Math.round(count / 3));
+        const dur = opts.dur || 2200;
+        const origin = opts.from ? fx.rect(opts.from) : null;
+        const area = opts.area ? fx.rect(opts.area) : { left: 0, top: 0, width: W, height: H };
+        const all = [];
+        for (let i = 0; i < count; i++) {
+          const glyph = Array.isArray(opts.glyphs) ? pick(opts.glyphs) : (opts.glyphs || "");
+          const size = rand(opts.min || 10, opts.max || 22);
+          const el = fx.node(typeof glyph === "function" ? glyph(i) : glyph, { cls: "fx-particle" + (opts.cls ? " " + opts.cls : "") });
+          el.style.width = el.style.height = size + "px";
+          el.style.fontSize = size + "px";
+          if (opts.colors) el.style.setProperty("--c", pick(opts.colors));
+          let x0, y0, x1, y1;
+          const kind = opts.kind || "fall";
+          if (kind === "fall") {
+            x0 = rand(area.left - 20, area.left + area.width); y0 = area.top + rand(-60, -10) * (opts.area ? 0.2 : 1);
+            x1 = x0 + rand(-60, 60) * (opts.area ? 0.3 : 1) + (opts.wind || 0); y1 = area.top + area.height + (opts.area ? 0 : 40);
+          } else if (kind === "rise") {
+            x0 = origin ? origin.x + rand(-origin.width / 2, origin.width / 2) : rand(area.left, area.left + area.width);
+            y0 = origin ? origin.y : area.top + area.height + 20;
+            x1 = x0 + rand(-60, 60) + (opts.wind || 0); y1 = origin ? origin.y - rand(H * 0.3, H * 0.8) : -60;
+          } else if (kind === "burst") {
+            const o = origin || { x: W / 2, y: H / 2 };
+            const a = rand(0, Math.PI * 2), d = rand(opts.spread || 60, (opts.spread || 60) * 2.4);
+            x0 = o.x; y0 = o.y; x1 = o.x + Math.cos(a) * d; y1 = o.y + Math.sin(a) * d + (opts.gravity || 0);
+          } else if (kind === "sweep") {
+            const ltr = opts.dir !== "rtl";
+            x0 = ltr ? -40 : W + 40; y0 = rand(area.top, area.top + area.height); x1 = ltr ? W + 40 : -40; y1 = y0 + rand(-80, 80);
+          } else {
+            x0 = rand(area.left, area.left + area.width); y0 = rand(area.top, area.top + area.height); x1 = x0 + rand(-50, 50); y1 = y0 + rand(-60, 20);
+          }
+          const d = dur * rand(0.7, 1.3);
+          const delay = rand(0, opts.stagger == null ? dur * 0.5 : opts.stagger);
+          const spin = opts.spin ? rand(-opts.spin, opts.spin) : 0;
+          el.style.transform = "translate(" + x0 + "px," + y0 + "px)";
+          if (reduced) {
+            el.style.transform = "translate(" + (x0 + x1) / 2 + "px," + Math.min(H - 30, Math.max(10, (y0 + y1) / 2)) + "px)";
+            all.push(fx.anim(el, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: d, delay, fill: "both" }));
+          } else {
+            all.push(fx.anim(el, [
+              { transform: "translate(" + x0 + "px," + y0 + "px) rotate(0deg)", opacity: opts.fadeIn ? 0 : 1 },
+              { opacity: 1, offset: 0.15 },
+              { opacity: opts.keepOpacity ? 1 : 0.9, offset: 0.8 },
+              { transform: "translate(" + x1 + "px," + y1 + "px) rotate(" + spin + "deg)", opacity: 0 }
+            ], { duration: d, delay, easing: opts.easing || (kind === "burst" ? "cubic-bezier(.2,.7,.4,1)" : "linear"), fill: "both" }));
+          }
+          all[all.length - 1].then(() => fx.remove(el));
+        }
+        return Promise.all(all);
+      },
+
+      // --- sound (Web Audio synthesis only) ---
+      tone(freq, dur, opts) {
+        if (!audio.ready()) return;
+        opts = opts || {};
+        try {
+          const ctx = audio.ctx;
+          const t0 = ctx.currentTime + (opts.at || 0);
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = opts.type || "sine";
+          osc.frequency.setValueAtTime(noteFreq(freq), t0);
+          if (opts.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, noteFreq(opts.slide)), t0 + dur);
+          if (opts.detune) osc.detune.value = opts.detune;
+          const vol = opts.vol == null ? 0.5 : opts.vol;
+          const atk = opts.attack || 0.01;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+          let out = g;
+          if (opts.filter) {
+            const f = ctx.createBiquadFilter();
+            f.type = opts.filter.type || "lowpass";
+            f.frequency.value = opts.filter.freq || 1200;
+            f.Q.value = opts.filter.q || 1;
+            g.connect(f);
+            out = f;
+          }
+          if (opts.pan != null && ctx.createStereoPanner) {
+            const p = ctx.createStereoPanner();
+            p.pan.value = opts.pan;
+            out.connect(p);
+            out = p;
+          }
+          if (opts.vibrato) {
+            const lfo = ctx.createOscillator();
+            const lg = ctx.createGain();
+            lfo.frequency.value = opts.vibrato[0];
+            lg.gain.value = opts.vibrato[1];
+            lfo.connect(lg);
+            lg.connect(osc.frequency);
+            lfo.start(t0);
+            lfo.stop(t0 + dur + 0.05);
+          }
+          osc.connect(g);
+          out.connect(audio.master);
+          osc.start(t0);
+          osc.stop(t0 + dur + 0.05);
+          cleanups.push(() => { try { osc.stop(); } catch (e) {} });
+        } catch (e) {}
+      },
+      // [[note, beats], ...] - null note is a rest
+      seq(notes, opts) {
+        opts = opts || {};
+        const beat = opts.beat || 0.18;
+        let t = opts.at || 0;
+        notes.forEach(([n, len]) => {
+          if (n != null) [].concat(n).forEach((nn) => fx.tone(nn, beat * (len || 1) * (opts.legato || 0.95), Object.assign({}, opts, { at: t })));
+          t += beat * (len || 1);
+        });
+        return t;
+      },
+      chord(notes, dur, opts) {
+        notes.forEach((n) => fx.tone(n, dur, Object.assign({ vol: 0.25 }, opts)));
+      },
+      noise(dur, opts) {
+        if (!audio.ready()) return;
+        opts = opts || {};
+        try {
+          const ctx = audio.ctx;
+          const t0 = ctx.currentTime + (opts.at || 0);
+          const src = ctx.createBufferSource();
+          src.buffer = audio.noise();
+          src.loop = true;
+          const f = ctx.createBiquadFilter();
+          f.type = opts.type || "lowpass";
+          f.frequency.setValueAtTime(opts.freq || 1000, t0);
+          if (opts.sweep) f.frequency.exponentialRampToValueAtTime(opts.sweep, t0 + dur);
+          f.Q.value = opts.q || 1;
+          const g = ctx.createGain();
+          const vol = opts.vol == null ? 0.4 : opts.vol;
+          const atk = opts.attack || 0.005;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+          if (opts.hold) g.gain.setValueAtTime(vol, t0 + atk + opts.hold);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+          src.connect(f);
+          f.connect(g);
+          let out = g;
+          if (opts.pan != null && ctx.createStereoPanner) {
+            const p = ctx.createStereoPanner();
+            p.pan.setValueAtTime(opts.pan, t0);
+            if (opts.panTo != null) p.pan.linearRampToValueAtTime(opts.panTo, t0 + dur);
+            g.connect(p);
+            out = p;
+          }
+          out.connect(audio.master);
+          src.start(t0);
+          src.stop(t0 + dur + 0.05);
+          cleanups.push(() => { try { src.stop(); } catch (e) {} });
+        } catch (e) {}
+      },
+      thud(opts) {
+        opts = opts || {};
+        fx.tone(opts.freq || 80, opts.dur || 0.35, { type: "sine", slide: 35, vol: opts.vol || 0.8, at: opts.at });
+        fx.noise(0.12, { freq: 300, vol: (opts.vol || 0.8) * 0.4, at: opts.at });
+      },
+      click(opts) {
+        opts = opts || {};
+        fx.noise(0.03, { type: "bandpass", freq: opts.freq || 3000, q: 4, vol: opts.vol || 0.5, at: opts.at, pan: opts.pan });
+      },
+
+      // --- haptics (Android/Chrome; silently ignored elsewhere) ---
+      buzz(pattern) {
+        try {
+          if (navigator.vibrate) navigator.vibrate(pattern);
+        } catch (e) {}
+      },
+
+      // --- whole-page tricks ---
+      // Freezes every running CSS/Web animation on the page.
+      freeze(ms) {
+        const anims = document.getAnimations ? document.getAnimations().filter((a) => a.playState === "running") : [];
+        anims.forEach((a) => { try { a.pause(); } catch (e) {} });
+        const undo = () => anims.forEach((a) => { try { if (a.playState === "paused") a.play(); } catch (e) {} });
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+        return undo;
+      },
+      // Slows (or speeds) every running animation on the page.
+      tempo(rate, ms) {
+        const anims = document.getAnimations ? document.getAnimations().filter((a) => a.playState === "running") : [];
+        anims.forEach((a) => { try { a.updatePlaybackRate ? a.updatePlaybackRate(rate) : (a.playbackRate = rate); } catch (e) {} });
+        const undo = () => anims.forEach((a) => { try { a.playbackRate = 1; } catch (e) {} });
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+      },
+      // Runs fn on the next tap anywhere within `ms`. Never blocks the tap.
+      onNextTap(fn, ms) {
+        let armed = true;
+        const h = (e) => {
+          if (!armed) return;
+          armed = false;
+          document.removeEventListener("pointerdown", h, true);
+          try { fn(e); } catch (err) {}
+        };
+        document.addEventListener("pointerdown", h, true);
+        const undo = () => { armed = false; document.removeEventListener("pointerdown", h, true); };
+        cleanups.push(undo);
+        if (ms) fx.later(ms, undo);
+      },
+
+      // --- internals ---
+      _abort() {
+        if (aborted) return;
+        aborted = true;
+        waiters.forEach((w) => { if (w.raf) cancelAnimationFrame(w.t); else clearTimeout(w.t); w.reject(ABORT); });
+        waiters.clear();
+        fx._cleanup();
+      },
+      _cleanup() {
+        while (cleanups.length) {
+          try { cleanups.pop()(); } catch (e) {}
+        }
+        nodes.forEach((n) => { if (n.parentNode) n.parentNode.removeChild(n); });
+        nodes.clear();
+      }
+    };
+    return fx;
+  }
+
+  // ---------- deciding whether a cue fires ----------
+  function shouldFire(cue, rec, now) {
+    const repeat = cue.repeat || "sometimes";
+    const cooldown = cue.cooldown != null ? cue.cooldown : repeat === "always" ? 3000 : 45000;
+    if (rec.t && now - rec.t < cooldown) return false;
+    if (cue.when && !cue.when({ adds: rec.a, fired: rec.f })) return false;
+    if (repeat === "once") return rec.f === 0;
+    if (repeat === "session") return !firedThisSession.has(cue);
+    if (repeat === "always") return true;
+    // "sometimes": always the first time, then only now and then.
+    if (rec.f === 0) return true;
+    return Math.random() < (cue.chance != null ? cue.chance : 0.4);
+  }
+
+  function stopCurrent() {
+    if (current) {
+      current._abort();
+      current = null;
+    }
+    document.documentElement.classList.remove("fx-running");
+  }
+
+  async function play(cue, fx) {
+    stopCurrent();
+    current = fx;
+    document.documentElement.classList.add("fx-running");
+    let timeout;
+    try {
+      await Promise.race([
+        Promise.resolve().then(() => cue.run(fx)),
+        new Promise((resolve) => { timeout = setTimeout(resolve, cue.maxMs || MAX_RUN_MS); })
+      ]);
+    } catch (e) {
+      // aborted or a cue bug - either way just tidy up
+    } finally {
+      clearTimeout(timeout);
+      if (current === fx) {
+        fx._cleanup();
+        current = null;
+        document.documentElement.classList.remove("fx-running");
+      }
+    }
+  }
+
+  function onMovieAdded(movie, slotIndex) {
+    try {
+      const id = Number(movie && movie.id);
+      if (!id) return;
+      const cue = cues.get(id);
+      if (!cue) return;
+      const now = Date.now();
+      const mem = loadMemory();
+      const rec = mem[id] || { a: 0, f: 0, t: 0 };
+      rec.a += 1;
+      const fire = shouldFire(cue, rec, now);
+      if (fire) {
+        rec.f += 1;
+        rec.t = now;
+        firedThisSession.add(cue);
+      }
+      mem[id] = rec;
+      saveMemory(mem);
+      if (!fire) return;
+      const fx = makeFx(movie, slotIndex, { adds: rec.a, fired: rec.f });
+      // Let the slot finish rendering its new poster first.
+      setTimeout(() => play(cue, fx), cue.delay != null ? cue.delay : 250);
+    } catch (e) {
+      // never let a reaction interfere with adding a movie
+    }
+  }
+
+  function register(list) {
+    [].concat(list).forEach((cue) => {
+      if (!cue || typeof cue.run !== "function") return;
+      [].concat(cue.id).forEach((id) => cues.set(Number(id), cue));
+    });
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopCurrent();
+  });
+
+  window.MachineFX = { register, onMovieAdded };
+})();

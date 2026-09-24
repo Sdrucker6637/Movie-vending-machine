@@ -1,0 +1,116 @@
+/* Machine FX - shared styles for one-off machine reactions */
+html.fx-running, html.fx-running body { overflow-x: hidden; overflow-x: clip; }
+
+#fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+#fx-layer * { pointer-events: none; }
+#fx-layer .fx-tap, #fx-layer .fx-tap * { pointer-events: auto; }
+
+.fx-filter { position: absolute; inset: 0; }
+.fx-bar { position: absolute; left: 0; right: 0; background: #0b0907; }
+.fx-sprite { position: absolute; will-change: transform; }
+.fx-sprite > svg, .fx-particle > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.fx-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  line-height: 1;
+  text-align: center;
+  color: var(--c, #1f1b16);
+  will-change: transform, opacity;
+}
+.fx-dot { border-radius: 50%; background: var(--c, #fbf4e2); }
+.fx-streak { border-radius: 2px; background: var(--c, #fbf4e2); width: 2px !important; }
+
+/* Things drawn on top of the glass case */
+.fx-glass {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+/* Captions */
+.fx-caption {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(88vw, 420px);
+  text-align: center;
+  white-space: pre-line;
+}
+.fx-cap-subtitle {
+  bottom: calc(14vh + env(safe-area-inset-bottom));
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #fff8d8;
+  text-shadow: 0 0 3px #000, 1px 1px 0 #000, -1px -1px 0 #000;
+}
+.fx-cap-card {
+  top: 38%;
+  padding: 14px 22px;
+  font-family: 'Limelight', Georgia, serif;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: #fbf4e2;
+  background: #1f1b16;
+  border: 3px double #fbf4e2;
+  box-shadow: 0 0 0 4px #1f1b16;
+}
+.fx-cap-terminal {
+  top: 40%;
+  font-family: 'Special Elite', 'Courier New', monospace;
+  font-size: 16px;
+  color: #6dff8a;
+  text-shadow: 0 0 6px #2bff5a;
+}
+.fx-cap-whisper {
+  bottom: 22vh;
+  font-family: 'Special Elite', 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: rgba(31,27,22,0.75);
+}
+.fx-cap-hand {
+  top: 30%;
+  font-family: 'Shrikhand', Georgia, serif;
+  font-size: 26px;
+  color: #b3402d;
+  text-shadow: 2px 2px 0 #1f1b16;
+  rotate: -4deg;
+}
+
+/* A slot that has been lifted above the fx layer */
+.fx-lift { z-index: 86 !important; position: relative; }
+
+/* Screens that show inside the glass */
+.fx-static {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='1' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .8 0 0 0 0 .8 0 0 0 0 .8 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-color: #222;
+  animation: fxStatic 0.12s steps(1) infinite;
+}
+@keyframes fxStatic {
+  0% { background-position: 0 0; }
+  33% { background-position: -47px 31px; }
+  66% { background-position: 23px -61px; }
+}
+.fx-scanlines {
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 1px, transparent 1px 3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-static { animation: none; }
+}
+
+/* Small helpers used by a few reactions */
+.fx-blur { filter: blur(6px); }
+.knob.fx-knob-eleven::after { transform-origin: 50% 11px; rotate: 165deg; transition: rotate 0.8s steps(8); }

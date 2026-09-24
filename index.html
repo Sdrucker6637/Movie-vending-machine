@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="fx/fx.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f1b16">
@@ -4011,6 +4012,19 @@ render();
 saveSlots();
 }
 }
+
+// Once the slot's TMDB id is settled, let the machine react to it.
+if (slots[i] && slots[i].title === picked.title) notifyMovieAdded(slots[i], i);
+}
+
+// Hands a freshly loaded movie (with its TMDB id) to the machine's
+// reaction layer. Purely decorative - it must never affect adding.
+function notifyMovieAdded(movie, index) {
+try {
+if (window.MachineFX && movie && movie.id) window.MachineFX.onMovieAdded(movie, index);
+} catch (e) {
+// ignore
+}
 }
 
 // --- Draw a Movie: spin the reel, then pop a capsule open to reveal the pick ---
@@ -4182,6 +4196,13 @@ navigator.serviceWorker.register("sw.js").catch(() => {});
 });
 }
 </script>
+<script src="fx/engine.js"></script>
+<script src="fx/art.js"></script>
+<script src="fx/cues-classic.js"></script>
+<script src="fx/cues-animated.js"></script>
+<script src="fx/cues-dark.js"></script>
+<script src="fx/cues-action.js"></script>
+<script src="fx/cues-lighter.js"></script>
 
 </body>
 </html>

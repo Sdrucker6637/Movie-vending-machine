@@ -8,6 +8,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 
 const dir = path.join(__dirname, "..", "fx");
 const files = fs.readdirSync(dir).filter((f) => /^cues-.+\.js$/.test(f)).sort();
@@ -17,6 +18,8 @@ const seen = new Map();
 for (const file of files) {
   const name = file.replace(/\.js$/, "");
   const src = fs.readFileSync(path.join(dir, file), "utf8");
+  // A pack that doesn't parse would silently never register its cues.
+  new vm.Script(src, { filename: file });
   const ids = [...src.matchAll(/^ {6}id: (\d+),$/gm)].map((m) => Number(m[1]));
   for (const id of ids) {
     if (seen.has(id)) throw new Error("TMDB id " + id + " is in both " + seen.get(id) + " and " + name);

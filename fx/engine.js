@@ -186,7 +186,7 @@
           waiters.add(w);
           const step = (now) => {
             if (aborted) return;
-            const p = Math.min(1, (now - t0) / ms);
+            const p = Math.max(0, Math.min(1, (now - t0) / ms));
             try { fn(e(p)); } catch (err) {}
             if (p < 1) w.t = requestAnimationFrame(step);
             else { waiters.delete(w); resolve(); }

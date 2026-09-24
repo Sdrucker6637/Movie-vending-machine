@@ -111,6 +111,69 @@
       return fx.wash(color, ms, { blend: "multiply", opacity: opacity == null ? 0.55 : opacity, fade: 300 });
     },
 
+    // --- machine-behaviour kit ---
+    // A retro system dialog in the middle of the screen.
+    errorBox(fx, title, body, ms) {
+      fx.tone(880, 0.12, { type: "square", vol: 0.08 });
+      fx.tone(660, 0.18, { type: "square", vol: 0.08, at: 0.13 });
+      const el = fx.node('<div class="fx-dialog-bar">' + title + '<span>&times;</span></div><div class="fx-dialog-body"></div>', { cls: "fx-dialog", ms: ms || 2400 });
+      el.querySelector(".fx-dialog-body").textContent = body;
+      fx.fadeIn(el, 120);
+      return el;
+    },
+    // A loading bar; `stall` (0..1) makes it hang there for a while.
+    progress(fx, label, ms, stall) {
+      const el = fx.node('<div class="fx-progress-label"></div><div class="fx-progress-track"><div class="fx-progress-fill"></div></div>', { cls: "fx-progress" });
+      el.querySelector(".fx-progress-label").textContent = label;
+      const fill = el.querySelector(".fx-progress-fill");
+      const total = ms || 2400;
+      return fx.tween(total, (k) => {
+        let v = k;
+        if (stall != null) v = k < 0.35 ? (k / 0.35) * stall : k < 0.8 ? stall : stall + ((k - 0.8) / 0.2) * (1 - stall);
+        fill.style.width = Math.round(v * 100) + "%";
+      }).then(() => { fx.later(300, () => fx.remove(el)); return el; });
+    },
+    // VHS tape look: scanlines, a rolling tracking band and the PLAY badge.
+    vhs(fx, ms, badge) {
+      fx.node("", { cls: "fx-filter fx-scanlines", ms, style: { opacity: 0.5 } });
+      fx.filter("saturate(1.3) contrast(1.1) blur(.4px)", ms);
+      const band = fx.node("", { cls: "fx-vhs-band", ms });
+      if (!fx.reduced) fx.anim(band, [{ transform: "translateY(-20vh)" }, { transform: "translateY(120vh)" }], { duration: 1800, iterations: Math.ceil(ms / 1800) });
+      else band.style.display = "none";
+      const osd = fx.node("", { cls: "fx-vhs-osd", ms });
+      osd.textContent = badge || "PLAY \u25B6";
+      fx.noise(Math.min(ms / 1000, 6), { type: "highpass", freq: 6000, vol: 0.03 });
+      return osd;
+    },
+    // The dispenser grinds and sticks.
+    jam(fx, ms) {
+      const mouth = fx.$(".slot-mouth");
+      const d = ms || 900;
+      fx.noise(d / 1000, { type: "bandpass", freq: 180, q: 3, vol: 0.5 });
+      fx.tone(55, d / 1000, { type: "sawtooth", vol: 0.08, vibrato: [25, 8], filter: { freq: 300 } });
+      fx.buzz([60, 40, 60, 40, 120]);
+      fx.move(fx.$(".machine"), [{ transform: "none" }, { transform: "translateX(-3px) rotate(-.4deg)" }, { transform: "translateX(3px) rotate(.4deg)" }, { transform: "none" }], { duration: 160, iterations: Math.ceil(d / 160), fill: "none" });
+      if (mouth) fx.style(mouth, { boxShadow: "inset 0 0 0 3px #b3402d" }, d);
+    },
+    // Coins rattle out of the ticket slot.
+    coinReturn(fx, n, color) {
+      const mouth = fx.$(".slot-mouth");
+      const r = fx.rect(mouth);
+      for (let i = 0; i < (n || 5); i++) {
+        fx.click({ freq: 4200 + i * 180, vol: 0.3, at: i * 0.11 });
+        fx.later(i * 110, () => fx.fly(art.coin(color), [r.x, r.y], [r.x + fx.rand(-90, 90), innerHeight + 30], { size: 20, dur: 900, via: [r.x + fx.rand(-40, 40), r.y + 20], r2: fx.rand(-400, 400), easing: "ease-in" }));
+      }
+    },
+    // Swaps the title typography for a moment.
+    retitle(fx, css, ms) {
+      return fx.style("body > header h1", css, ms || 3000);
+    },
+    // A short "wrong answer" buzzer.
+    buzzer(fx, at) {
+      fx.tone(110, 0.45, { type: "square", vol: 0.12, at: at || 0, filter: { freq: 900 } });
+      fx.tone(116, 0.45, { type: "square", vol: 0.1, at: at || 0, filter: { freq: 900 } });
+    },
+
     // Lifts the new slot above the fx layer (so full-screen filters skip it).
     liftSlot(fx, ms) {
       const s = fx.slot();

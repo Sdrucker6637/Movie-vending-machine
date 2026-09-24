@@ -152,3 +152,61 @@ html.fx-running, html.fx-running body { overflow-x: hidden; overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) {
   .fx-grain { animation: none; }
 }
+
+/* Machine-behaviour gags */
+.fx-dialog {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  transform: translate(-50%, -50%);
+  width: min(78vw, 300px);
+  background: #e8e4da;
+  border: 2px solid #1f1b16;
+  box-shadow: 4px 4px 0 #1f1b16;
+  font-family: 'Special Elite', 'Courier New', monospace;
+  color: #1f1b16;
+}
+.fx-dialog-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: #2d3b55;
+  color: #fbf4e2;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+.fx-dialog-body { padding: 14px 12px; font-size: 14px; line-height: 1.35; white-space: pre-line; }
+.fx-progress {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translateX(-50%);
+  width: min(76vw, 280px);
+  padding: 10px;
+  background: #1f1b16;
+  border: 2px solid #fbf4e2;
+  font-family: 'Special Elite', 'Courier New', monospace;
+  color: #fbf4e2;
+  font-size: 13px;
+}
+.fx-progress-track { margin-top: 8px; height: 12px; border: 1px solid #fbf4e2; }
+.fx-progress-fill { height: 100%; width: 0; background: #d9a13a; }
+.fx-vhs-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 7vh;
+  background: linear-gradient(transparent, rgba(255,255,255,.18) 40%, rgba(0,0,0,.25) 60%, transparent);
+  mix-blend-mode: screen;
+}
+.fx-vhs-osd {
+  position: absolute;
+  left: 18px;
+  top: calc(18px + env(safe-area-inset-top));
+  font-family: 'Special Elite', 'Courier New', monospace;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 2px 0 #f0f, -2px 0 #0ff;
+  letter-spacing: 0.1em;
+}

@@ -77,6 +77,40 @@
     sparkleOn(fx, target, count, color) {
       return fx.particles({ kind: "burst", from: target, count: count || 12, spread: 30, dur: 900, stagger: 400, glyphs: art.sparkle(color || "#fff8c0"), min: 8, max: 16 });
     },
+    // --- old-film kit ---
+    // Projector chatter: a shutter click train over a low motor hum.
+    projector(fx, sec) {
+      sec = sec || 3;
+      fx.tone(55, sec, { type: "sawtooth", vol: 0.05, attack: 0.3, filter: { freq: 220 } });
+      for (let t = 0; t < sec; t += 1 / 16) fx.click({ freq: 1800, vol: 0.12, at: t });
+    },
+    // Grain, scratches and flicker over the whole page (sepia/grey optional).
+    oldFilm(fx, ms, look) {
+      const f = fx.filter(look === "none" ? "none" : look || "grayscale(1) sepia(.35) contrast(1.15) brightness(.95)", ms, { fade: 250 });
+      fx.node("", { cls: "fx-filter fx-grain", ms });
+      return f;
+    },
+    // A silent-film title card (tap-through never needed; it just holds).
+    intertitle(fx, str, ms) {
+      return fx.caption(str, { style: "intertitle", ms: ms || 2600 });
+    },
+    // An iris closing (or opening) on a point. Static under reduced motion.
+    iris(fx, at, opts) {
+      opts = opts || {};
+      const p = at ? fx.rect(at) : { x: innerWidth / 2, y: innerHeight / 2 };
+      const el = fx.node("", { cls: "fx-filter" });
+      const big = Math.hypot(innerWidth, innerHeight);
+      const end = opts.to == null ? 70 : opts.to;
+      const set = (r) => (el.style.background = "radial-gradient(circle at " + p.x + "px " + p.y + "px, transparent " + r + "px, " + (opts.color || "#0b0907") + " " + (r + 1.5) + "px)");
+      if (fx.reduced) { set(opts.open ? big : end); return Promise.resolve(el); }
+      const from = opts.open ? end : big, to = opts.open ? big : end;
+      return fx.tween(opts.dur || 900, (k) => set(from + (to - from) * k), (k) => 1 - Math.pow(1 - k, 3)).then(() => el);
+    },
+    // Tints the page like a hand-coloured print.
+    tint(fx, color, ms, opacity) {
+      return fx.wash(color, ms, { blend: "multiply", opacity: opacity == null ? 0.55 : opacity, fade: 300 });
+    },
+
     // Lifts the new slot above the fx layer (so full-screen filters skip it).
     liftSlot(fx, ms) {
       const s = fx.slot();

@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="fx/fx.css?v=8">
+<link rel="stylesheet" href="fx/fx.css?v=9">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f1b16">
@@ -2687,19 +2687,19 @@ return h + "h " + m + "m";
 
 async function fetchMovieMeta(title) {
 const key = await ensureTmdbKey();
-if (!key) return { poster: null, id: null };
+if (!key) return { poster: null, id: null, year: null };
 try {
 const url = "https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(title);
 const r = await fetch(url);
 const data = await r.json();
 if (data.results && data.results.length > 0) {
 const m = mapTmdbResult(data.results[0]);
-return { poster: m.poster, id: m.id };
+return { poster: m.poster, id: m.id, year: m.year || null };
 }
 } catch (e) {
 console.error("Poster fetch failed", e);
 }
-return { poster: null, id: null };
+return { poster: null, id: null, year: null };
 }
 
 async function searchMovies(query) {
@@ -3589,7 +3589,7 @@ row.innerHTML =
 '<img src="' + m.poster + '" alt="">' +
 '<div><div class="rtitle">' + m.title + '</div>' +
 '<div class="ryear">' + m.year + '</div></div>';
-row.onclick = () => finish({ title: m.title, poster: m.poster, id: m.id });
+row.onclick = () => finish({ title: m.title, poster: m.poster, id: m.id, year: m.year });
 searchResults.appendChild(row);
 });
 searchResults.classList.remove("hidden-block");
@@ -3964,7 +3964,7 @@ loadSuggestion();
 }
 };
 surpriseUse.onclick = () => {
-if (currentPick) finish({ title: currentPick.title, poster: currentPick.poster, id: currentPick.id });
+if (currentPick) finish({ title: currentPick.title, poster: currentPick.poster, id: currentPick.id, year: currentPick.year });
 };
 surpriseBack.onclick = () => {
 surpriseView.classList.add("hidden-block");
@@ -3998,7 +3998,7 @@ current ? "What movie is replacing it?" : "What movie goes in slot " + (i + 1) +
 );
 if (!picked) return;
 
-slots[i] = { title: picked.title, poster: picked.poster, id: picked.id || null };
+slots[i] = { title: picked.title, poster: picked.poster, id: picked.id || null, year: picked.year || null };
 render();
 saveSlots();
 mascotReact(".reely", "hop");
@@ -4008,6 +4008,7 @@ const meta = await fetchMovieMeta(picked.title);
 if (slots[i] && slots[i].title === picked.title) {
 slots[i].poster = slots[i].poster || meta.poster;
 slots[i].id = slots[i].id || meta.id;
+slots[i].year = slots[i].year || meta.year;
 render();
 saveSlots();
 }
@@ -4196,13 +4197,9 @@ navigator.serviceWorker.register("sw.js").catch(() => {});
 });
 }
 </script>
-<script src="fx/engine.js?v=8"></script>
-<script src="fx/art.js?v=8"></script>
-<script src="fx/cues-classic.js?v=8"></script>
-<script src="fx/cues-animated.js?v=8"></script>
-<script src="fx/cues-dark.js?v=8"></script>
-<script src="fx/cues-action.js?v=8"></script>
-<script src="fx/cues-lighter.js?v=8"></script>
+<script src="fx/engine.js?v=9"></script>
+<script src="fx/art.js?v=9"></script>
+<script src="fx/index.js?v=9"></script>
 
 </body>
 </html>

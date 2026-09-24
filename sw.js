@@ -1,4 +1,4 @@
-const CACHE = "movie-machine-v8";
+const CACHE = "movie-machine-v9";
 const FILES = [
   "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
   "./fonts/shrikhand-400.woff2",
@@ -8,11 +8,7 @@ const FILES = [
   "./fx/fx.css",
   "./fx/engine.js",
   "./fx/art.js",
-  "./fx/cues-classic.js",
-  "./fx/cues-animated.js",
-  "./fx/cues-dark.js",
-  "./fx/cues-action.js",
-  "./fx/cues-lighter.js"
+  "./fx/index.js"
 ];
 
 self.addEventListener("install", (e) => {
@@ -34,7 +30,10 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
-  const isAppFile = url.pathname.endsWith("/") || FILES.some((f) => f !== "./" && url.pathname.endsWith(f.slice(1)));
+  // fx packs (fx/cues-*.js) aren't precached - they load on demand and are
+  // cached here the first time they're fetched.
+  const isAppFile = url.pathname.endsWith("/") || url.pathname.includes("/fx/") ||
+    FILES.some((f) => f !== "./" && url.pathname.endsWith(f.slice(1)));
   if (!isAppFile) return;
 
   // Network-first: always try to get the latest version; fall back to cache when offline.

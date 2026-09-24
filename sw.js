@@ -1,4 +1,4 @@
-const CACHE = "movie-machine-v7";
+const CACHE = "movie-machine-v8";
 const FILES = [
   "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
   "./fonts/shrikhand-400.woff2",
@@ -31,17 +31,22 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   // Only handle the app shell files - let API calls (TMDB, image CDN) go straight to network.
-  const isAppFile = FILES.some((f) => e.request.url.endsWith(f.replace("./", "")) || e.request.url.endsWith("/"));
+  if (e.request.method !== "GET") return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+  const isAppFile = url.pathname.endsWith("/") || FILES.some((f) => f !== "./" && url.pathname.endsWith(f.slice(1)));
   if (!isAppFile) return;
 
   // Network-first: always try to get the latest version; fall back to cache when offline.
+  // "no-cache" makes the browser revalidate with the server instead of reusing a
+  // stale HTTP-cached copy, so a new deploy shows up on the next load.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request.url, { cache: "no-cache" })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
 });

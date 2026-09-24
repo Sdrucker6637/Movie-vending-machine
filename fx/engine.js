@@ -14,11 +14,11 @@
    A cue looks like:
      {
        id: 550,                  // TMDB id (or an array of ids)
-       repeat: "sometimes",      // "always" | "sometimes" | "session" | "once"
-       chance: 0.4,              // for "sometimes": odds after the first time
-       cooldown: 60000,          // ms before it can fire again
-       when: (stats) => bool,    // optional extra trigger condition
        run: async (fx) => {...}  // the reaction itself
+
+   A cue fires every time its movie is added. fx.stats.adds says how
+   many times that movie has been added on this device, for cues that
+   want to vary with repeat visits.
      }
 
    Everything here is decorative. Nothing touches app state, and
@@ -33,13 +33,12 @@
   const PAGE_PARTS = ["body > header", "body > .machine", "body > .cta-stage", "#watchedBtn", "body > footer"];
 
   const cues = new Map();
-  const firedThisSession = new Set();
   let current = null;
 
   const prefersReduced = () =>
     !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  // ---------- memory (per-device repeat bookkeeping) ----------
+  // ---------- memory (per-device add counts) ----------
   function loadMemory() {
     try {
       return JSON.parse(localStorage.getItem(MEMORY_KEY)) || {};
@@ -51,7 +50,7 @@
     try {
       localStorage.setItem(MEMORY_KEY, JSON.stringify(mem));
     } catch (e) {
-      // storage full/blocked - repeat rules just fall back to per-session
+      // storage full/blocked - counts just won't persist
     }
   }
 
@@ -651,20 +650,6 @@
     return fx;
   }
 
-  // ---------- deciding whether a cue fires ----------
-  function shouldFire(cue, rec, now) {
-    const repeat = cue.repeat || "sometimes";
-    const cooldown = cue.cooldown != null ? cue.cooldown : repeat === "always" ? 3000 : 45000;
-    if (rec.t && now - rec.t < cooldown) return false;
-    if (cue.when && !cue.when({ adds: rec.a, fired: rec.f })) return false;
-    if (repeat === "once") return rec.f === 0;
-    if (repeat === "session") return !firedThisSession.has(cue);
-    if (repeat === "always") return true;
-    // "sometimes": always the first time, then only now and then.
-    if (rec.f === 0) return true;
-    return Math.random() < (cue.chance != null ? cue.chance : 0.4);
-  }
-
   function stopCurrent() {
     if (current) {
       current._abort();
@@ -701,20 +686,11 @@
       if (!id) return;
       const cue = cues.get(id);
       if (!cue) return;
-      const now = Date.now();
       const mem = loadMemory();
-      const rec = mem[id] || { a: 0, f: 0, t: 0 };
-      rec.a += 1;
-      const fire = shouldFire(cue, rec, now);
-      if (fire) {
-        rec.f += 1;
-        rec.t = now;
-        firedThisSession.add(cue);
-      }
-      mem[id] = rec;
+      const adds = ((mem[id] && mem[id].a) || 0) + 1;
+      mem[id] = { a: adds };
       saveMemory(mem);
-      if (!fire) return;
-      const fx = makeFx(movie, slotIndex, { adds: rec.a, fired: rec.f });
+      const fx = makeFx(movie, slotIndex, { adds });
       // Let the slot finish rendering its new poster first.
       setTimeout(() => play(cue, fx), cue.delay != null ? cue.delay : 250);
     } catch (e) {

@@ -542,8 +542,6 @@
     // Tangled
     {
       id: 38757,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         const night = fx.wash("rgba(20,20,60,.6)", 0);
         fx.fadeIn(night, 700);

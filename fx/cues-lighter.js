@@ -14,8 +14,6 @@
     // Groundhog Day
     {
       id: 137,
-      repeat: "always",
-      cooldown: 4000,
       run: async (fx) => {
         const el = fx.$(".machine-marquee .marquee-text");
         for (let day = 0; day < 2; day++) {
@@ -110,11 +108,9 @@
     // Ferris Bueller's Day Off
     {
       id: 9377,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         await fx.wait(600);
-        fx.costume(".reely", '<rect x="44" y="44" width="30" height="22" fill="#fbf4e2"/><path d="M46 56 Q52.5 51 59 56" stroke="#1f1b16" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="67.5" cy="55" rx="5" ry="8" fill="#1f1b16"/>', 700);
+        fx.costume(".reely", '<rect x="44" y="44" width="30" height="22" fill="#fbf4e2"/><path d="M46 56 Q52.5 51 59 56" stroke="#1f1b16" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="67.5" cy="55" rx="5" ry="8" fill="#1f1b16"/>', 1200);
         fx.tone("C6", 0.12, { type: "sine", vol: 0.1 });
         await fx.wait(900);
       }
@@ -686,8 +682,6 @@
     // The Departed
     {
       id: 1422,
-      repeat: "sometimes",
-      chance: 0.4,
       run: async (fx) => {
         const m = fx.rect(".machine");
         fx.tone(4200, 0.04, { vol: 0.05, at: 0.6 });
@@ -735,14 +729,11 @@
       run: async (fx) => {
         const wednesday = new Date().getDay() === 3;
         const pink = fx.wash("#ff8cc6", 0, { blend: "multiply", opacity: 0 });
-        await fx.anim(pink, [{ opacity: 0 }, { opacity: wednesday ? 0.7 : 0.25 }], { duration: wednesday ? 600 : 150 });
-        if (wednesday) {
-          fx.seq([["E5", 1], ["G#5", 1], ["B5", 2]], { beat: 0.14, type: "triangle", vol: 0.08 });
-          await fx.wait(2600);
-        } else {
-          await fx.wait(250);
-        }
-        await fx.fadeOut(pink, wednesday ? 600 : 150);
+        await fx.anim(pink, [{ opacity: 0 }, { opacity: wednesday ? 0.7 : 0.4 }], { duration: 500 });
+        if (wednesday) fx.seq([["E5", 1], ["G#5", 1], ["B5", 2]], { beat: 0.14, type: "triangle", vol: 0.08 });
+        else fx.tone("E5", 0.3, { type: "triangle", vol: 0.06 });
+        await fx.wait(wednesday ? 2600 : 1000);
+        await fx.fadeOut(pink, 500);
       }
     },
 
@@ -1091,7 +1082,6 @@
     // Ready Player One
     {
       id: 333339,
-      repeat: "once",
       run: async (fx) => {
         const r = fx.rect(fx.slot());
         const egg = fx.put('<svg viewBox="0 0 12 16" shape-rendering="crispEdges" style="width:100%;height:100%;filter:drop-shadow(0 0 10px #ffd84a)"><path d="M4 0h4v1h1v2h1v2h1v2h1v5h-1v2h-1v1h-2v1h-4v-1h-2v-1h-1v-2h-1v-5h1v-2h1v-2h1v-2h1z" fill="#ffd84a"/><path d="M4 2h2v1h-1v2h-1zM3 6h1v2h-1z" fill="#fff6c0"/><path d="M9 9h1v3h-1v1h-2v-1h2z" fill="#c9951a"/></svg>', r.x, r.y - r.height * 0.1, { size: 44, h: 58 });
@@ -1107,8 +1097,6 @@
     // Ghost (1990)
     {
       id: 251,
-      repeat: "sometimes",
-      chance: 0.4,
       run: async (fx) => {
         const x = W() - 22;
         const penny = fx.put(A.coin("#c7773a"), x, H() - 40, { size: 20 });
@@ -1227,8 +1215,6 @@
     // Lost in Translation
     {
       id: 153,
-      repeat: "sometimes",
-      chance: 0.4,
       run: async (fx) => {
         fx.wash("linear-gradient(135deg, rgba(255,60,160,.25), rgba(40,120,255,.25))", 3600, { blend: "screen", fade: 500 });
         await fx.wait(1200);
@@ -1277,9 +1263,13 @@
     // Snatch
     {
       id: 107,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
+        const r = fx.rect(fx.slot());
+        const toy = fx.put(A.S("0 0 40 30", '<ellipse cx="20" cy="17" rx="16" ry="11" fill="#f2c230" ' + A.ink + ' stroke-width="2"/><circle cx="30" cy="13" r="2" fill="#1f1b16"/><path d="M36 17 L40 15 L40 20 Z" fill="#e8741a"/>'), r.x, r.top + r.height + 12, { size: 30, h: 22 });
+        fx.tone(1400, 0.12, { type: "square", slide: 2000, vol: 0.12, filter: { type: "bandpass", freq: 1800, q: 4 } });
+        fx.tone(1900, 0.14, { type: "square", slide: 1300, vol: 0.12, at: 0.13, filter: { type: "bandpass", freq: 1800, q: 4 } });
+        fx.move(toy, [{ transform: "scale(1,1)" }, { transform: "scale(1.2,.7)" }, { transform: "scale(1,1)" }], { duration: 260 });
+        fx.later(1600, () => fx.fadeOut(toy, 300));
         fx.onNextTap(() => {
           fx.tone(1400, 0.12, { type: "square", slide: 2000, vol: 0.12, filter: { type: "bandpass", freq: 1800, q: 4 } });
           fx.tone(1900, 0.14, { type: "square", slide: 1300, vol: 0.12, at: 0.13, filter: { type: "bandpass", freq: 1800, q: 4 } });

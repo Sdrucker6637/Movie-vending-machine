@@ -721,9 +721,6 @@
     // Oppenheimer
     {
       id: 872585,
-      repeat: "sometimes",
-      chance: 0.35,
-      cooldown: 120000,
       run: async (fx) => {
         const r = fx.rect(fx.slot());
         const dark = fx.wash("rgba(0,0,0,.55)", 0);
@@ -873,8 +870,6 @@
     // Inglourious Basterds
     {
       id: 16869,
-      repeat: "sometimes",
-      chance: 0.35,
       run: async (fx) => {
         const burn = fx.node("", { cls: "fx-filter" });
         fx.noise(1.8, { freq: 1200, vol: 0.3, attack: 0.4 });
@@ -1015,8 +1010,6 @@
     // Avengers: Infinity War
     {
       id: 299536,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         fx.noise(0.05, { type: "bandpass", freq: 2200, q: 3, vol: 0.9 });
         fx.buzz(30);

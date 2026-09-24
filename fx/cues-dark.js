@@ -136,8 +136,6 @@
     // Get Out
     {
       id: 419430,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         [0, 0.55, 1.1, 1.4, 1.6].forEach((t) => {
           fx.tone(2640, 0.6, { vol: 0.12, at: t });
@@ -158,8 +156,6 @@
     // Hereditary
     {
       id: 493922,
-      repeat: "sometimes",
-      chance: 0.35,
       run: async (fx) => {
         const band = (top) => fx.node("", { style: { position: "absolute", left: 0, right: 0, height: "22vh", [top ? "top" : "bottom"]: 0, backdropFilter: "blur(3px) saturate(1.3)", webkitBackdropFilter: "blur(3px) saturate(1.3)", opacity: 0 } });
         const a = band(true), b = band(false);
@@ -215,16 +211,13 @@
     // Beetlejuice
     {
       id: 4011,
-      repeat: "always",
-      cooldown: 1000,
       run: async (fx) => {
         const s = fx.slot();
-        if (fx.stats.adds % 3 !== 0) {
-          // Once... twice...
-          fx.noise(0.5, { type: "bandpass", freq: 2400, q: 4, vol: 0.08 });
-          if (s) fx.style(s, { filter: "grayscale(1) contrast(1.4)" }, 350);
-          await fx.wait(500);
-          return;
+        // Once... twice... three times.
+        for (let i = 0; i < 3; i++) {
+          fx.noise(0.4, { type: "bandpass", freq: 2400, q: 4, vol: 0.1 + i * 0.05 });
+          if (s) fx.style(s, { filter: "grayscale(1) contrast(1.4)" }, 300);
+          await fx.wait(550);
         }
         const stripes = fx.node("", { cls: "fx-filter", style: { background: "repeating-linear-gradient(90deg, rgba(255,255,255,.9) 0 26px, rgba(15,15,15,.9) 26px 52px)", mixBlendMode: "multiply", opacity: 0 } });
         fx.flash("#b7ff5a", 250);
@@ -534,8 +527,6 @@
     // The Conjuring
     {
       id: 138843,
-      repeat: "sometimes",
-      chance: 0.35,
       run: async (fx) => {
         const dim = fx.wash("rgba(0,0,0,.65)", 0, { opacity: 0 });
         await fx.anim(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 700 });

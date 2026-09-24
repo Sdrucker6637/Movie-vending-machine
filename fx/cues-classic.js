@@ -146,8 +146,6 @@
     // The Birds
     {
       id: 571,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         const edges = [fx.rect("body > header"), fx.rect(".machine-marquee"), fx.rect(".cta-sign")];
         const birds = [];
@@ -252,8 +250,6 @@
     // Rashomon
     {
       id: 548,
-      repeat: "sometimes",
-      chance: 0.3,
       run: async (fx) => {
         const light = fx.node("", { cls: "fx-filter", style: { mixBlendMode: "soft-light", opacity: 0, background: "radial-gradient(circle 60px at 20% 30%, #fff 0, transparent 70%), radial-gradient(circle 90px at 70% 20%, #fff 0, transparent 70%), radial-gradient(circle 70px at 40% 70%, #fff 0, transparent 70%), radial-gradient(circle 110px at 85% 75%, #fff 0, transparent 70%), rgba(0,0,0,.35)" } });
         fx.fadeIn(light, 600);
@@ -391,7 +387,6 @@
     // Planet of the Apes (1968)
     {
       id: 871,
-      repeat: "session",
       run: async (fx) => {
         const beach = fx.node(A.S("0 0 400 140",
           '<path d="M300 140 L306 60 L300 56 L304 40 C300 30 310 24 316 30 L322 20 L326 34 L334 26 L334 38 L344 36 L338 46 L342 60 L336 64 L338 140 Z" fill="#6f8f82" stroke="#1f1b16" stroke-width="3"/>' +
@@ -410,8 +405,6 @@
     // Butch Cassidy and the Sundance Kid
     {
       id: 642,
-      repeat: "sometimes",
-      chance: 0.35,
       run: async (fx) => {
         fx.freeze(3000);
         fx.click({ freq: 1200, vol: 0.6 });
@@ -462,7 +455,6 @@
     // Schindler's List
     {
       id: 424,
-      repeat: "session",
       run: async (fx) => {
         A.liftSlot(fx, 4500);
         fx.filter("grayscale(1)", 4500, { fade: 1000 });
@@ -473,7 +465,6 @@
     // Saving Private Ryan
     {
       id: 857,
-      repeat: "session",
       run: async (fx) => {
         fx.filter("grayscale(.85) contrast(1.2) brightness(.9)", 3500, { fade: 300 });
         fx.noise(3, { freq: 180, vol: 0.35, attack: 0.02 });
@@ -499,7 +490,6 @@
     // One Flew Over the Cuckoo's Nest
     {
       id: 510,
-      repeat: "sometimes",
       run: async (fx) => {
         const crack = fx.glass(A.S("0 0 100 100", '<g stroke="#fff" stroke-width=".7" fill="none" opacity=".9"><path d="M50 45 L20 5 M50 45 L85 10 M50 45 L95 60 M50 45 L60 100 M50 45 L10 80 M50 45 L0 40"/><path d="M40 32 L58 30 L64 50 L48 60 L36 52 Z M30 18 L70 20 L78 58 L52 76 L22 62 Z"/></g>'));
         if (crack) crack.firstChild.setAttribute("preserveAspectRatio", "none"), crack.firstChild.style.cssText = "width:100%;height:100%";
@@ -569,7 +559,6 @@
     // Dr. Strangelove
     {
       id: 935,
-      repeat: "session",
       run: async (fx) => {
         const bomb = A.S("0 0 50 110", '<path d="M25 20 C38 20 40 40 40 70 C40 90 34 100 25 104 C16 100 10 90 10 70 C10 40 12 20 25 20 Z" fill="#6f7a6a" ' + A.ink + '/><path d="M18 20 L14 6 H36 L32 20" fill="#6f7a6a" ' + A.ink + ' stroke-width="2"/>' +
           '<path d="M18 52 C20 42 30 42 32 52" fill="' + A.INK + '"/><circle cx="25" cy="36" r="6" fill="' + A.INK + '"/><path d="M15 32 H35 L31 26 H19 Z" fill="#6a4a2a"/>');
@@ -634,8 +623,6 @@
     // Jaws
     {
       id: 578,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         const y = H() - 40;
         const water = fx.node("", { style: { position: "absolute", left: 0, right: 0, bottom: 0, height: "46px", background: "linear-gradient(rgba(63,120,140,.0), rgba(40,90,120,.55))" } });
@@ -659,8 +646,6 @@
     // E.T. the Extra-Terrestrial
     {
       id: 601,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         const size = Math.min(W(), H()) * 0.55;
         const cx = W() * 0.6, cy = H() * 0.32;
@@ -679,8 +664,6 @@
     // Close Encounters of the Third Kind
     {
       id: 840,
-      repeat: "always",
-      cooldown: 20000,
       run: async (fx) => {
         const notes = ["G4", "A4", "F4", "F3", "C4"];
         const colors = ["#ff5a5a", "#ffd24a", "#6aff8a", "#5ab4ff", "#d17bff"];
@@ -1017,8 +1000,6 @@
     // Forrest Gump
     {
       id: 13,
-      repeat: "sometimes",
-      chance: 0.5,
       run: async (fx) => {
         const r = fx.rect(fx.slot());
         fx.seq([["C5", 2], ["E5", 1], ["G5", 3], ["F5", 2], ["E5", 4]], { beat: 0.3, type: "triangle", vol: 0.06, attack: 0.08 });

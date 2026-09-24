@@ -1,4 +1,4 @@
-const CACHE = "movie-machine-v9";
+const CACHE = "movie-machine-v10";
 const FILES = [
   "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
   "./fonts/shrikhand-400.woff2",

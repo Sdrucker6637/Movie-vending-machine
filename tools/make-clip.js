@@ -2,7 +2,8 @@
 /* Prepares a short recorded clip for a machine reaction.
 
      node tools/make-clip.js --in source.wav --id <tmdb id> --key 1 \
-       --from 12.3 --to 14.1 --source "where the source audio came from"
+       --from 12.3 --to 14.1 --source "where the source audio came from" \
+       [--movie "Title (year)"] [--license "CC BY 3.0"] [--attribution "..."] [--url https://...]
 
    - --id must be a TMDB id that already has a cue (see fx/index.js); the
      clip is written to fx/clips/<id>-<key>.mp3, where fx.sfx("clip:<key>")
@@ -57,9 +58,10 @@ const out = path.join(root, "fx", "clips", id + "-" + key + ".mp3");
 if (fs.existsSync(out)) fail(path.relative(root, out) + " already exists - use a new --key");
 fs.mkdirSync(path.dirname(out), { recursive: true });
 
-// trim silence at both ends, even out loudness, short fades against clicks
-const trim = "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.02";
-const filters = [trim, "areverse", trim, "areverse", "loudnorm=I=-16:TP=-1.5:LRA=11", "afade=t=in:d=0.01"].join(",");
+// even out loudness first, then trim true silence at both ends (keeping a
+// short margin so soft onsets survive), with short fades against clicks
+const trim = "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.08";
+const filters = ["loudnorm=I=-16:TP=-1.5:LRA=11", trim, "areverse", trim, "areverse", "afade=t=in:d=0.01", "areverse", "afade=t=in:d=0.03", "areverse"].join(",");
 execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-ss", String(from), "-to", String(to), "-i", input,
   "-af", filters, "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "64k", "-map_metadata", "-1", out], { stdio: "inherit" });
 
@@ -71,6 +73,8 @@ if (bytes > MAX_BYTES) {
 
 const log = path.join(__dirname, "clip-sources.json");
 const list = fs.existsSync(log) ? JSON.parse(fs.readFileSync(log, "utf8")) : [];
-list.push({ file: path.relative(root, out).split(path.sep).join("/"), tmdbId: id, key, source, from, to, bytes, added: new Date().toISOString().slice(0, 10) });
+const extra = {};
+["movie", "license", "attribution", "url"].forEach((k) => { const v = arg(k); if (v) extra[k] = v; });
+list.push(Object.assign({ file: path.relative(root, out).split(path.sep).join("/"), tmdbId: id, key }, extra, { source, from, to, bytes, added: new Date().toISOString().slice(0, 10) }));
 fs.writeFileSync(log, JSON.stringify(list, null, 2) + "\n");
 console.log("wrote " + path.relative(root, out) + " (" + bytes + " bytes) - now use fx.sfx(\"clip:" + key + "\", { fallback: ... }) in cue " + id);

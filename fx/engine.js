@@ -121,6 +121,184 @@
     return p;
   }
 
+  // ---------- keeping the show in view ----------
+  // Most of a cue draws into the fixed #fx-layer, so it's always on screen.
+  // But some cues also act on parts of the page itself (the mascots, the
+  // marquee, the header, the dispenser...), and those can be scrolled out
+  // of sight - say the movie went into a slot near the bottom. The first
+  // time a cue touches such a part while it isn't fully visible, that part
+  // is shifted (visually only: `top` on a positioned element never moves
+  // anything else, never scrolls the page) to sit next to the slot that
+  // triggered the cue, and kept in view while the user scrolls. Everything
+  // is put back when the cue ends.
+  // prefer: which side of the trigger a group naturally belongs on.
+  // headroom: room kept clear above a group whose mascot hops.
+  const STAGE_GROUPS = [
+    { members: ["body > header"], prefer: "above" },
+    { members: [".machine > .reely", ".machine-marquee"], prefer: "above", machineTop: true, headroom: 20 },
+    { members: [".machine-base"], prefer: "below" },
+    { members: [".cta-stage"], prefer: "below", headroom: 20 }
+  ];
+  const STAGE_Z = "60"; // above the page, below #fx-layer (85)
+  const STAGE_GAP = 8;
+
+  function safeInsets() {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const out = { top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 };
+    probe.remove();
+    return out;
+  }
+
+  function makeStage(trigger) {
+    const moved = []; // { group, els: [{ el, saved, base }], top, height, dy }
+    const seen = new Set();
+    let insets = null;
+    let raf = 0;
+    let listening = false;
+
+    const groupEls = (g) => g.members.map((s) => document.querySelector(s)).filter(Boolean);
+    // The box a group needs on screen (its parts, plus any headroom).
+    function unionRect(els, g) {
+      let top = Infinity, bottom = -Infinity;
+      els.forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width || r.height) { top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom); }
+      });
+      if (top === Infinity) return null;
+      top -= (g && g.headroom) || 0;
+      return { top, bottom, height: bottom - top };
+    }
+    function bounds() {
+      if (!insets) insets = safeInsets();
+      return { top: insets.top + STAGE_GAP, bottom: innerHeight - insets.bottom - STAGE_GAP };
+    }
+    function anchor() {
+      const s = trigger();
+      const r = s && s.getBoundingClientRect();
+      const b = bounds();
+      if (r && r.bottom > b.top && r.top < b.bottom) return { top: r.top, bottom: r.bottom };
+      const mid = (b.top + b.bottom) / 2;
+      return { top: mid, bottom: mid };
+    }
+    // Where (viewport top) a group of height h should sit, or null to leave it.
+    function place(g, rect) {
+      const b = bounds();
+      const taken = moved.filter((m) => m.group !== g).map((m) => ({ top: m.top, bottom: m.top + m.height }));
+      const free = (t) => !taken.some((o) => t < o.bottom + STAGE_GAP && t + rect.height + STAGE_GAP > o.top);
+      const fits = (t) => t >= b.top && t + rect.height <= b.bottom && free(t);
+      if (fits(rect.top)) return null; // already fully visible
+      const a = anchor();
+      const above = a.top - STAGE_GAP - rect.height, below = a.bottom + STAGE_GAP;
+      for (const t of g.prefer === "above" ? [above, below] : [below, above]) if (fits(t)) return t;
+      // No room right next to it: the free spot nearest the trigger.
+      const want = g.prefer === "above" ? above : below;
+      let best = null;
+      for (let t = b.top; t + rect.height <= b.bottom; t += 4) if (free(t) && (best == null || Math.abs(t - want) < Math.abs(best - want))) best = t;
+      if (best != null) return best;
+      // Taller than the space left: pin its top edge to the top of the view.
+      return Math.max(b.top, Math.min(want, b.bottom - rect.height));
+    }
+    function apply(m) {
+      m.els.forEach((e) => { e.el.style.top = e.base + m.dy + "px"; });
+    }
+    function follow() {
+      raf = 0;
+      moved.forEach((m) => {
+        const r = unionRect(m.els.map((e) => e.el), m.group);
+        if (!r) return;
+        const natural = r.top - m.dy;
+        m.dy = m.top - natural;
+        apply(m);
+      });
+    }
+    function onScroll() {
+      if (!raf) raf = requestAnimationFrame(follow);
+    }
+    function onResize() {
+      insets = null;
+      moved.forEach((m) => {
+        const r = unionRect(m.els.map((e) => e.el), m.group);
+        if (!r) return;
+        const natural = { top: r.top - m.dy, height: r.height };
+        const t = place(m.group, natural);
+        m.top = t == null ? natural.top : t;
+      });
+      follow();
+    }
+
+    function stage(g) {
+      if (seen.has(g)) return;
+      seen.add(g);
+      const els = groupEls(g);
+      const rect = els.length && unionRect(els, g);
+      if (!rect) return;
+      const t = place(g, rect);
+      if (t == null) return;
+      const m = { group: g, top: t, height: rect.height, dy: t - rect.top, els: [] };
+      els.forEach((el) => {
+        const cs = getComputedStyle(el);
+        const saved = { position: el.style.position, top: el.style.top, bottom: el.style.bottom, zIndex: el.style.zIndex, height: el.style.height, boxSizing: el.style.boxSizing };
+        let base = 0;
+        if (cs.position === "static" || cs.position === "relative") {
+          // Hold its place in the page at its current size, so whatever the
+          // cue does to it (a new font, say) can't reflow the page under
+          // the user - or nudge their scroll position at the bottom of it.
+          el.style.boxSizing = "border-box";
+          el.style.height = el.offsetHeight + "px";
+        }
+        if (cs.position === "static") el.style.position = "relative";
+        else {
+          base = parseFloat(cs.top) || 0;
+          if (cs.position === "absolute" || cs.position === "fixed") el.style.bottom = "auto";
+        }
+        if (cs.zIndex === "auto" || +cs.zIndex < +STAGE_Z) el.style.zIndex = STAGE_Z;
+        m.els.push({ el, saved, base });
+      });
+      apply(m);
+      moved.push(m);
+      if (!listening) {
+        listening = true;
+        addEventListener("scroll", onScroll, { passive: true });
+        addEventListener("resize", onResize);
+      }
+    }
+
+    return {
+      // Called with whatever a cue looked up; stages any group it belongs to.
+      touch(found) {
+        [].concat(found).forEach((el) => {
+          if (!el || !el.nodeType) return;
+          STAGE_GROUPS.forEach((g) => {
+            if (!seen.has(g) && groupEls(g).some((m) => m === el || m.contains(el))) stage(g);
+          });
+        });
+      },
+      // The machine's own box is too big to move; a cue measuring it wants
+      // its top edge, so report that edge where the marquee is being shown.
+      machineRect(r) {
+        const g = STAGE_GROUPS.find((x) => x.machineTop);
+        stage(g);
+        const m = moved.find((x) => x.group === g);
+        if (!m) return r;
+        const top = r.top + m.dy;
+        return Object.assign({}, r, { top, y: top + r.height / 2 });
+      },
+      restore() {
+        if (listening) {
+          removeEventListener("scroll", onScroll);
+          removeEventListener("resize", onResize);
+          listening = false;
+        }
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        moved.splice(0).forEach((m) => m.els.forEach((e) => Object.assign(e.el.style, e.saved)));
+      }
+    };
+  }
+
   // ---------- the toolkit handed to each cue ----------
   function makeFx(movie, slotIndex, stats) {
     const cleanups = [];
@@ -129,6 +307,8 @@
     let aborted = false;
     let forced = false;
     const reduced = prefersReduced();
+    const stage = makeStage(() => document.querySelectorAll("#grid .slot")[slotIndex] || null);
+    cleanups.push(() => stage.restore());
 
     const fx = {
       movie,
@@ -184,10 +364,14 @@
 
       // --- lookup ---
       $(sel) {
-        return typeof sel === "string" ? document.querySelector(sel) : sel;
+        const el = typeof sel === "string" ? document.querySelector(sel) : sel;
+        if (!aborted) stage.touch(el);
+        return el;
       },
       $$(sel) {
-        return Array.from(document.querySelectorAll(sel));
+        const els = Array.from(document.querySelectorAll(sel));
+        if (!aborted) stage.touch(els);
+        return els;
       },
       slot() {
         return document.querySelectorAll("#grid .slot")[slotIndex] || null;
@@ -203,7 +387,8 @@
         }
         if (!el) return { left: innerWidth / 2 - 40, top: innerHeight / 2 - 60, width: 80, height: 120, x: innerWidth / 2, y: innerHeight / 2 };
         const r = el.getBoundingClientRect();
-        return { left: r.left, top: r.top, width: r.width, height: r.height, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        const out = { left: r.left, top: r.top, width: r.width, height: r.height, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        return !aborted && el.classList && el.classList.contains("machine") ? stage.machineRect(out) : out;
       },
       pageParts() {
         return PAGE_PARTS.map((s) => document.querySelector(s)).filter(Boolean);

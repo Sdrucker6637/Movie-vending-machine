@@ -1,4 +1,4 @@
-const CACHE = "movie-machine-v14";
+const CACHE = "movie-machine-v15";
 // Recorded clips (fx/clips/*) get their own cache. It is not tied to the app
 // version, so clips survive app updates; clip files never change in place,
 // and the cache is trimmed to the most recent CLIP_MAX files.

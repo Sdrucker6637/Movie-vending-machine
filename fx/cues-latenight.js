@@ -26,12 +26,14 @@
         const syms = ["7", "♦", "BAR", "♣", "♥", "7"];
         for (let k = 0; k < 16; k++) {
           reels.forEach((rl, i) => { if (k < 8 + i * 4) rl.firstChild.textContent = syms[(k + i * 2) % syms.length]; });
-          fx.click({ freq: 1800, vol: 0.15 });
+          fx.sfx("click", { vol: 0.35 });
           await fx.wait(90);
         }
         reels.forEach((rl) => (rl.firstChild.textContent = "7"));
         for (let i = 0; i < 8; i++) fx.tone(["C5", "E5", "G5", "C6"][i % 4], 0.12, { type: "square", vol: 0.05, at: i * 0.1 });
         A.coinReturn(fx, 12);
+        fx.sfx("bell", { vol: 0.6 });
+        fx.sfx("coin-drop", { n: 12, every: 0.11, at: 150 });
         fx.caption("(the house always wins… eventually)", { style: "whisper", ms: 1800 });
         await fx.wait(2000);
         void r;
@@ -474,7 +476,7 @@
         const cards = [];
         for (let i = 0; i < 4; i++) cards.push(fx.put(A.card, W() / 2 + (i - 1.5) * 40, H() * 0.3, { size: 36, h: 50 }));
         cards.forEach((c, i) => fx.move(c, [{ transform: "rotateY(90deg)" }, { transform: "none" }], { duration: 250, delay: i * 200 }));
-        for (let i = 0; i < 4; i++) fx.click({ freq: 2200, vol: 0.3, at: i * 0.2 });
+        for (let i = 0; i < 4; i++) fx.sfx("click", { at: i * 200, vol: 0.6 });
         await fx.wait(1200);
         fx.caption("(and one very bad hand of three-card brag)", { style: "whisper", ms: 1800 });
         fx.tone(200, 1, { type: "sawtooth", vol: 0.06, slide: 90, filter: { freq: 900 } });
@@ -499,6 +501,7 @@
           await fx.wait(620);
         }
         fx.freeze(1200);
+        fx.sfx("scratch", { vol: 0.8 });
         fx.caption("(freeze frame)", { style: "whisper", ms: 1200 });
         await fx.wait(1400);
       }
@@ -839,12 +842,13 @@
         const r = fx.rect(fx.slot());
         fx.caption("(stay on the rocks)", { style: "whisper", ms: 1600 });
         const ripple = fx.put(A.S("0 0 300 40", '<path d="M0 30 C30 20 60 20 90 30 S150 40 180 30 S240 20 300 30" stroke="#8a6a3a" stroke-width="3" fill="none"/>'), -150, H() - 50, { size: 300, h: 40 });
-        for (let t = 0; t < 3; t += 0.1) fx.thud({ freq: 40, vol: 0.15, dur: 0.1, at: t });
+        fx.sfx("thunder", { vol: 0.6 });
         fx.buzz([40, 60, 40, 60, 40, 60, 40, 60, 40, 60, 40]);
         await fx.move(ripple, [{ transform: "none" }, { transform: "translateX(" + (r.x + 150) + "px)" }], { duration: 2400, easing: "ease-in" });
         const graboid = fx.put(A.S("0 0 80 100", '<path d="M10 100 C10 40 30 10 40 10 C50 10 70 40 70 100 Z" fill="#8a6a4a" ' + A.ink + ' stroke-width="2"/><path d="M40 10 L30 30 M40 10 L50 30 M40 10 L40 34" stroke="#d51f2a" stroke-width="4"/>'), r.x, H() + 40, { size: 70, h: 90 });
         await fx.move(graboid, [{ transform: "none" }, { transform: "translateY(-" + (H() - r.y + 40) + "px)" }], { duration: 400, easing: "cubic-bezier(.2,.9,.3,1.2)" });
-        fx.noise(0.8, { freq: 600, vol: 0.6 });
+        fx.sfx("hit", { vol: 0.8 });
+        fx.sfx("boom", { vol: 0.5 });
         fx.shake("lg", 600);
         fx.particles({ kind: "burst", from: pt(r.x, r.y), count: 20, spread: 60, gravity: 80, glyphs: dot("#8a6a3a"), min: 4, max: 10, dur: 900 });
         await fx.wait(1400);
@@ -1048,12 +1052,12 @@
         fx.caption("(a clown doll on the driveway, with a key in its mouth)", { style: "whisper", ms: 2200 });
         await fx.wait(2400);
         A.errorBox(fx, "CRS", "Consumer Recreation Services\nThe game has begun.", 2400);
-        fx.tone(900, 0.4, { type: "sine", vol: 0.06 });
+        fx.sfx("beep", { hz: 990, n: 3, vol: 0.5 });
         await fx.wait(2400);
         fx.caption("(is any of this real?)", { style: "whisper", ms: 1600 });
         const all = [fx.slot()].concat(fx.otherSlots(true));
         fx.style(all, { filter: "invert(1)" }, 300);
-        fx.noise(0.2, { type: "highpass", freq: 4000, vol: 0.3 });
+        fx.sfx("glitch", { n: 5, vol: 0.8 });
         await fx.wait(1600);
       }
     },

@@ -19,7 +19,7 @@
         for (let day = 0; day < 2; day++) {
           fx.text(el, "5:59", 0);
           await fx.wait(900);
-          fx.click({ freq: 700, vol: 0.5 });
+          fx.sfx("relay", { vol: 0.8 });
           el.textContent = "6:00";
           fx.move(el, [{ transform: "rotateX(90deg)" }, { transform: "rotateX(0)" }], { duration: 200 });
           fx.seq([["G4", 1], ["C5", 1], ["E5", 1], ["G5", 2]], { beat: 0.14, type: "triangle", vol: 0.08 });
@@ -327,6 +327,8 @@
         const r = fx.rect(fx.slot());
         fx.flash("#fff", 150);
         fx.particles({ kind: "burst", from: pt(r.x, r.y), count: 20, spread: 70, gravity: 120, dur: 1200, stagger: 200, glyphs: A.coin("#ffd21a"), min: 12, max: 18, spin: 360 });
+        fx.sfx("coin-drop", { n: 10, every: 0.08, vol: 0.8 });
+        fx.sfx("arcade-up", { at: 850, vol: 0.7 });
         for (let i = 0; i < 10; i++) { fx.tone("B5", 0.05, { type: "square", vol: 0.05, at: i * 0.08 }); fx.tone("E6", 0.08, { type: "square", vol: 0.05, at: i * 0.08 + 0.04 }); }
         const pts = fx.put('<div style="font:700 20px Bitter, Georgia;color:#fff;text-shadow:2px 2px 0 #1f1b16, -1px -1px 0 #1f1b16">+1000</div>', r.x, r.top - 10, { size: 90, h: 26 });
         await fx.move(pts, [{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-40px)", opacity: 0 }], { duration: 1400 });
@@ -582,6 +584,7 @@
       id: 568,
       run: async (fx) => {
         const light = fx.put('<div style="width:100%;height:100%;background:#ffcf2a;border:3px solid #1f1b16;display:flex;align-items:center;justify-content:center;font:700 10px \'Special Elite\',monospace;color:#1f1b16;text-align:center;line-height:1.1">MASTER<br>ALARM</div>', W() - 50, 90, { size: 64, h: 40 });
+        for (let i = 0; i < 6; i++) fx.sfx("beep", { hz: i % 2 ? 1400 : 1800, at: i * 250, vol: 0.5 });
         for (let i = 0; i < 6; i++) {
           fx.tone(i % 2 ? 1400 : 1800, 0.22, { type: "square", vol: 0.06, at: i * 0.25 });
         }
@@ -589,11 +592,11 @@
         await fx.wait(1600);
         const dim = fx.wash("rgba(0,0,0,.55)", 0, { opacity: 0 });
         fx.freeze(1400);
-        fx.tone(120, 0.8, { type: "sawtooth", slide: 40, vol: 0.12 });
+        fx.sfx("power-down", { vol: 0.8 });
         await fx.anim(dim, [{ opacity: 0 }, { opacity: 1 }], { duration: 500 });
         await fx.wait(900);
         fx.remove(light);
-        fx.tone(200, 0.5, { slide: 600, vol: 0.08 });
+        fx.sfx("power-up", { vol: 0.7 });
         await fx.fadeOut(dim, 400);
       }
     },
@@ -774,10 +777,10 @@
       run: async (fx) => {
         const g = fx.glass('<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:86%;background:#c8c8c8;border:3px solid #1f1b16;box-shadow:4px 4px 0 #1f1b16;font:12px \'Special Elite\',monospace;color:#1f1b16"><div style="background:#1f3a8a;color:#fff;padding:3px 6px">Printer</div><div style="padding:12px 8px;text-align:center;font-size:16px">PC LOAD LETTER</div></div>');
         for (let i = 0; i < 5; i++) fx.noise(0.25, { type: "bandpass", freq: 300 + (i % 2) * 150, q: 3, vol: 0.3, at: i * 0.28 });
-        fx.tone(90, 1.4, { type: "square", vol: 0.05, vibrato: [14, 20], filter: { freq: 400 } });
+        fx.sfxSeq([["motor-strain", 0, { dur: 1.4, vol: 0.8 }], ["error", 1450, { vol: 0.7 }]]);
         await fx.wait(1800);
         for (let i = 0; i < 3; i++) {
-          fx.thud({ freq: 100, vol: 0.6, dur: 0.2 });
+          fx.sfx("hit", { vol: 0.8 });
           fx.shake("lg", 200);
           fx.buzz(60);
           await fx.wait(320);
@@ -1040,6 +1043,7 @@
         fx.chord(["A3", "C4", "E4"], 1.4, { type: "sawtooth", vol: 0.05, filter: { freq: 700 } });
         const t = fx.rect(".ticket-slot");
         const card = fx.put('<div style="width:100%;height:100%;background:#fbf4e2;border:2px solid #1f1b16;font:11px/1.2 \'Special Elite\',monospace;color:#1f1b16;text-align:center;padding:6px 4px">★<br>YOUR WISH<br>IS GRANTED</div>', t.x, t.y, { size: 84, h: 56 });
+        fx.sfxSeq([["motor", 0, { dur: 0.9, vol: 0.6 }], ["clunk", 900, { vol: 0.6 }]]);
         await fx.move(card, [{ transform: "translateY(0) scaleY(0)", transformOrigin: "50% 0" }, { transform: "translateY(10px) scaleY(1)", transformOrigin: "50% 0" }], { duration: 900, easing: "steps(8)" });
         // Floor piano - tap a key.
         const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"];
@@ -1052,7 +1056,7 @@
           k.addEventListener("pointerdown", (e) => {
             e.stopPropagation();
             k.style.background = "#d9a13a";
-            fx.tone(n, 0.5, { type: "triangle", vol: 0.25 });
+            fx.sfx("key", { hz: fx.note(n), vol: 0.8 });
             setTimeout(() => { k.style.background = "#fbf4e2"; }, 160);
           });
           piano.appendChild(k);
@@ -1268,9 +1272,11 @@
         const toy = fx.put(A.S("0 0 40 30", '<ellipse cx="20" cy="17" rx="16" ry="11" fill="#f2c230" ' + A.ink + ' stroke-width="2"/><circle cx="30" cy="13" r="2" fill="#1f1b16"/><path d="M36 17 L40 15 L40 20 Z" fill="#e8741a"/>'), r.x, r.top + r.height + 12, { size: 30, h: 22 });
         fx.tone(1400, 0.12, { type: "square", slide: 2000, vol: 0.12, filter: { type: "bandpass", freq: 1800, q: 4 } });
         fx.tone(1900, 0.14, { type: "square", slide: 1300, vol: 0.12, at: 0.13, filter: { type: "bandpass", freq: 1800, q: 4 } });
+        fx.sfx("squeak", { vol: 0.8 });
         fx.move(toy, [{ transform: "scale(1,1)" }, { transform: "scale(1.2,.7)" }, { transform: "scale(1,1)" }], { duration: 260 });
         fx.later(1600, () => fx.fadeOut(toy, 300));
         fx.onNextTap(() => {
+          fx.sfx("squeak", { vol: 0.8, rate: 1.1 });
           fx.tone(1400, 0.12, { type: "square", slide: 2000, vol: 0.12, filter: { type: "bandpass", freq: 1800, q: 4 } });
           fx.tone(1900, 0.14, { type: "square", slide: 1300, vol: 0.12, at: 0.13, filter: { type: "bandpass", freq: 1800, q: 4 } });
         }, 12000);

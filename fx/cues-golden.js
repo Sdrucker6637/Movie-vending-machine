@@ -36,6 +36,7 @@
         const small = fx.put(gear(8, "#6d7478"), W() * 0.35 + 150, H() * 0.45 - 70, { size: 120 });
         fx.move(big, [{ transform: "rotate(0)" }, { transform: "rotate(180deg)" }], { duration: 4000 });
         fx.move(small, [{ transform: "rotate(0)" }, { transform: "rotate(-300deg)" }], { duration: 4000 });
+        fx.sfx("motor", { dur: 4, vol: 0.55 });
         for (let t = 0; t < 4; t += 0.25) { fx.click({ freq: 900, vol: 0.4, at: t }); fx.thud({ freq: 70, vol: 0.2, dur: 0.1, at: t + 0.12 }); }
         const slots = fx.otherSlots(true).slice(0, 6);
         for (const s of slots) {
@@ -43,6 +44,7 @@
           const w = fx.put(A.S("0 0 60 20", '<path d="M4 10 H40 M40 4 C50 2 56 6 56 10 C56 14 50 18 40 16 Z" ' + A.ink + ' fill="#9ea6aa"/>'), r.x, r.y, { size: 50, h: 18 });
           fx.move(w, [{ transform: "rotate(0)" }, { transform: "rotate(90deg)" }, { transform: "rotate(0)" }], 300);
           fx.move(s, [{ transform: "none" }, { transform: "rotate(4deg)" }, { transform: "none" }], { duration: 300, fill: "none" });
+          fx.sfx("relay", { vol: 0.6 });
           await fx.wait(420);
           fx.remove(w);
         }

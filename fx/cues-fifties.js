@@ -92,13 +92,13 @@
         let t = 0;
         for (const [n, l] of tune) {
           if (tapped) break;
-          fx.tone(n, 0.2 * l * 0.9, { type: "triangle", vol: 0.12, vibrato: [6, 6] });
+          fx.sfx("key", { hz: fx.note(n), vol: 0.55 });
           fx.move(f, [{ transform: "none" }, { transform: "translateY(-6px) rotate(" + (t % 2 ? 6 : -6) + "deg)" }, { transform: "none" }], { duration: 200 * l, fill: "none" });
           await fx.wait(200 * l);
           t++;
         }
         f.innerHTML = frog(false);
-        fx.tone(220, 0.3, { type: "square", vol: 0.12, slide: 160, filter: { freq: 700 } });
+        fx.sfx("squeak", { rate: 0.45, vol: 0.9 });
         fx.caption("ribbit.", { style: "whisper", ms: 1400, at: "slot" });
         await fx.wait(1400);
       }
@@ -316,6 +316,7 @@
         }
         for (let i = 0; i < 10; i++) {
           if (l1) l1.setAttribute("fill", i % 2 ? "#ffcf5a" : "#fff");
+          fx.sfx("blip", { hz: fx.pick([660, 880, 1320, 990]), vol: 0.4 });
           if (l2) l2.setAttribute("fill", i % 2 ? "#fff" : "#5affc8");
           await fx.wait(260);
         }
@@ -537,11 +538,11 @@
         const r = fx.rect(fx.slot());
         const bomb = fx.put(A.S("0 0 50 40", '<rect x="4" y="10" width="42" height="24" fill="#b3402d" ' + A.ink + ' stroke-width="2"/><circle cx="25" cy="22" r="7" fill="#f4efe2" ' + A.ink + ' stroke-width="2"/><path d="M25 22 V17" stroke="#1d1a18" stroke-width="2"/>'), r.x, r.y, { size: 50, h: 40 });
         void bomb;
-        for (let t = 0; t < 5.4; t += 0.5) fx.click({ freq: 1200, vol: 0.25, at: t });
+        fx.sfx("tick", { n: 11, every: 0.5, vol: 0.8 });
         fx.seq([["C4", 1], ["Eb4", 1], ["F4", 1], ["F#4", 1], ["G4", 2], ["Bb4", 2], ["C5", 2], ["Bb4", 1], ["G4", 3]], { type: "square", vol: 0.04, beat: 0.28, filter: { freq: 1200 } });
         if (!fx.reduced) await fx.page([{ transform: "scale(1.06) translate(0,20px)" }, { transform: "scale(1.06) translate(30px,-10px)" }, { transform: "scale(1.06) translate(-20px, -20px)" }, { transform: "none" }], { duration: 5200, easing: "linear" });
         else await fx.wait(5200);
-        fx.thud({ vol: 0.9, freq: 50, dur: 0.8 });
+        fx.sfx("boom", { vol: 0.9 });
         fx.flash("#fff", 200);
         fx.shake("lg", 600);
         fx.buzz(160);
@@ -670,7 +671,7 @@
         fx.letterbox(7000, "9vh");
         const beach = fx.wash("linear-gradient(transparent 58%, rgba(210,210,205,.8) 58%, rgba(170,170,165,.9))", 7000, { fade: 600 });
         void beach;
-        fx.noise(6, { freq: 700, sweep: 1200, vol: 0.15, attack: 1.2 });
+        fx.sfx("wind", { dur: 4.3, vol: 0.45 });
         const boy = A.S("0 0 30 60", '<circle cx="15" cy="8" r="7" fill="#1d1a18"/><path d="M6 16 H24 L22 38 H8 Z" fill="#1d1a18"/><path d="M8 38 L2 58 M22 38 L28 58 M6 20 L0 34 M24 20 L30 32" stroke="#1d1a18" stroke-width="4"/>');
         fx.seq([["D5", 2], ["E5", 1], ["F5", 1], ["A5", 4], ["G5", 2], ["F5", 2], ["E5", 4]], { type: "triangle", vol: 0.06, beat: 0.35, at: 1 });
         await fx.fly(boy, [-30, H() * 0.66], [W() * 0.5, H() * 0.72], { size: 34, h: 68, dur: 4200, easing: "linear", keep: true });

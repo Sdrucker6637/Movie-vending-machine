@@ -401,6 +401,7 @@
         }
         fx.style(s, { filter: "grayscale(1)" }, 7400);
         await fx.wait(600);
+        fx.sfx("click", { vol: 0.5 });
         for (const k of [1, 0, 1, 0]) {
           if (s) s.style.filter = k ? "grayscale(1) brightness(.08)" : "grayscale(1)";
           await fx.wait(k ? 90 : 150);
@@ -878,6 +879,7 @@
         fx.tone(60, 0.6, { type: "sawtooth", vol: 0.12, filter: { freq: 300 } });
         fx.noise(0.6, { type: "highpass", freq: 3000, vol: 0.3 });
         A.projector(fx, 1);
+        fx.sfx("reel-flap", { dur: 1, vol: 0.8 });
         fx.anim(burn, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: 900 });
         await fx.wait(1000);
         const s = fx.slot();

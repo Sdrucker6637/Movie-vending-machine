@@ -170,11 +170,11 @@
         const line = "WATERGATE — FOLLOW THE MONEY.";
         for (let i = 0; i <= line.length; i++) {
           typer.firstChild.textContent = line.slice(0, i);
-          fx.noise(0.04, { type: "bandpass", freq: 2000 + (i % 3) * 300, q: 4, vol: 0.3 });
+          fx.sfx("typewriter", { vol: 0.7, rate: 0.9 + (i % 3) * 0.1 });
           fx.thud({ freq: 300, vol: 0.08, dur: 0.03 });
           await fx.wait(i % 7 === 6 ? 180 : 70);
         }
-        fx.tone(2400, 0.3, { type: "sine", vol: 0.08 });
+        fx.sfx("typewriter", { bell: true, vol: 0.8 });
         fx.caption("(the carriage bell)", { style: "whisper", ms: 1200 });
         await fx.wait(1400);
         fx.caption("(a garage, a cigarette, Deep Throat)", { style: "whisper", ms: 2000 });
@@ -196,7 +196,7 @@
         await fx.wait(2400);
         const cab = A.car("#f2d33b");
         fx.caption("I'm walkin' here! I'm walkin' here!", { style: "hand", ms: 2000 });
-        fx.tone(600, 0.4, { type: "square", vol: 0.08 });
+        fx.sfx("horn", { n: 2, vol: 0.8 });
         fx.tone(600, 0.4, { type: "square", vol: 0.08, at: 0.5 });
         fx.move(fx.$(".reely"), [{ transform: "none" }, { transform: "translateX(-10px)" }, { transform: "translateX(10px)" }, { transform: "none" }], 700);
         await fx.fly(cab, [W() + 100, H() - 60], [-100, H() - 60], { size: 100, h: 45, dur: 1200, flip: true });
@@ -460,7 +460,7 @@
         fx.caption("(the filibuster)", { style: "whisper", ms: 1600 });
         for (let h = 1; h <= 23; h += 3) {
           clock.firstChild.textContent = "HOUR " + h;
-          fx.click({ freq: 1400, vol: 0.3 });
+          fx.sfx("tick", { vol: 0.7 });
           if (!fx.reduced) fx.move(fx.$(".reely"), [{ transform: "none" }, { transform: "rotate(" + h / 3 + "deg) translateY(" + h / 3 + "px)" }], { duration: 400, fill: "forwards" });
           await fx.wait(600);
         }
@@ -808,11 +808,11 @@
         await fx.wait(1800);
         const view = fx.node("", { cls: "fx-filter", style: { backdropFilter: "contrast(2) saturate(2) hue-rotate(180deg) blur(2px)", webkitBackdropFilter: "contrast(2) saturate(2) hue-rotate(180deg) blur(2px)" } });
         fx.node("", { cls: "fx-filter fx-scanlines", ms: 2400, style: { opacity: 0.6 } });
-        for (let i = 0; i < 8; i++) fx.tone(fx.rand(200, 900), 0.08, { type: "square", vol: 0.04, at: i * 0.12 });
+        fx.sfx("glitch", { n: 12, vol: 0.8 });
         fx.caption("(pixel vision — the first digital effects in a feature)", { style: "whisper", ms: 2200 });
         await fx.wait(2400);
         fx.remove(view);
-        shot(fx);
+        fx.sfx("crack", { vol: 0.6 });
         fx.flash("#fff", 100);
         fx.caption("(nothing can possibly go wrong)", { style: "whisper", ms: 1600 });
         await fx.wait(1600);
@@ -851,7 +851,7 @@
         const pa = ["Work hard. Increase production. Prevent accidents. Be happy.", "You are a true believer.", "Buy more. Buy more now."];
         for (const l of pa) {
           fx.caption(l, { style: "terminal", ms: 1600, css: { color: "#1d1a18", textShadow: "none", fontSize: "13px" } });
-          fx.tone(90, 1.4, { type: "sawtooth", vol: 0.04, filter: { type: "bandpass", freq: 600, q: 5 } });
+          fx.sfx("beep", { hz: 660, vol: 0.35 });
           await fx.wait(1700);
         }
         const cop = fx.put(A.S("0 0 40 90", '<circle cx="20" cy="14" r="12" fill="#c9c9c9" stroke="#1d1a18" stroke-width="1.5"/><path d="M12 12 H28" stroke="#1d1a18" stroke-width="2"/><path d="M8 28 H32 L34 88 H6 Z" fill="#1d1a18"/>'), W() * 0.8, H() * 0.6, { size: 34, h: 76 });
@@ -1243,11 +1243,13 @@
         await fx.wait(2200);
         fx.caption("Somebody's gotta go back and get a whole lot of dimes!", { style: "subtitle", ms: 2200, css: { fontSize: "13px" } });
         A.coinReturn(fx, 12, "#c9c9c9");
+        fx.sfx("coin-drop", { n: 12, every: 0.11 });
         await fx.wait(2200);
         fx.caption("(and then the movie breaks out of the movie)", { style: "whisper", ms: 1800 });
         const wall = fx.put(A.S("0 0 200 100", '<rect x="4" y="4" width="192" height="92" fill="#e8d8b0" ' + A.ink + ' stroke-width="2"/><path d="M4 4 L60 50 L20 96 M196 4 L140 60 L180 96" stroke="#1d1a18" stroke-width="2"/>'), W() / 2, H() * 0.4, { size: 200, h: 100 });
         fx.move(wall, [{ transform: "none" }, { transform: "scale(1.4)", opacity: 0 }], { duration: 800, delay: 400 });
-        fx.later(400, () => { fx.noise(0.5, { freq: 800, vol: 0.5 }); fx.thud({ vol: 0.6 }); });
+        fx.sfx("hit", { at: 400, vol: 0.8 });
+        fx.sfx("boom", { at: 420, vol: 0.4 });
         await fx.wait(1600);
       }
     },
@@ -1453,8 +1455,9 @@
         fx.caption("(the Colonel Bogey March)", { style: "whisper", ms: 2000 });
         await fx.wait(4000);
         const plunger = fx.put(A.S("0 0 40 50", '<rect x="6" y="22" width="28" height="24" fill="#6b4a2a" ' + A.ink + ' stroke-width="1.5"/><path d="M20 22 V4 M10 4 H30" stroke="#1d1a18" stroke-width="3"/>'), W() * 0.15, H() * 0.8, { size: 30, h: 38 });
+        fx.sfx("clunk", { vol: 0.6, at: 250 });
         await fx.move(plunger, [{ transform: "none" }, { transform: "translateY(8px)" }], { duration: 300, fill: "forwards" });
-        fx.thud({ vol: 1, freq: 40, dur: 1 });
+        fx.sfx("boom", { vol: 1 });
         fx.flash("#ffcf5a", 300);
         fx.shake("lg", 800);
         fx.buzz([200, 60, 200]);

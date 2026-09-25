@@ -71,6 +71,7 @@
     {
       id: 4232,
       run: async (fx) => {
+        fx.sfxSeq([["ring", 0, { dur: 1.2 }], ["ring", 2000, { dur: 1.2 }]]);
         for (let ring = 0; ring < 2; ring++) {
           const t = ring * 2;
           for (let k = 0; k < 12; k++) {
@@ -106,7 +107,7 @@
       run: async (fx) => {
         const g = fx.glass('<div class="fx-static" style="position:absolute;inset:0;opacity:.9"></div>');
         if (!g) return;
-        fx.noise(3.4, { type: "highpass", freq: 1200, vol: 0.14 });
+        fx.sfxSeq([["crt-on", 0, { vol: 0.7 }], ["static", 250, { dur: 3.1, vol: 0.45 }]]);
         await fx.wait(1100);
         [[30, 40, -10], [66, 58, 12]].forEach(([x, y, rot], i) => {
           fx.later(i * 500, () => {
@@ -174,10 +175,11 @@
       id: 565,
       run: async (fx) => {
         const black = fx.node('<div style="position:absolute;left:50%;top:45%;width:36vmin;height:36vmin;margin:-18vmin 0 0 -18vmin;border-radius:50%;box-shadow:0 0 0 1.4vmin #f4f7ff, 0 0 30px 3vmin rgba(220,235,255,.6), inset 0 0 20px 2vmin rgba(220,235,255,.45)"></div>', { cls: "fx-filter", style: { background: "#050505" } });
-        fx.noise(1.8, { type: "highpass", freq: 2000, vol: 0.12 });
+        fx.sfx("static", { dur: 1.8, vol: 0.3 });
         fx.tone(98, 1.8, { type: "sine", vol: 0.2, attack: 0.4 });
         await fx.wait(1900);
         fx.remove(black);
+        fx.sfx("crt-off", { vol: 0.7 });
         const s = fx.slot();
         if (!s) return;
         fx.style(s, { filter: "grayscale(.6) contrast(1.4)" }, 1600);
@@ -215,13 +217,13 @@
         const s = fx.slot();
         // Once... twice... three times.
         for (let i = 0; i < 3; i++) {
-          fx.noise(0.4, { type: "bandpass", freq: 2400, q: 4, vol: 0.1 + i * 0.05 });
+          fx.sfx("air", { dur: 0.45, vol: 0.5 + i * 0.25 });
           if (s) fx.style(s, { filter: "grayscale(1) contrast(1.4)" }, 300);
           await fx.wait(550);
         }
         const stripes = fx.node("", { cls: "fx-filter", style: { background: "repeating-linear-gradient(90deg, rgba(255,255,255,.9) 0 26px, rgba(15,15,15,.9) 26px 52px)", mixBlendMode: "multiply", opacity: 0 } });
         fx.flash("#b7ff5a", 250);
-        fx.thud({ freq: 60, vol: 0.8, dur: 0.8 });
+        fx.sfx("sting", { vol: 0.9 });
         fx.noise(1.2, { freq: 1500, sweep: 100, vol: 0.4 });
         fx.shake("lg", 700);
         fx.buzz([120, 60, 120]);
@@ -374,6 +376,7 @@
       id: 837,
       run: async (fx) => {
         const g = fx.glass("", { cls: "fx-scanlines", style: { background: "repeating-linear-gradient(0deg, rgba(255,60,120,.18) 0 2px, transparent 2px 4px)" } });
+        fx.sfx("heartbeat", { n: 4, vol: 0.8 });
         for (let i = 0; i < 4; i++) {
           fx.tone(50, 0.4, { vol: 0.35, at: i * 0.9 });
           fx.noise(0.5, { freq: 300, vol: 0.12, at: i * 0.9 + 0.1 });
@@ -443,6 +446,7 @@
         let heard = false;
         fx.onNextTap(() => {
           heard = true;
+          fx.sfx("sting", { vol: 1 });
           fx.tone(1300, 0.8, { type: "sawtooth", slide: 700, vol: 0.15, vibrato: [40, 60], filter: { type: "bandpass", freq: 1800, q: 3 } });
           fx.noise(0.5, { type: "bandpass", freq: 2500, q: 2, vol: 0.2 });
           fx.shake("md", 500);
@@ -672,12 +676,13 @@
           await fx.wait(600);
           secs -= 1;
           marquee.textContent = fmt(secs);
-          fx.click({ freq: 2000, vol: 0.2 });
+          fx.sfx("tick", { vol: 0.7 });
         }
         const m = fx.rect(".machine");
-        fx.noise(1.2, { freq: 400, sweep: 2500, vol: 0.4 });
+        fx.sfx("whoosh", { dur: 1.1, vol: 0.7 });
         await fx.fly(A.engine, [m.x + 30, -80], [m.x + 10, m.top - 10], { size: 70, h: 46, dur: 1100, easing: "cubic-bezier(.5,0,1,1)", r0: 20, r2: 60, keep: true });
-        fx.thud({ freq: 50, vol: 1, dur: 0.8 });
+        fx.sfx("boom", { vol: 0.8 });
+        fx.sfx("crack", { vol: 0.5 });
         fx.noise(0.8, { type: "highpass", freq: 1500, vol: 0.4 });
         fx.shake("lg", 600);
         fx.buzz(250);

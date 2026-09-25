@@ -28,6 +28,10 @@
        run: async (fx) => {...}  // the reaction itself
      }
 
+   Sound: cues call fx.sfx(name, opts) / fx.sfxSeq(steps), which play
+   from the synthesized library in fx/sound.js (MachineSound). Sound is
+   deliberately rare - most cues are silent.
+
    A cue fires every time its movie is added. fx.stats.adds says how
    many times that movie has been added on this device, for cues that
    want to vary with repeat visits.
@@ -73,45 +77,10 @@
     }
   }
 
-  // ---------- audio: synthesized only, silent when unavailable ----------
-  const audio = {
-    ctx: null,
-    master: null,
-    noiseBuf: null,
-    unlock() {
-      try {
-        if (!this.ctx) {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (!AC) return;
-          this.ctx = new AC();
-          this.master = this.ctx.createGain();
-          this.master.gain.value = 0.2;
-          this.master.connect(this.ctx.destination);
-        }
-        if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
-      } catch (e) {
-        this.ctx = null;
-      }
-    },
-    ready() {
-      return !!(this.ctx && this.ctx.state === "running" && !document.hidden);
-    },
-    noise() {
-      if (!this.noiseBuf) {
-        const len = this.ctx.sampleRate * 2;
-        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-        this.noiseBuf = buf;
-      }
-      return this.noiseBuf;
-    }
-  };
-  // Browsers only allow audio after a user gesture - piggyback on the
-  // taps people are already making.
-  ["pointerdown", "touchend", "keydown"].forEach((ev) =>
-    document.addEventListener(ev, () => audio.unlock(), { capture: true, passive: true })
-  );
+  // ---------- sound ----------
+  // All audio goes through fx/sound.js (MachineSound); cues reach it via
+  // fx.sfx()/fx.sfxSeq(), which tie each sound to the cue's lifetime.
+  const NO_SOUND = { stop() {}, get playing() { return false; } };
 
   const NOTE_INDEX = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 };
   function noteFreq(n) {
@@ -150,6 +119,7 @@
     const waiters = new Set();
     const nodes = new Set();
     let aborted = false;
+    let forced = false;
     const reduced = prefersReduced();
 
     const fx = {
@@ -508,116 +478,59 @@
         return Promise.all(all);
       },
 
-      // --- sound (Web Audio synthesis only) ---
-      tone(freq, dur, opts) {
-        if (!audio.ready()) return;
+      // --- sound ---
+      // fx.sfx("clunk", { at: 300, vol: 0.6 }) plays a sound from the
+      // library in fx/sound.js. `at` (ms) waits on the cue's own clock, so
+      // it is cancelled with the cue and stays in step with its visuals.
+      // Returns a handle with stop(ms) for loops and long sounds.
+      // When the cue finishes, loops fade out and one-shots ring out; when
+      // a cue is interrupted (another movie, tab hidden) everything stops.
+      sfx(name, opts) {
         opts = opts || {};
-        try {
-          const ctx = audio.ctx;
-          const t0 = ctx.currentTime + (opts.at || 0);
-          const osc = ctx.createOscillator();
-          const g = ctx.createGain();
-          osc.type = opts.type || "sine";
-          osc.frequency.setValueAtTime(noteFreq(freq), t0);
-          if (opts.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, noteFreq(opts.slide)), t0 + dur);
-          if (opts.detune) osc.detune.value = opts.detune;
-          const vol = opts.vol == null ? 0.5 : opts.vol;
-          const atk = opts.attack || 0.01;
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-          let out = g;
-          if (opts.filter) {
-            const f = ctx.createBiquadFilter();
-            f.type = opts.filter.type || "lowpass";
-            f.frequency.value = opts.filter.freq || 1200;
-            f.Q.value = opts.filter.q || 1;
-            g.connect(f);
-            out = f;
+        const S = window.MachineSound;
+        if (!S || aborted) return NO_SOUND;
+        const h = {
+          inner: null,
+          stopped: false,
+          stop(ms) {
+            h.stopped = true;
+            if (h.inner) h.inner.stop(ms);
+          },
+          get playing() {
+            return !!(h.inner && h.inner.playing);
           }
-          if (opts.pan != null && ctx.createStereoPanner) {
-            const p = ctx.createStereoPanner();
-            p.pan.value = opts.pan;
-            out.connect(p);
-            out = p;
-          }
-          if (opts.vibrato) {
-            const lfo = ctx.createOscillator();
-            const lg = ctx.createGain();
-            lfo.frequency.value = opts.vibrato[0];
-            lg.gain.value = opts.vibrato[1];
-            lfo.connect(lg);
-            lg.connect(osc.frequency);
-            lfo.start(t0);
-            lfo.stop(t0 + dur + 0.05);
-          }
-          osc.connect(g);
-          out.connect(audio.master);
-          osc.start(t0);
-          osc.stop(t0 + dur + 0.05);
-          cleanups.push(() => { try { osc.stop(); } catch (e) {} });
-        } catch (e) {}
+        };
+        const go = () => {
+          if (aborted || h.stopped) return;
+          h.inner = S.play(name, opts);
+        };
+        if (opts.at > 0) fx.later(opts.at, go);
+        else go();
+        cleanups.push(() => {
+          if (forced) h.stop(60);
+          else if (opts.dur || opts.loop) h.stop(opts.fadeOut != null ? opts.fadeOut : 220);
+        });
+        return h;
       },
-      // [[note, beats], ...] - null note is a rest
+      // fx.sfxSeq([["motor", 0], ["clunk", 350, { vol: 0.8 }]]) - offsets
+      // are ms from now.
+      sfxSeq(steps) {
+        return (steps || []).map((st) => fx.sfx(st[0], Object.assign({}, st[2], { at: (st[1] || 0) + ((st[2] && st[2].at) || 0) })));
+      },
+
+      // Older cues wrote their own inline synthesis with these. They are
+      // retired (silent) so that sound stays deliberate and rare; seq()
+      // still reports its length because some cues time visuals off it.
+      tone() {},
       seq(notes, opts) {
         opts = opts || {};
         const beat = opts.beat || 0.18;
-        let t = opts.at || 0;
-        notes.forEach(([n, len]) => {
-          if (n != null) [].concat(n).forEach((nn) => fx.tone(nn, beat * (len || 1) * (opts.legato || 0.95), Object.assign({}, opts, { at: t })));
-          t += beat * (len || 1);
-        });
-        return t;
+        return (notes || []).reduce((t, st) => t + beat * ((st && st[1]) || 1), opts.at || 0);
       },
-      chord(notes, dur, opts) {
-        notes.forEach((n) => fx.tone(n, dur, Object.assign({ vol: 0.25 }, opts)));
-      },
-      noise(dur, opts) {
-        if (!audio.ready()) return;
-        opts = opts || {};
-        try {
-          const ctx = audio.ctx;
-          const t0 = ctx.currentTime + (opts.at || 0);
-          const src = ctx.createBufferSource();
-          src.buffer = audio.noise();
-          src.loop = true;
-          const f = ctx.createBiquadFilter();
-          f.type = opts.type || "lowpass";
-          f.frequency.setValueAtTime(opts.freq || 1000, t0);
-          if (opts.sweep) f.frequency.exponentialRampToValueAtTime(opts.sweep, t0 + dur);
-          f.Q.value = opts.q || 1;
-          const g = ctx.createGain();
-          const vol = opts.vol == null ? 0.4 : opts.vol;
-          const atk = opts.attack || 0.005;
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
-          if (opts.hold) g.gain.setValueAtTime(vol, t0 + atk + opts.hold);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-          src.connect(f);
-          f.connect(g);
-          let out = g;
-          if (opts.pan != null && ctx.createStereoPanner) {
-            const p = ctx.createStereoPanner();
-            p.pan.setValueAtTime(opts.pan, t0);
-            if (opts.panTo != null) p.pan.linearRampToValueAtTime(opts.panTo, t0 + dur);
-            g.connect(p);
-            out = p;
-          }
-          out.connect(audio.master);
-          src.start(t0);
-          src.stop(t0 + dur + 0.05);
-          cleanups.push(() => { try { src.stop(); } catch (e) {} });
-        } catch (e) {}
-      },
-      thud(opts) {
-        opts = opts || {};
-        fx.tone(opts.freq || 80, opts.dur || 0.35, { type: "sine", slide: 35, vol: opts.vol || 0.8, at: opts.at });
-        fx.noise(0.12, { freq: 300, vol: (opts.vol || 0.8) * 0.4, at: opts.at });
-      },
-      click(opts) {
-        opts = opts || {};
-        fx.noise(0.03, { type: "bandpass", freq: opts.freq || 3000, q: 4, vol: opts.vol || 0.5, at: opts.at, pan: opts.pan });
-      },
+      chord() {},
+      noise() {},
+      thud() {},
+      click() {},
 
       // --- haptics (Android/Chrome; silently ignored elsewhere) ---
       buzz(pattern) {
@@ -660,9 +573,10 @@
       },
 
       // --- internals ---
-      _abort() {
+      _abort(interrupted) {
         if (aborted) return;
         aborted = true;
+        forced = !!interrupted;
         waiters.forEach((w) => { if (w.raf) cancelAnimationFrame(w.t); else clearTimeout(w.t); w.reject(ABORT); });
         waiters.clear();
         fx._cleanup();
@@ -680,7 +594,7 @@
 
   function stopCurrent() {
     if (current) {
-      current._abort();
+      current._abort(true);
       current = null;
     }
     document.documentElement.classList.remove("fx-running");

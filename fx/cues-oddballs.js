@@ -405,6 +405,7 @@
             fx.click({ freq: 3000, vol: 0.08 });
             await fx.wait(25);
           }
+          if (l === "> ACCESS GRANTED") fx.sfx("confirm", { vol: 0.6 });
           await fx.wait(250);
         }
         synth(fx, [["A3", 1], ["A3", 1], ["C4", 1], ["A3", 1], ["E4", 2], ["D4", 2]], 0.16, 0.06);
@@ -594,6 +595,7 @@
       run: async (fx) => {
         neon(fx, 6600);
         A.vhs(fx, 6600, "PLAY");
+        fx.sfxSeq([["tape-insert", 0, { vol: 0.8 }], ["vhs-hiss", 700, { dur: 5.6, vol: 0.7 }]]);
         const beat = 0.14;
         const synthwave = [["A3", 1], ["A3", 1], ["C4", 1], ["A3", 1], ["E4", 2], ["D4", 1], ["C4", 1], ["A3", 4]];
         synth(fx, synthwave.concat(synthwave), beat, 0.07);
@@ -601,11 +603,11 @@
         fx.caption("(struck by lightning AND bitten by a cobra)", { style: "whisper", ms: 2200 });
         await fx.wait(1600);
         fx.flash("#fff", 150);
-        fx.noise(0.6, { type: "highpass", freq: 1500, vol: 0.4 });
+        fx.sfx("thunder", { vol: 0.7 });
         const dino = A.S("0 0 100 70", '<path d="M10 60 L20 30 C24 14 50 10 70 16 L94 10 L90 22 L72 28 L60 34 L56 60 M36 36 L34 60 M60 22 L64 12" fill="#3aa655" stroke="#1d1a18" stroke-width="2"/><rect x="62" y="2" width="12" height="8" fill="#1d1a18"/>');
         fx.caption("(and then a laser-raptor with sunglasses)", { style: "whisper", ms: 2000 });
         await fx.fly(dino, [W() + 100, H() * 0.66], [-100, H() * 0.66], { size: 100, h: 70, dur: 2000, flip: true });
-        for (let i = 0; i < 4; i++) fx.later(i * 200, () => fx.tone(2000, 0.15, { type: "square", vol: 0.04, slide: 400 }));
+        for (let i = 0; i < 4; i++) fx.sfx("blip", { hz: 1600 - i * 200, at: i * 200, vol: 0.7 });
         await fx.wait(1200);
       }
     },
@@ -929,12 +931,14 @@
         const ball = A.S("0 0 40 40", '<circle cx="20" cy="20" r="18" fill="#fbfbf4" ' + A.ink + ' stroke-width="2"/><path d="M20 10 L28 16 L25 26 H15 L12 16 Z" fill="#1d1a18"/>');
         fx.caption("(a kung-fu kick)", { style: "whisper", ms: 1600 });
         hit(fx);
+        fx.sfx("hit", { vol: 0.7 });
+        fx.sfx("whoosh", { dur: 0.8, vol: 0.6 });
         const shotBall = fx.fly(ball, [-40, H() * 0.8], [r.x, r.y], { size: 36, dur: 800, r1: 1440 });
         fx.later(100, () => fx.particles({ kind: "sweep", count: 20, glyphs: dot("#ff9a3a"), min: 4, max: 10, dur: 700 }));
         fx.noise(0.8, { freq: 800, sweep: 2400, vol: 0.4 });
         await shotBall;
         fx.flash("#ffcf5a", 200);
-        fx.thud({ vol: 0.8, freq: 40 });
+        fx.sfx("boom", { vol: 0.8 });
         fx.shake("lg", 600);
         fx.later(100, () => fx.move(fx.slot(), [{ transform: "none" }, { transform: "translate(8px,-6px) rotate(6deg)" }, { transform: "none" }], { duration: 600, fill: "none" }));
         fx.caption("(GOAL — and the net is on fire)", { style: "whisper", ms: 1800 });
@@ -1088,7 +1092,8 @@
         fx.filter("grayscale(1) contrast(2.2) brightness(.8)", 7000, { fade: 300 });
         A.oldFilm(fx, 7000);
         fx.node("", { cls: "fx-filter", ms: 7000, style: { background: "repeating-radial-gradient(circle at 30% 40%, rgba(0,0,0,.2) 0 2px, transparent 2px 7px)", mixBlendMode: "multiply" } });
-        fx.noise(7, { freq: 400, vol: 0.06, attack: 1 });
+        fx.sfx("drone", { dur: 6.4, fadeIn: 1500, vol: 0.55 });
+        fx.sfx("crackle", { dur: 6.4, vol: 0.5 });
         fx.tone(50, 7, { type: "sine", vol: 0.08, attack: 2 });
         for (let i = 0; i < 12; i++) fx.later(i * 500 + fx.rand(0, 200), () => { fx.flash(i % 2 ? "rgba(255,255,255,.3)" : "rgba(0,0,0,.6)", 60); if (i % 3 === 0) fx.click({ freq: 300, vol: 0.2 }); });
         fx.later(600, () => fx.caption("(untitled)", { style: "whisper", ms: 1400, css: { color: "#fff" } }));

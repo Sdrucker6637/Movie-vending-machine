@@ -163,6 +163,7 @@
         fx.filter("grayscale(1) contrast(1.1)", 6600, { fade: 300 });
         fx.node("", { cls: "fx-filter fx-grain", ms: 6600 });
         A.projector(fx, 6);
+        fx.sfx("projector", { dur: 5.8, vol: 0.4, fadeIn: 400 });
         const looks = [
           { label: "", filter: "none" },
           { label: "", filter: "sepia(1) brightness(.9)" },
@@ -180,6 +181,7 @@
           fx.costume(".reely", hats[i], 1400);
           if (s) fx.style(s, { filter: looks[i].filter }, 1400);
           fx.caption(who[i], { style: "whisper", ms: 1200 });
+          fx.sfx("click", { vol: 0.5 });
           fx.tone(fx.pick(["C4", "E4", "G4", "A4"]), 0.3, { type: "triangle", vol: 0.06 });
           await fx.wait(1450);
         }
@@ -565,6 +567,7 @@
         fx.filter("grayscale(1)", 6400, { fade: 300 });
         fx.wash("rgba(80,30,90,.25)", 6400, { fade: 300 });
         A.projector(fx, 5);
+        fx.sfx("projector", { dur: 3.6, vol: 0.45 });
         const beam = fx.put('<div style="width:100%;height:100%;background:linear-gradient(to bottom, rgba(255,255,230,.5), transparent);clip-path:polygon(45% 0,55% 0,100% 100%,0 100%)"></div>', r.x, r.top - H() * 0.25, { size: r.width * 1.4, h: H() * 0.5 });
         void beam;
         const man = A.S("0 0 40 90", '<path d="M10 8 C12 0 28 0 30 8 L32 12 H8 Z" fill="#e8e4da" ' + A.ink + ' stroke-width="2"/><circle cx="20" cy="18" r="7" fill="#f2d6b3" ' + A.ink + ' stroke-width="2"/><path d="M8 28 H32 L30 64 H10 Z" fill="#e8e4da" ' + A.ink + ' stroke-width="2"/><path d="M14 64 V88 M26 64 V88" ' + A.ink + '/>');
@@ -573,8 +576,10 @@
         await fx.wait(1000);
         const m = fx.put(man, r.x, r.y, { size: 34, h: 76 });
         fx.style(m, { filter: "grayscale(1)" });
+        fx.sfx("whoosh", { vol: 0.45, dur: 0.9 });
         await fx.move(m, [{ transform: "none" }, { transform: "translate(" + (W() / 2 - r.x) + "px," + (H() * 0.7 - r.y) + "px) scale(1.3)" }], { duration: 1600, easing: "ease-in-out" });
         m.style.filter = "none";
+        fx.sfx("chime", { vol: 0.6 });
         fx.chord(["C5", "E5", "G5"], 1.4, { type: "sine", vol: 0.06 });
         fx.caption("(he stepped out of the screen)", { style: "whisper", ms: 1600 });
         await fx.wait(1800);
@@ -812,7 +817,7 @@
         const tv = fx.node("", { cls: "fx-filter fx-scanlines", style: { background: "rgba(0,0,0,.4)" } });
         fx.node("", { cls: "fx-filter fx-static", style: { opacity: 0.25 } });
         fx.caption("This is not a dream. This is being broadcast from the year one-nine-nine-nine.", { style: "terminal", ms: 2800, css: { fontSize: "12px" } });
-        fx.noise(2.8, { type: "bandpass", freq: 1500, q: 1, vol: 0.12 });
+        fx.sfx("static", { dur: 2.8, vol: 0.55 });
         await fx.wait(2800);
         void tv;
       }
@@ -967,6 +972,7 @@
         const r = fx.rect(s);
         fx.wash("radial-gradient(circle at 50% 50%, rgba(255,230,180,.0), rgba(30,15,5,.7))", 7400, { fade: 600 });
         A.projector(fx, 6.5);
+        fx.sfx("projector", { dur: 6.4, vol: 0.35, fadeIn: 800 });
         const beam = fx.put('<div style="width:100%;height:100%;background:linear-gradient(to bottom, rgba(255,255,220,.6), rgba(255,255,220,0));clip-path:polygon(47% 0,53% 0,100% 100%,0 100%)"></div>', r.x, r.top - H() * 0.3, { size: r.width * 1.5, h: H() * 0.6 });
         void beam;
         fx.particles({ kind: "drift", area: pt(r.x, r.top - H() * 0.15, r.width, H() * 0.3), count: 20, glyphs: dot("rgba(255,255,230,.8)"), min: 1, max: 3, dur: 3000, stagger: 4000 });

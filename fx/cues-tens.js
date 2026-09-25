@@ -200,14 +200,15 @@
         fx.caption("TROLL!", { style: "hand", ms: 1200 });
         const troll = fx.put(A.S("0 0 160 240", '<path d="M40 60 C30 20 70 0 90 10 C120 0 140 30 130 70 L140 200 L120 240 H50 L30 200 Z" fill="#5a5a4a"/><path d="M60 30 C66 20 80 20 86 30 M100 36 C104 28 114 28 118 36" stroke="#3a3a2a" stroke-width="4" fill="none"/><path d="M84 60 C86 80 76 90 70 96" stroke="#3a3a2a" stroke-width="6" fill="none"/><path d="M30 120 L0 180 M130 120 L160 180" stroke="#5a5a4a" stroke-width="18" stroke-linecap="round"/>'),
           W() / 2, H() + 140, { size: 200, h: 300 });
-        for (let i = 0; i < 4; i++) { fx.thud({ vol: 0.9, freq: 40, dur: 0.6, at: i * 0.6 }); }
+        for (let i = 0; i < 4; i++) fx.sfx("boom", { at: i * 600, vol: 0.55 + i * 0.1 });
         fx.buzz([200, 400, 200, 400, 200]);
         fx.shake("md", 2400);
         await fx.move(troll, [{ transform: "none" }, { transform: "translateY(-" + H() * 0.6 + "px)" }], { duration: 2400, easing: "ease-out" });
         const uv = fx.put('<div style="width:100%;height:100%;background:radial-gradient(circle, #fff, rgba(200,230,255,.8) 30%, transparent 70%)"></div>', W() / 2, H() * 0.45, { size: 80 });
-        fx.tone(200, 1.2, { type: "sawtooth", vol: 0.1, slide: 2000 });
+        fx.sfx("power-up", { vol: 0.9 });
         await fx.move(uv, [{ transform: "scale(.2)" }, { transform: "scale(20)" }], { duration: 700, easing: "ease-in" });
         fx.flash("#fff", 400);
+        fx.sfx("zap", { vol: 0.8 });
         fx.remove(troll);
         fx.particles({ kind: "burst", from: pt(W() / 2, H() * 0.5), count: 30, spread: 90, gravity: 120, glyphs: dot("#8a857a"), min: 6, max: 16, dur: 1200, stagger: 0 });
         fx.caption("(it turned to stone)", { style: "whisper", ms: 1400, css: { color: "#fff" } });
@@ -296,7 +297,8 @@
         fx.seq([[null, 2], ["E5", 4], ["F5", 2], ["E5", 2], ["D5", 4], ["C5", 4]], { type: "sine", vol: 0.06, beat: 0.35 });
         await fx.move(planet, [{ transform: "scale(1)" }, { transform: "scale(" + Math.max(W(), H()) / 30 + ")" }], { duration: 6400, easing: "cubic-bezier(.6,0,1,.8)" });
         fx.flash("#fff", 600);
-        fx.thud({ vol: 1, freq: 35, dur: 1.2 });
+        fx.sfx("boom", { vol: 1 });
+        fx.sfx("thunder", { vol: 0.5 });
         fx.noise(1.4, { freq: 400, vol: 0.6 });
         fx.shake("lg", 1000);
         fx.buzz([400]);

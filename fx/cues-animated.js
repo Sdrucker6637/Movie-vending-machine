@@ -15,13 +15,13 @@
     {
       id: 862,
       run: async (fx) => {
-        for (let i = 0; i < 4; i++) fx.thud({ freq: 120, vol: 0.2 + i * 0.08, dur: 0.15, at: i * 0.35 });
+        for (let i = 0; i < 4; i++) fx.sfx("hit", { at: i * 350, vol: 0.2 + i * 0.12, rate: 0.7 });
         await fx.wait(1300);
         fx.freeze(2600);
         if (fx.reduced) fx.style([fx.$(".reely"), fx.$(".kernel")], { filter: "grayscale(1) brightness(.75)" }, 2400);
         fx.move(".reely", [{ transform: "none", transformOrigin: "50% 95%" }, { transform: "rotate(84deg) translateY(10px)", transformOrigin: "50% 95%" }], { duration: 200, easing: "ease-in" });
         fx.move(".kernel", [{ transform: "none", transformOrigin: "50% 95%" }, { transform: "rotate(-80deg)", transformOrigin: "50% 95%" }], { duration: 200, easing: "ease-in" });
-        fx.thud({ freq: 180, vol: 0.3, dur: 0.1 });
+        fx.sfx("clunk", { vol: 0.35 });
         await fx.wait(2400);
         fx.move(".reely", [{ transform: "rotate(84deg) translateY(10px)", transformOrigin: "50% 95%" }, { transform: "none", transformOrigin: "50% 95%" }], { duration: 160, easing: "steps(3)" });
         fx.move(".kernel", [{ transform: "rotate(-80deg)", transformOrigin: "50% 95%" }, { transform: "none", transformOrigin: "50% 95%" }], { duration: 160, easing: "steps(3)" });
@@ -728,13 +728,14 @@
       run: async (fx) => {
         const m = fx.rect(".machine");
         for (let i = 0; i < 4; i++) {
-          fx.thud({ freq: 90, vol: 0.5, at: i * 0.3, dur: 0.2 });
+          fx.sfx("hit", { at: i * 300, vol: 0.7 });
           fx.later(i * 300, () => fx.shake("md", 200));
         }
         fx.particles({ kind: "burst", from: pt(m.x, m.top + 20, m.width, 0), count: 26, spread: 50, gravity: H() * 0.6, dur: 1400, stagger: 1100, glyphs: (i) => '<div style="width:100%;height:100%;background:' + ["#b3402d", "#87301f", "#d9a13a"][i % 3] + ';border:2px solid #1f1b16"></div>', min: 8, max: 14 });
         await fx.wait(1800);
         fx.seq([["C6", 1], ["E6", 1], ["G6", 1], ["C7", 2]], { beat: 0.07, type: "square", vol: 0.06 });
         A.sparkleOn(fx, ".machine", 16, "#ffe07a");
+        fx.sfx("arcade-up", { vol: 0.8 });
         const gold = fx.wash("rgba(255,210,80,.35)", 800, { blend: "screen" });
         void gold;
         await fx.wait(1200);
@@ -893,11 +894,13 @@
         if (!s) return;
         const r = fx.rect(s);
         const stat = fx.put('<div class="fx-static" style="width:100%;height:100%;border-radius:6px;opacity:.85"></div>', r.x, r.y, { size: r.width, h: r.height });
-        fx.noise(1.6, { type: "highpass", freq: 3000, vol: 0.2 });
+        fx.sfx("static", { dur: 1.3, vol: 0.45 });
+        fx.sfx("slide-whistle", { down: true, vol: 0.6 });
         fx.tone(3000, 0.6, { slide: 200, vol: 0.08, at: 0.6 });
         await fx.move(s, [{ transform: "none" }, { transform: "scale(.12)" }], { duration: 600, easing: "steps(6)" });
         await fx.wait(fx.reduced ? 1400 : 700);
         fx.remove(stat);
+        fx.sfx("pop", { vol: 0.6 });
         await fx.move(s, [{ transform: "scale(.12)" }, { transform: "none" }], { duration: 300, easing: "steps(3)" });
         if (fx.reduced) fx.remove(stat);
       }

@@ -549,15 +549,16 @@
         fx.wash("rgba(200,230,255,.3)", 6400, { fade: 300 });
         fx.caption("(the squirrel only wants the acorn)", { style: "whisper", ms: 1800 });
         await fx.wait(1600);
-        fx.click({ freq: 5000, vol: 0.4 });
+        fx.sfx("crack", { vol: 0.5 });
         const crack = fx.put(A.S("0 0 300 300", '<path d="M150 0 L140 60 L170 110 L130 170 L160 230 L140 300" stroke="#fff" stroke-width="3" fill="none"/><path d="M140 60 L80 90 M170 110 L240 130 M130 170 L60 200 M160 230 L220 260" stroke="#fff" stroke-width="2" fill="none"/>'), r.x, r.y + 60, { size: 200, h: 200 });
         await fx.tween(fx.reduced ? 10 : 800, (k) => (crack.style.clipPath = "inset(0 0 " + (1 - k) * 100 + "% 0)"));
         fx.noise(1, { type: "highpass", freq: 2000, vol: 0.5 });
-        fx.thud({ vol: 0.8, freq: 40, dur: 1 });
+        fx.sfx("thunder", { vol: 0.8 });
         fx.shake("lg", 900);
         fx.buzz([200, 60, 200]);
         const halves = fx.$$("#grid .slot");
         halves.forEach((s, i) => fx.move(s, [{ transform: "none" }, { transform: "translateX(" + (fx.rect(s).x < W() / 2 ? -8 : 8) + "px)" }, { transform: "none" }], { duration: 900, delay: i * 20, fill: "none" }));
+        fx.sfx("slide-whistle", { down: true, at: 150, vol: 0.9 });
         fx.move(acorn, [{ transform: "none" }, { transform: "translateY(" + H() + "px) rotate(720deg)" }], { duration: 1200, easing: "ease-in" });
         fx.caption("(…and the whole glacier cracks)", { style: "whisper", ms: 1600 });
         await fx.wait(1800);

@@ -20,6 +20,7 @@
         const r = fx.rect(fx.slot());
         A.oldFilm(fx, 5200);
         A.projector(fx, 4.5);
+        fx.sfx("projector", { dur: 4.4, vol: 0.4 });
         const moon = fx.put(A.S("0 0 120 120",
           '<circle cx="60" cy="60" r="54" fill="#f1ead2" ' + A.ink + '/>' +
           '<path d="M36 48 C40 42 48 42 52 48 M70 48 C74 42 82 42 86 48" fill="none" ' + A.ink + '/>' +
@@ -31,9 +32,10 @@
         const rocket = A.S("0 0 30 60", '<path d="M15 2 C26 14 26 40 24 56 H6 C4 40 4 14 15 2 Z" fill="#cfd4d6" ' + A.ink + ' stroke-width="2.5"/><path d="M6 46 L0 58 H8 M24 46 L30 58 H22" fill="#9aa2a6" ' + A.ink + ' stroke-width="2"/>');
         const eye = [W() / 2 + 22, H() * 0.32 - 7];
         fx.tone(300, 1.1, { type: "triangle", slide: 900, vol: 0.18 });
+        fx.sfx("whoosh", { dur: 1.1, vol: 0.5 });
         await fx.fly(rocket, [r.x, r.y], eye, { size: 34, h: 60, dur: 1100, r0: 30, r2: 60, easing: "ease-in" });
         fx.put(A.S("0 0 30 60", '<path d="M15 2 C26 14 26 40 24 56 H6 C4 40 4 14 15 2 Z" fill="#cfd4d6" ' + A.ink + ' stroke-width="2.5"/>'), eye[0] - 4, eye[1] - 10, { size: 30, h: 50, style: { transform: "rotate(60deg)" } });
-        fx.thud({ freq: 120 });
+        fx.sfx("hit", { vol: 0.7 });
         fx.buzz(40);
         fx.move(moon, [{ transform: "none" }, { transform: "rotate(-6deg) scale(1.03)" }, { transform: "rotate(3deg)" }, { transform: "none" }], 500);
         fx.particles({ kind: "burst", from: pt(eye[0], eye[1]), count: 10, spread: 20, dur: 700, stagger: 0, glyphs: dot("#fff6c0"), min: 3, max: 6 });
@@ -50,6 +52,7 @@
       run: async (fx) => {
         A.oldFilm(fx, 3800);
         A.projector(fx, 3.5);
+        fx.sfx("projector", { dur: 3.6, vol: 0.4 });
         const gun = fx.put(A.S("0 0 120 80",
           '<path d="M10 40 H80 V30 H100 V50 H60 L50 76 H34 L42 50 H10 Z" fill="#2b2622" ' + A.ink + '/><circle cx="12" cy="45" r="5" fill="#000"/>'),
           W() / 2, H() / 2, { size: 220, h: 150 });
@@ -57,6 +60,7 @@
         for (let i = 0; i < 3; i++) {
           await fx.wait(450);
           fx.flash("#fff7d6", 120);
+          fx.sfx("crack", { vol: 0.55 });
           fx.noise(0.25, { freq: 2200, vol: 0.7 });
           fx.thud({ vol: 0.5 });
           fx.buzz(30);
@@ -208,7 +212,7 @@
         await fx.wait(600);
         fx.move(man, [{ transform: "rotate(0)" }, { transform: "rotate(8deg)" }, { transform: "rotate(-6deg)" }, { transform: "rotate(4deg)" }], { duration: 2800, easing: "ease-in-out" });
         const hand = clock.querySelector(".minute");
-        fx.tone(220, 0.3, { type: "square", vol: 0.1 });
+        fx.sfx("tick", { n: 6, every: 0.47, vol: 0.8 });
         await fx.tween(fx.reduced ? 10 : 2800, (k) => {
           hand.setAttribute("transform", "rotate(" + k * 35 + " 70 70)");
           man.style.top = cy + 34 - 50 + k * 42 + "px";
@@ -227,6 +231,7 @@
         const r = fx.rect(fx.slot());
         A.oldFilm(fx, 4800);
         A.projector(fx, 4.5);
+        fx.sfx("projector", { dur: 4.6, vol: 0.4 });
         const man = A.S("0 0 40 80",
           '<path d="M10 10 H30 L28 4 H12 Z" fill="#3b3530" ' + A.ink + ' stroke-width="2"/><circle cx="20" cy="16" r="7" fill="#f2d6b3" ' + A.ink + ' stroke-width="2"/>' +
           '<rect x="12" y="24" width="16" height="28" fill="#4a443c" ' + A.ink + ' stroke-width="2"/><path d="M16 52 L12 78 M24 52 L28 78" ' + A.ink + '/>');
@@ -237,6 +242,7 @@
         const lift = A.liftSlot(fx, 3600);
         for (const c of bgs) {
           fx.flash(c, 180);
+          fx.sfx("relay", { vol: 0.6 });
           fx.click({ freq: 1400, vol: 0.5 });
           if (lift) fx.style(lift, { filter: "sepia(1) hue-rotate(" + bgs.indexOf(c) * 60 + "deg)" }, 500);
           await fx.wait(620);
@@ -371,9 +377,10 @@
           cx, 40, { size: 160, h: 130 });
         fx.move(ch, [{ transform: "rotate(-3deg)" }, { transform: "rotate(3deg)" }, { transform: "rotate(-3deg)" }], { duration: 1600, iterations: 1 });
         await fx.wait(1600);
-        fx.noise(0.3, { freq: 5000, vol: 0.3 });
+        fx.sfx("whoosh", { dur: 0.7, vol: 0.6 });
         await fx.move(ch, [{ transform: "none" }, { transform: "translateY(" + (H() - 140) + "px) rotate(12deg)" }], { duration: 700, easing: "cubic-bezier(.55,0,1,.6)" });
-        fx.thud({ vol: 0.9, freq: 60 });
+        fx.sfx("boom", { vol: 0.8 });
+        fx.sfx("crack", { vol: 0.5 });
         fx.noise(0.8, { type: "highpass", freq: 3000, vol: 0.5 });
         fx.shake("lg", 600);
         fx.buzz(120);
@@ -499,8 +506,10 @@
         const win = wall.firstChild.querySelector("rect:nth-of-type(2)");
         if (win) win.setAttribute("fill", "transparent");
         await fx.wait(700);
+        fx.sfx("whoosh", { dur: 0.9, vol: 0.5 });
         if (!fx.reduced) await fx.anim(wall, [{ transform: "perspective(800px) rotateX(0)" }, { transform: "perspective(800px) rotateX(-88deg)" }], { duration: 900, easing: "cubic-bezier(.6,0,1,.7)" });
-        fx.thud({ vol: 1, freq: 55, dur: 0.6 });
+        fx.sfx("boom", { vol: 0.9 });
+        fx.sfx("crackle", { dur: 2, vol: 0.5 });
         fx.noise(0.6, { freq: 800, vol: 0.6 });
         fx.shake("lg", 500);
         fx.buzz(150);
@@ -566,6 +575,7 @@
         const r = fx.rect(fx.slot());
         const f = A.oldFilm(fx, 4600, "grayscale(1) contrast(1.3)");
         void f;
+        fx.sfx("crackle", { dur: 4.4, vol: 0.6 });
         const wheel = fx.put(A.S("0 0 100 100",
           '<circle cx="50" cy="50" r="30" fill="none" ' + A.ink + ' stroke-width="6"/><circle cx="50" cy="50" r="8" fill="' + A.INK + '"/>' +
           Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4; return '<path d="M' + (50 + Math.cos(a) * 8) + " " + (50 + Math.sin(a) * 8) + " L" + (50 + Math.cos(a) * 46) + " " + (50 + Math.sin(a) * 46) + '" ' + A.ink + ' stroke-width="5"/><circle cx="' + (50 + Math.cos(a) * 46) + '" cy="' + (50 + Math.sin(a) * 46) + '" r="4" fill="' + A.INK + '"/>'; }).join("")),
@@ -614,7 +624,7 @@
           '<rect x="56" y="18" width="16" height="14" fill="#2b2622" ' + A.ink + '/><circle cx="74" cy="25" r="6" fill="#f4efe2" ' + A.ink + ' stroke-width="2"/><circle class="pupil" cx="74" cy="25" r="3" fill="#0d0b09"/>' +
           '<path d="M36 40 L14 116 M36 40 L36 116 M36 40 L58 116" ' + A.ink + '/>');
         const el = fx.put(cam, -60, H() * 0.6, { size: 90, h: 130 });
-        for (let t = 0; t < 4.5; t += 0.07) fx.click({ freq: 2000, vol: 0.1, at: t });
+        fx.sfx("projector", { dur: 2.6, vol: 0.45 });
         if (!fx.reduced) {
           await fx.anim(el, [
             { transform: "translateX(0) rotate(0)" }, { transform: "translateX(" + W() * 0.25 + "px) rotate(8deg)", offset: 0.25 },
@@ -622,6 +632,7 @@
         } else el.style.left = W() / 2 - 45 + "px";
         const pupil = el.querySelector(".pupil");
         if (pupil) pupil.setAttribute("fill", "#6a8bb0");
+        fx.sfx("click", { vol: 0.7 });
         fx.tone(440, 0.4, { type: "triangle", vol: 0.12 });
         await fx.move(el, [{ transform: "translateX(" + (W() * 0.5 + 60) + "px) scale(1)" }, { transform: "translateX(" + (W() * 0.5 + 60) + "px) scale(1.4)" }, { transform: "translateX(" + (W() * 0.5 + 60) + "px) scale(1)" }], 900);
         await fx.wait(1200);

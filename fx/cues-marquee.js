@@ -154,7 +154,7 @@
         for (let i = 0; i < d.length; i++) {
           if (blip) { blip.setAttribute("cy", 30 + i * 5); blip.setAttribute("cx", 60 + (i % 2 ? -6 : 6)); }
           if (dist) dist.textContent = d[i] + "m";
-          fx.tone(1800, 0.06, { type: "sine", vol: 0.08 });
+          fx.sfx("beep", { hz: 1760, vol: 0.45 + i * 0.04 });
           fx.tone(1800 - i * 60, 0.08, { type: "sine", vol: 0.05, at: 0.25 });
           await fx.wait(Math.max(260, 620 - i * 50));
         }
@@ -162,7 +162,7 @@
         await fx.wait(600);
         const tail = A.S("0 0 100 30", '<path d="M2 16 C30 4 60 28 90 12 L98 8 L94 18 Z" fill="#1d1a18"/>');
         fx.fly(tail, [W() + 40, H() * 0.2], [-60, H() * 0.25], { size: 100, h: 30, dur: 500 });
-        fx.noise(0.4, { type: "highpass", freq: 3000, vol: 0.5 });
+        fx.sfx("swish", { vol: 0.8 });
         fx.buzz([100]);
         await fx.wait(1400);
       }
@@ -743,10 +743,11 @@
           await fx.wait(260);
         }
         const scan = fx.put('<div style="width:100%;height:100%;background:linear-gradient(transparent, rgba(80,255,200,.6), transparent)"></div>', r.x, r.y, { size: r.width, h: 20 });
+        fx.sfx("whir", { vol: 0.6, rate: 1.4 });
         await fx.move(scan, [{ transform: "translateY(-" + r.height / 2 + "px)" }, { transform: "translateY(" + r.height / 2 + "px)" }], 900);
         fx.remove(scan);
         fx.caption("IDENTITY CONFIRMED — VALID", { style: "terminal", ms: 1600 });
-        fx.tone(1500, 0.15, { type: "sine", vol: 0.08 });
+        fx.sfx("confirm", { vol: 0.6 });
         await fx.wait(1600);
         fx.caption("(one eyelash, on the keyboard…)", { style: "whisper", ms: 1400 });
         fx.put(A.S("0 0 20 6", '<path d="M1 5 C6 1 14 1 19 3" stroke="#1d1a18" stroke-width="1.2" fill="none"/>'), W() * 0.3, H() * 0.7, { size: 16, h: 5, ms: 1400 });

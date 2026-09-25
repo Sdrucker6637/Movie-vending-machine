@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="fx/fx.css?v=11">
+<link rel="stylesheet" href="fx/fx.css?v=12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f1b16">
@@ -282,6 +282,15 @@ h1 .h1-small {
 .settings-btn svg { width: 22px; height: 22px; display: block; }
 .settings-btn:active { translate: 1px 2px; box-shadow: 1px 1px 0 var(--ink); }
 .info-btn { right: auto; left: 10px; }
+.sound-btn { top: 68px; right: 14px; width: 30px; height: 30px; border-width: 2.5px; box-shadow: 2px 2px 0 var(--ink); }
+.sound-btn svg { width: 17px; height: 17px; }
+.sound-btn .sound-off { display: none; }
+.sound-btn[aria-pressed="false"] { background-color: var(--paper-hi); }
+.sound-btn[aria-pressed="false"] .sound-on { display: none; }
+.sound-btn[aria-pressed="false"] .sound-off { display: inline; }
+@media (hover: hover) {
+  .sound-btn:hover svg { animation: none; }
+}
 @media (hover: hover) {
   .settings-btn:hover svg { animation: gearTick 0.5s steps(3) infinite; }
 }
@@ -1678,6 +1687,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 <button class="settings-btn info-btn" id="infoBtn" title="How this works" aria-label="How this works">?</button>
 <button class="settings-btn" id="settingsBtn" title="TMDB settings" aria-label="Settings">
 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 2.5h3.6l.5 2.6 1.9.8 2.2-1.5 2.5 2.5-1.5 2.2.8 1.9 2.6.5v3.6l-2.6.5-.8 1.9 1.5 2.2-2.5 2.5-2.2-1.5-1.9.8-.5 2.6h-3.6l-.5-2.6-1.9-.8-2.2 1.5-2.5-2.5 1.5-2.2-.8-1.9-2.6-.5v-3.6l2.6-.5.8-1.9-1.5-2.2 2.5-2.5 2.2 1.5 1.9-.8z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.4" fill="#1f1b16"/></svg>
+</button>
+<button class="settings-btn sound-btn" id="soundBtn" type="button" aria-pressed="true" title="Machine sounds" aria-label="Machine sounds">
+<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.2h3.8L12 5v14l-4.7-4.2H3.5z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/><path class="sound-on" d="M15.2 9.2c1.2 1.5 1.2 4.1 0 5.6M17.8 6.8c2.6 2.9 2.6 7.5 0 10.4" fill="none" stroke="#1f1b16" stroke-width="2" stroke-linecap="round"/><path class="sound-off" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="#1f1b16" stroke-width="2.2" stroke-linecap="round"/></svg>
 </button>
 <div class="eyebrow">Movie Night!</div>
 <h1><span class="h1-small">The</span>Movie Vending Machine</h1>
@@ -4197,9 +4209,24 @@ navigator.serviceWorker.register("sw.js").catch(() => {});
 });
 }
 </script>
-<script src="fx/engine.js?v=11"></script>
-<script src="fx/art.js?v=11"></script>
-<script src="fx/index.js?v=11"></script>
+<script src="fx/sound.js?v=12"></script>
+<script src="fx/engine.js?v=12"></script>
+<script src="fx/art.js?v=12"></script>
+<script src="fx/index.js?v=12"></script>
+<script>
+(function () {
+  const btn = document.getElementById("soundBtn");
+  const S = window.MachineSound;
+  if (!btn || !S) { if (btn) btn.hidden = true; return; }
+  const paint = (on) => {
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on ? "Machine sounds: on" : "Machine sounds: off";
+  };
+  paint(S.isEnabled());
+  S.onChange(paint);
+  btn.addEventListener("click", () => S.setEnabled(!S.isEnabled()));
+})();
+</script>
 
 </body>
 </html>

@@ -423,12 +423,13 @@
         const ball = fx.put(A.S("0 0 70 60", '<ellipse cx="35" cy="32" rx="26" ry="24" fill="#e05a2a" ' + A.ink + ' stroke-width="2"/><path d="M20 34 C30 24 40 24 50 34" stroke="#b33a1a" stroke-width="3" fill="none"/><path d="M14 52 L8 60 M56 52 L62 60 M24 56 L22 60 M46 56 L48 60" ' + A.ink + ' stroke-width="2"/><circle cx="28" cy="26" r="2.5" fill="' + A.INK + '"/><circle cx="42" cy="26" r="2.5" fill="' + A.INK + '"/>'),
           r.x, r.y, { size: 60, h: 52 });
         fx.move(ball, [{ transform: "none" }, { transform: "translate(40px,-20px)" }, { transform: "translate(-30px,-40px)" }, { transform: "translate(10px,10px)" }, { transform: "none" }], { duration: 3000 });
-        for (let i = 0; i < 6; i++) fx.tone(fx.rand(500, 900), 0.12, { type: "square", vol: 0.06, at: i * 0.5, filter: { freq: 1200 } });
+        for (let i = 0; i < 6; i++) fx.sfx("blip", { hz: fx.rand(500, 900), at: i * 500, vol: 0.5 });
         await fx.wait(2600);
         fx.caption("BOMB #20: Let there be light.", { style: "terminal", ms: 2000 });
-        fx.tone(40, 2, { type: "sawtooth", slide: 1200, vol: 0.08 });
+        fx.sfx("suspense", { dur: 1.8, vol: 0.8 });
         await fx.wait(1800);
         fx.flash("#fff", 500);
+        fx.sfx("boom", { vol: 0.8 });
         fx.buzz(100);
         fx.particles({ kind: "burst", from: pt(W() / 2, H() / 2), count: 24, spread: 120, glyphs: dot("#fff6c0"), min: 3, max: 8, dur: 1400, stagger: 0 });
         await fx.wait(1200);
@@ -468,6 +469,8 @@
         const r = fx.rect(fx.slot());
         const reel = (x) => fx.put(A.S("0 0 50 50", '<circle cx="25" cy="25" r="22" fill="#2b2622" ' + A.ink + ' stroke-width="2"/><circle cx="25" cy="25" r="5" fill="#9aa2a6"/><path d="M25 8 V16 M25 34 V42 M8 25 H16 M34 25 H42" stroke="#9aa2a6" stroke-width="3"/>'), x, r.top - 40, { size: 50 });
         const a = reel(r.x - 36), b = reel(r.x + 36);
+        fx.sfx("tape-whir", { dur: 3.5, vol: 0.45 });
+        fx.sfx("tape-stop", { at: 3500, vol: 0.6 });
         fx.move([a, b], [{ transform: "rotate(0)" }, { transform: "rotate(-720deg)" }], { duration: 3600, easing: "linear" });
         const garble = ["He'd kill us if he got the chance.", "He'd kill us if he got the chance.", "He'd KILL us if he got the chance."];
         for (let i = 0; i < 3; i++) {
@@ -1049,6 +1052,7 @@
         const hull = fx.wash("radial-gradient(circle at 50% 50%, rgba(40,60,50,.2), rgba(5,15,10,.85))", 7000, { fade: 600 });
         void hull;
         fx.filter("saturate(.4) sepia(.3) brightness(.8)", 7000, { fade: 600 });
+        for (let i = 0; i < 4; i++) fx.sfx("bell", { rate: 0.7, at: i * 1300, vol: 0.55 });
         for (let i = 0; i < 4; i++) {
           fx.tone(1480, 1.4, { type: "sine", vol: 0.12, at: i * 1.3, attack: 0.002 });
           fx.tone(1485, 1.4, { type: "sine", vol: 0.05, at: i * 1.3 + 0.05, attack: 0.002 });
@@ -1056,6 +1060,7 @@
         await fx.wait(2800);
         fx.caption("(ping)", { style: "whisper", ms: 1200, css: { color: "#cfe" } });
         await fx.wait(1600);
+        for (let i = 0; i < 3; i++) fx.sfx("boom", { at: i * 700, vol: 0.6 + i * 0.1 });
         for (let i = 0; i < 3; i++) {
           fx.thud({ vol: 0.9, freq: 45, dur: 0.8, at: i * 0.7 });
           fx.noise(0.6, { freq: 300, vol: 0.5, at: i * 0.7 });

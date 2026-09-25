@@ -51,9 +51,11 @@
         fx.seq([["G4", 1], ["B4", 1], ["D5", 1], ["E5", 1], ["D5", 2], ["B4", 2], ["A4", 4]], { type: "square", vol: 0.04, beat, filter: { freq: 2000 } });
         for (const x of holes) {
           if (!fx.reduced) gopher.style.left = x - 18 + "px";
+          fx.sfx("pop", { vol: 0.7, rate: 0.8 + Math.random() * 0.4 });
           await fx.move(gopher, [{ transform: "translateY(30px)" }, { transform: "none" }, { transform: "rotate(-10deg)" }, { transform: "rotate(10deg)" }, { transform: "translateY(30px)" }], 700);
         }
         fx.caption("(the gopher dances; the greenkeeper does not)", { style: "whisper", ms: 1800 });
+        fx.sfx("boom", { at: 800, vol: 0.9 });
         fx.later(800, () => { fx.thud({ vol: 1, freq: 40 }); fx.flash("#ffcf5a", 160); fx.shake("lg", 500); fx.particles({ kind: "burst", from: pt(r.x, H() - 40), count: 20, spread: 60, gravity: 60, glyphs: dot("#6b4a2a"), min: 3, max: 8, dur: 900 }); });
         await fx.wait(2200);
       }
@@ -69,10 +71,12 @@
         if (t && !fx.reduced) fx.anim(t, [{ transform: "translateX(" + W() + "px)" }, { transform: "translateX(-100%)" }], { duration: 5000, easing: "linear" });
         for (let i = 0; i < 20; i++) fx.noise(0.2, { type: "bandpass", freq: fx.rand(600, 2000), q: 2, vol: 0.12, at: i * 0.2 });
         fx.caption("Sell! Sell!", { style: "hand", ms: 1400 });
+        fx.sfx("bell", { vol: 0.7 });
         await fx.wait(2600);
         const juice = fx.put(A.S("0 0 30 50", '<path d="M6 10 H24 L22 48 H8 Z" fill="#ffa020" ' + A.ink + ' stroke-width="1.5"/><path d="M8 10 L6 2 H24 L22 10" fill="#fff" ' + A.ink + ' stroke-width="1.5"/>'), W() / 2, H() * 0.55, { size: 30, h: 50 });
         void juice;
         A.coinReturn(fx, 8, "#e8c870");
+        fx.sfx("coin-drop", { n: 8, every: 0.11 });
         fx.caption("Looking good, Billy Ray! Feeling good, Louis!", { style: "subtitle", ms: 2200, css: { fontSize: "14px" } });
         await fx.wait(2400);
       }
@@ -176,7 +180,7 @@
         fx.caption("(the bras on their heads help, apparently)", { style: "whisper", ms: 1800 });
         for (let i = 0; i < 4; i++) {
           fx.flash(i % 2 ? "#bfe8ff" : "#fff", 120);
-          fx.noise(0.3, { type: "highpass", freq: 2500, vol: 0.4 });
+          fx.sfx("zap", { vol: 0.7 });
           fx.buzz(40);
           await fx.wait(300);
         }
@@ -215,13 +219,14 @@
         fx.caption("The pen is blue.", { style: "subtitle", ms: 1600 });
         await fx.wait(1400);
         fx.caption("The pen is… r-r-r-", { style: "subtitle", ms: 1600 });
-        fx.tone(200, 1.2, { type: "sawtooth", vol: 0.06, vibrato: [14, 40], filter: { freq: 1200 } });
+        fx.sfx("motor-strain", { dur: 1.3, vol: 0.7 });
         fx.move(pen, [{ transform: "none" }, { transform: "rotate(-10deg)" }, { transform: "rotate(10deg)" }, { transform: "none" }], { duration: 300, iterations: 4 });
         await fx.wait(1600);
         fx.caption("THE PEN IS BLUE!", { style: "hand", ms: 1400, css: { color: "#2d5ad8" } });
         fx.noise(0.4, { freq: 900, vol: 0.4 });
         await fx.wait(1000);
         fx.caption("(he can't lie for 24 hours)", { style: "whisper", ms: 1600 });
+        fx.sfx("error", { vol: 0.8 });
         A.errorBox(fx, "honesty.exe", "Lying is currently disabled.\nRetry in 24:00:00.", 2000);
         await fx.wait(2000);
       }
@@ -526,7 +531,7 @@
         await fx.wait(900);
         fx.caption("(still no explosion)", { style: "whisper", ms: 1200 });
         await fx.wait(1200);
-        fx.thud({ vol: 1, freq: 40, dur: 1 });
+        fx.sfx("boom", { vol: 1 });
         fx.flash("#ffcf5a", 200);
         fx.shake("lg", 700);
         fx.buzz([200, 60, 200]);
@@ -932,13 +937,15 @@
       y: 1998,
       run: async (fx) => {
         const beeps = [[1200, 0], [2400, 0.2], [1800, 0.35], [2600, 0.5], [900, 0.7]];
-        beeps.forEach(([f, t]) => fx.tone(f, 0.18, { type: "square", vol: 0.05, at: t, filter: { freq: 3000 } }));
+        beeps.forEach(([f, t]) => fx.sfx("blip", { hz: f, at: t * 1000, vol: 0.55 }));
+        fx.sfx("static", { at: 900, dur: 1.6, vol: 0.4 });
         fx.noise(1.8, { type: "bandpass", freq: 2200, q: 1, vol: 0.12, at: 0.9 });
         fx.tone(1600, 1.8, { type: "square", vol: 0.03, at: 0.9, vibrato: [30, 400] });
         const bar = A.progress(fx, "Connecting…", 2600, 0.6);
         await bar;
         const r = fx.rect(fx.slot());
         const env = fx.put(A.envelope, r.x, r.y, { size: 60, h: 40 });
+        fx.sfx("chime", { vol: 0.7 });
         fx.move(env, [{ transform: "scale(0)" }, { transform: "scale(1.2)" }, { transform: "scale(1)" }], 400);
         fx.caption("You've got mail!", { style: "subtitle", ms: 1800 });
         fx.chord(["C5", "E5", "G5"], 0.6, { type: "triangle", vol: 0.06 });
@@ -980,6 +987,7 @@
         void phone;
         for (let i = 0; i < 4; i++) fx.tone(i % 2 ? 180 : 220, 0.4, { type: "sawtooth", vol: 0.06, at: i * 0.45, filter: { freq: 1200 } });
         A.coinReturn(fx, 10, "#3aa655");
+        fx.sfx("coin-drop", { n: 10, every: 0.11 });
         await fx.wait(2200);
         fx.caption("You had me at hello.", { style: "subtitle", ms: 2200 });
         romance(fx);

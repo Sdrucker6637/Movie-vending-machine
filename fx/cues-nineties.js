@@ -597,7 +597,7 @@
         room.firstChild.setAttribute("preserveAspectRatio", "xMidYMid slice");
         Object.assign(room.firstChild.style, { width: "100%", height: "100%" });
         fx.anim(room, [{ opacity: 0 }, { opacity: 1 }], { duration: 600, fill: "forwards" });
-        fx.tone(70, 5, { type: "sawtooth", vol: 0.05, filter: { freq: 250 }, attack: 0.6 });
+        fx.sfx("hum", { dur: 3.8, vol: 0.6, fadeIn: 600 });
         const primes = ["149 · 373 · 083", "566 · 472 · 737", "(prime?)"];
         for (const p of primes) {
           fx.caption(p, { style: "terminal", ms: 1100, css: { color: "#ffb347", textShadow: "0 0 6px #ff7a1a" } });
@@ -606,7 +606,8 @@
         }
         const wire = fx.put(box("background:repeating-linear-gradient(0deg, rgba(255,255,255,.9) 0 1px, transparent 1px 12px), repeating-linear-gradient(90deg, rgba(255,255,255,.9) 0 1px, transparent 1px 12px)"), W() / 2, H() / 2, { size: Math.max(W(), H()), h: Math.max(W(), H()) });
         wire.style.opacity = 0;
-        fx.noise(0.3, { type: "highpass", freq: 5000, vol: 0.6 });
+        fx.sfx("swish", { vol: 0.9 });
+        fx.sfx("zap", { vol: 0.5, at: 80 });
         fx.tone(4000, 0.4, { type: "sawtooth", vol: 0.05, slide: 1000 });
         fx.buzz([40, 30, 40]);
         await fx.anim(wire, [{ opacity: 0, transform: "translateX(-100%)" }, { opacity: 1, transform: "translateX(100%)" }], { duration: 500 });
@@ -687,7 +688,7 @@
         void night;
         fx.caption("(midnight — everyone falls asleep)", { style: "whisper", ms: 1600, css: { color: "#cde" } });
         fx.freeze(4200);
-        fx.tone(40, 5, { type: "sawtooth", vol: 0.08, filter: { freq: 200 }, attack: 0.5 });
+        fx.sfx("drone", { dur: 4.4, fadeIn: 600, vol: 0.7 });
         fx.noise(5, { freq: 300, vol: 0.2, attack: 0.5 });
         await fx.wait(1400);
         const slots = fx.$$("#grid .slot");

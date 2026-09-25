@@ -375,10 +375,11 @@
       id: 828,
       run: async (fx) => {
         fx.freeze(3400);
+        fx.sfx("power-down", { vol: 0.8 });
         const m = fx.rect(".machine-marquee");
         const visor = fx.node("", { style: { position: "absolute", left: m.left + "px", top: m.y - 3 + "px", width: m.width + "px", height: "6px" } });
         const glow = fx.node("", { parent: visor, style: { position: "absolute", top: 0, width: "30px", height: "6px", background: "#fff", borderRadius: "3px", boxShadow: "0 0 14px 6px #bfe8ff" } });
-        fx.tone(220, 3, { type: "sine", vol: 0.08, vibrato: [5, 8], attack: 0.5 });
+        fx.sfx("hum", { dur: 2.6, vol: 0.5, fadeIn: 500, at: 700 });
         await fx.move(glow, [{ transform: "translateX(0)" }, { transform: "translateX(" + (m.width - 30) + "px)" }, { transform: "translateX(0)" }], { duration: 2400, easing: "ease-in-out" });
         await fx.wait(fx.reduced ? 2400 : 900);
       }
@@ -562,10 +563,11 @@
       run: async (fx) => {
         const bomb = A.S("0 0 50 110", '<path d="M25 20 C38 20 40 40 40 70 C40 90 34 100 25 104 C16 100 10 90 10 70 C10 40 12 20 25 20 Z" fill="#6f7a6a" ' + A.ink + '/><path d="M18 20 L14 6 H36 L32 20" fill="#6f7a6a" ' + A.ink + ' stroke-width="2"/>' +
           '<path d="M18 52 C20 42 30 42 32 52" fill="' + A.INK + '"/><circle cx="25" cy="36" r="6" fill="' + A.INK + '"/><path d="M15 32 H35 L31 26 H19 Z" fill="#6a4a2a"/>');
-        fx.tone(1900, 1.6, { slide: 350, vol: 0.12, attack: 0.1 });
+        fx.sfx("slide-whistle", { down: true, vol: 0.8, rate: 1.2 });
+        fx.sfx("whoosh", { dur: 1.5, vol: 0.5 });
         await fx.fly(bomb, [W() * 0.55, -60], [W() * 0.5, H() * 0.7], { size: 44, h: 96, dur: 1600, easing: "cubic-bezier(.5,0,1,1)", r0: 15, r2: 8 });
         fx.flash("#fff", 700);
-        fx.thud({ freq: 50, vol: 0.9, dur: 1.4 });
+        fx.sfx("boom", { vol: 1 });
         fx.noise(1.8, { freq: 300, sweep: 60, vol: 0.5 });
         fx.shake("lg", 800);
         fx.buzz(200);
@@ -600,6 +602,7 @@
         if (rug) await fx.fadeIn(rug, 300);
         // tricycle: wheels loud on wood, silent on carpet, loud again
         const pattern = [0, 0.18, 0.36, 0.54, 1.5, 1.68, 1.86, 2.04];
+        pattern.forEach((t) => fx.sfx("hit", { at: t * 1000, rate: 1.3, vol: 0.35 }));
         pattern.forEach((t, i) => fx.thud({ freq: 160 + (i % 3) * 20, vol: 0.3, dur: 0.1, at: t }));
         await fx.wait(2800);
         if (rug) await fx.fadeOut(rug, 300);
@@ -633,11 +636,13 @@
           t += gap;
           gap = Math.max(0.14, gap * 0.84);
         }
+        fx.sfx("suspense", { dur: t, vol: 0.9 });
         const trip = fx.fly(A.fin, [-60, y], [W() + 60, y], { size: 84, h: 50, dur: t * 1000 + 200, via: [W() * 0.4, y + 4], easing: "ease-in" });
         await fx.wait(t * 1000);
         fx.shake("lg", 450);
         fx.buzz([60, 40, 120]);
-        fx.thud({ freq: 60, vol: 0.8 });
+        fx.sfx("splash", { vol: 0.9 });
+        fx.sfx("hit", { vol: 0.6 });
         await trip;
         await fx.fadeOut(water, 300);
       }
@@ -714,10 +719,10 @@
         fx.style(box, { transform: "scale(.36)" });
         for (let i = 0; i < 6; i++) {
           lines.textContent += (Math.random().toString(16).slice(2, 10).toUpperCase() + " " + (1000 + Math.floor(Math.random() * 8999))) + "\n";
-          fx.tone(2200, 0.03, { type: "square", vol: 0.06 });
+          fx.sfx("blip", { hz: 2200, vol: 0.6 });
           await fx.wait(170);
         }
-        fx.tone(440, 0.4, { type: "square", vol: 0.08 });
+        fx.sfx("beep", { hz: 880, n: 2, vol: 0.6 });
         await fx.wait(1500);
       }
     },

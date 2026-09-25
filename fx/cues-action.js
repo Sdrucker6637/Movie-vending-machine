@@ -113,7 +113,7 @@
         fx.wash("rgba(100,160,255,.25)", 3400, { blend: "multiply", fade: 200 });
         fx.node("", { cls: "fx-filter fx-scanlines", ms: 3400 });
         const scan = fx.node("", { style: { position: "absolute", left: 0, right: 0, top: 0, height: "3px", background: "#dff", boxShadow: "0 0 10px 3px #aff" } });
-        fx.tone(300, 0.5, { type: "sawtooth", slide: 600, vol: 0.08, filter: { freq: 1500 } });
+        fx.sfxSeq([["whir", 0, { vol: 0.8 }], ["whir", 600, { vol: 0.7, rate: 0.8 }], ["relay", 1300, { vol: 0.6 }]]);
         fx.tone(600, 0.4, { type: "sawtooth", slide: 350, vol: 0.08, at: 0.6, filter: { freq: 1500 } });
         fx.move(".reely", [{ transform: "rotate(0)" }, { transform: "rotate(-12deg)", offset: 0.3 }, { transform: "rotate(-12deg)", offset: 0.6 }, { transform: "rotate(0)" }], { duration: 1400, easing: "steps(6)" });
         await fx.move(scan, [{ transform: "translateY(0)" }, { transform: "translateY(" + H() + "px)" }], { duration: 1600, iterations: 2 });
@@ -650,6 +650,7 @@
     {
       id: 74,
       run: async (fx) => {
+        fx.sfx("drone", { dur: 2.6, fadeIn: 200, rate: 1.3, vol: 1 });
         fx.tone(58, 2.6, { type: "sawtooth", vol: 0.35, attack: 0.2, slide: 52, filter: { freq: 700 } });
         fx.tone(87, 2.6, { type: "sawtooth", vol: 0.2, attack: 0.3, filter: { freq: 700 } });
         fx.shake("lg", 2400);
@@ -690,6 +691,7 @@
           e.stopPropagation();
           clicked = true;
           fx.flash("#fff", 150);
+          fx.sfx("confirm", { vol: 0.7 });
           fx.seq([["C6", 1], ["E6", 1], ["G6", 2]], { beat: 0.08, type: "square", vol: 0.05 });
           panel.lastChild.innerHTML = '<div style="font:700 15px Bitter, Georgia, serif">Enjoy the feature, citizen.</div>';
         });
@@ -731,7 +733,8 @@
         fx.remove(dark);
         // Silence... then the sound arrives.
         await fx.wait(2400);
-        fx.thud({ freq: 40, vol: 1, dur: 2 });
+        fx.sfx("boom", { vol: 1 });
+        fx.sfx("thunder", { vol: 0.7, at: 60 });
         fx.noise(2.4, { freq: 250, sweep: 50, vol: 0.6 });
         fx.shake("lg", 1200);
         fx.buzz([400, 100, 200]);

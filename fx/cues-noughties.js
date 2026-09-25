@@ -453,8 +453,9 @@
           W() / 2, -160, { size: 160, h: 200 });
         fx.tone(60, 2, { type: "sawtooth", vol: 0.1, filter: { freq: 300 } });
         fx.caption("Buddhist Palm!", { style: "hand", ms: 1600 });
+        fx.sfx("whoosh", { dur: 1.4, vol: 0.7 });
         await fx.move(palm, [{ transform: "none" }, { transform: "translateY(" + (H() * 0.55 + 160) + "px)" }], { duration: 1400, easing: "cubic-bezier(.5,0,1,.6)" });
-        fx.thud({ vol: 1, freq: 40, dur: 1 });
+        fx.sfx("boom", { vol: 1 });
         fx.noise(1, { freq: 500, vol: 0.6 });
         fx.shake("lg", 800);
         fx.buzz([200, 60, 200]);
@@ -462,6 +463,7 @@
         fx.particles({ kind: "burst", from: pt(W() / 2, H() * 0.75), count: 30, spread: 100, gravity: 40, glyphs: dot("rgba(180,160,120,.8)"), min: 6, max: 16, dur: 1200, stagger: 0 });
         await fx.wait(1200);
         const lotus = A.S("0 0 60 40", '<path d="M30 36 C20 30 10 20 14 8 C22 12 26 20 30 28 C34 20 38 12 46 8 C50 20 40 30 30 36 Z" fill="#ffc0d8" ' + A.ink + ' stroke-width="1.5"/>');
+        fx.sfx("chime", { vol: 0.6 });
         fx.put(lotus, r.x, r.y, { size: 60, h: 40, ms: 1600 });
         fx.chord(["C5", "E5", "G5"], 1.4, { type: "triangle", vol: 0.06 });
         await fx.wait(1500);

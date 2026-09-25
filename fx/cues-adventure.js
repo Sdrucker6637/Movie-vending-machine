@@ -101,12 +101,14 @@
         await fx.wait(600);
         if (chosen === right) {
           fx.style(cup, { filter: "drop-shadow(0 0 16px #fff6c0)" });
+          fx.sfx("chime", { vol: 0.7 });
           fx.chord(["D5", "F#5", "A5", "D6"], 2, { type: "sine", vol: 0.07, attack: 0.3 });
           fx.particles({ kind: "burst", from: cup, count: 16, spread: 50, glyphs: A.sparkle("#fff6c0"), min: 8, max: 14, dur: 1200 });
           fx.caption("You have chosen… wisely.", { style: "subtitle", ms: 2200 });
         } else {
           fx.chord(["C3", "C#3", "G3"], 1.4, { type: "sawtooth", vol: 0.1, filter: { freq: 1200 } });
-          fx.noise(1.2, { freq: 800, sweep: 200, vol: 0.3 });
+          fx.sfx("sting", { vol: 0.6 });
+          fx.sfx("wind", { dur: 1.2, vol: 0.4 });
           fx.move(cup, [{ transform: "translateY(-20px) scale(1.2)" }, { transform: "translateY(10px) scale(.2)", opacity: 0 }], { duration: 1200, fill: "forwards" });
           fx.particles({ kind: "fall", area: cup, count: 20, glyphs: dot("rgba(200,190,170,.8)"), min: 2, max: 5, dur: 1200 });
           fx.caption("He chose… poorly.", { style: "subtitle", ms: 2200 });
@@ -154,7 +156,7 @@
         fx.noise(7, { type: "highpass", freq: 3000, vol: 0.05, attack: 1 });
         for (let i = 0; i < 5; i++) {
           await fx.wait(i ? 900 : 700);
-          fx.thud({ vol: 0.5 + i * 0.1, freq: 40, dur: 0.6 });
+          fx.sfx("boom", { vol: 0.35 + i * 0.12 });
           fx.buzz(60 + i * 20);
           if (rip) fx.anim(rip, [{ opacity: 0.9, transform: "scale(.3)" }, { opacity: 0, transform: "scale(1.2)" }], { duration: 600 });
           fx.shake("sm", 300);
@@ -167,6 +169,7 @@
         fx.tone(160, 1.6, { type: "sawtooth", vol: 0.14, slide: 70, filter: { freq: 900 }, vibrato: [12, 8] });
         fx.noise(1.6, { type: "bandpass", freq: 800, sweep: 300, q: 1, vol: 0.4 });
         fx.shake("lg", 900);
+        fx.sfx("sting", { vol: 0.8 });
         fx.buzz([300]);
         await fx.wait(1300);
         fx.caption("Objects in mirror are closer than they appear.", { style: "subtitle", ms: 1800 });

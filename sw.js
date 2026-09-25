@@ -1,4 +1,9 @@
-const CACHE = "movie-machine-v12";
+const CACHE = "movie-machine-v13";
+// Recorded clips (fx/clips/*) get their own cache. It is not tied to the app
+// version, so clips survive app updates; clip files never change in place,
+// and the cache is trimmed to the most recent CLIP_MAX files.
+const CLIP_CACHE = "movie-machine-clips";
+const CLIP_MAX = 40;
 const FILES = [
   "./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png",
   "./fonts/shrikhand-400.woff2",
@@ -20,7 +25,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE && k !== CLIP_CACHE).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -37,6 +42,11 @@ self.addEventListener("fetch", (e) => {
     FILES.some((f) => f !== "./" && url.pathname.endsWith(f.slice(1)));
   if (!isAppFile) return;
 
+  if (/\/fx\/clips\/[^/]+$/.test(url.pathname)) {
+    e.respondWith(clip(e.request));
+    return;
+  }
+
   // Network-first: always try to get the latest version; fall back to cache when offline.
   // "no-cache" makes the browser revalidate with the server instead of reusing a
   // stale HTTP-cached copy, so a new deploy shows up on the next load.
@@ -50,3 +60,23 @@ self.addEventListener("fetch", (e) => {
       .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
 });
+
+// Cache-first for clips: once a clip has played it plays offline too.
+// Only complete, successful responses are kept (never a 404 or a partial).
+function clip(request) {
+  return caches.open(CLIP_CACHE).then((c) =>
+    c.match(request, { ignoreSearch: true }).then((hit) => {
+      if (hit) return hit;
+      return fetch(request).then((res) => {
+        if (res.ok && res.status === 200 && res.type === "basic") {
+          const copy = res.clone();
+          c.put(request, copy).then(() => trim(c)).catch(() => {});
+        }
+        return res;
+      });
+    })
+  );
+}
+function trim(c) {
+  return c.keys().then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - CLIP_MAX)).map((k) => c.delete(k))));
+}

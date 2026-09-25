@@ -17,6 +17,13 @@
    Cues don't call this directly - they use fx.sfx()/fx.sfxSeq() from
    the engine, which ties every sound to the cue's lifetime.
 
+   Two kinds of sound go through here:
+     - synthesized sounds from the library below (most of them), and
+     - short recorded clips: play("clip", { src, fallback }). A clip is
+       fetched and decoded the first time it's wanted, kept for repeats,
+       levelled to a common loudness, and replaced by the `fallback`
+       synthesized sound whenever it can't be played in time.
+
    Browser rules this is built around:
      - Nothing is created before the first tap/key. The AudioContext
        is created and resumed inside a real user gesture (and a silent
@@ -647,63 +654,252 @@
     armIdle();
   }
 
+  // A voice is one playing sound: its own gain (volume/fades) into the bus.
+  function newVoice(name, opts) {
+    const v = { name, srcs: [], ended: false, t0: ctx.currentTime + 0.005 };
+    const vol = Math.max(0, Math.min(1.5, opts.vol == null ? 1 : +opts.vol || 0)) * (opts.gain || 1);
+    v.out = ctx.createGain();
+    let node = v.out;
+    if (opts.pan != null && ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = Math.max(-1, Math.min(1, +opts.pan || 0));
+      v.out.connect(p);
+      node = p;
+    }
+    if (opts.fadeIn) {
+      v.out.gain.setValueAtTime(0, v.t0);
+      v.out.gain.linearRampToValueAtTime(vol, v.t0 + opts.fadeIn / 1000);
+    } else v.out.gain.value = vol;
+    node.connect(bus);
+    return v;
+  }
+  function track(v, dur, handle) {
+    voices.add(v);
+    handle.voice = v;
+    v.timer = setTimeout(() => stopVoice(v, 10), (dur + 0.15) * 1000);
+    clearTimeout(idleTimer);
+  }
+  function ready(handle) {
+    return !handle.cancelled && enabled && ctx && ctx.state === "running";
+  }
+
   function start(name, opts, handle) {
-    if (handle.cancelled || !enabled || !ctx || ctx.state !== "running") return;
+    if (!ready(handle)) return;
     if (voices.size >= MAX_VOICES) return;
     const now = performance.now();
     if (lastPlayed[name] && now - lastPlayed[name] < RETRIGGER_MS) return;
     lastPlayed[name] = now;
-    const v = { name, srcs: [], ended: false, t0: ctx.currentTime + 0.005 };
+    let v = null;
     try {
-      const vol = Math.max(0, Math.min(1.5, opts.vol == null ? 1 : +opts.vol || 0));
-      v.out = ctx.createGain();
-      let node = v.out;
-      if (opts.pan != null && ctx.createStereoPanner) {
-        const p = ctx.createStereoPanner();
-        p.pan.value = Math.max(-1, Math.min(1, +opts.pan || 0));
-        v.out.connect(p);
-        node = p;
-      }
-      if (opts.fadeIn) {
-        v.out.gain.setValueAtTime(0, v.t0);
-        v.out.gain.linearRampToValueAtTime(vol, v.t0 + opts.fadeIn / 1000);
-      } else v.out.gain.value = vol;
-      node.connect(bus);
-      const dur = R[name](kit(v, opts.rate), opts) || 0.5;
-      voices.add(v);
-      handle.voice = v;
-      v.timer = setTimeout(() => stopVoice(v, 10), (dur + 0.15) * 1000);
-      clearTimeout(idleTimer);
+      v = newVoice(name, opts);
+      track(v, R[name](kit(v, opts.rate), opts) || 0.5, handle);
     } catch (e) {
-      stopVoice(v, 10);
+      if (v) stopVoice(v, 10);
     }
+  }
+
+  // ---------- clips: short recorded audio, fetched only when a cue asks ----------
+  // Decoded clips are kept (a few, least-recently-used) so a repeat plays
+  // instantly; the service worker keeps the files themselves for offline.
+  const CLIP_CACHE_MAX = 12;
+  const CLIP_FETCH_MS = 5000;     // give up on a download after this
+  const CLIP_LATE_MS = 1500;      // a clip not ready this long after it's asked for plays its fallback instead
+  const CLIP_TARGET_RMS = 0.13;    // loudness every clip is brought to...
+  const CLIP_MAX_PEAK = 0.85;     // ...without letting its peaks exceed this
+  const MAX_CLIP_S = 8;
+  const clipLoads = new Map();
+
+  function debugOn() {
+    try {
+      return localStorage.getItem("mvm-fx-debug") === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+  function log() {
+    if (debugOn()) try { console.info.apply(console, ["[MachineSound]"].concat([].slice.call(arguments))); } catch (e) {}
+  }
+  // Clips may only come from this site's own fx/clips/ folder.
+  function clipUrl(src) {
+    try {
+      const u = new URL(src, location.href);
+      return u.origin === location.origin && /\/fx\/clips\/[\w.-]+\.(mp3|m4a|ogg|webm)$/.test(u.pathname) ? u.href : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function decode(data) {
+    return new Promise((resolve, reject) => {
+      try {
+        // older Safari only has the callback form
+        const p = ctx.decodeAudioData(data, resolve, reject);
+        if (p && p.then) p.then(resolve, reject);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+  // Per-clip gain so every clip lands at the same loudness as the others
+  // (and near the synthesized sounds), whatever level it was recorded at.
+  function levelFor(buffer) {
+    let peak = 0, sum = 0, n = 0;
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      const d = buffer.getChannelData(c);
+      for (let i = 0; i < d.length; i += 2) {
+        const a = Math.abs(d[i]);
+        if (a > peak) peak = a;
+        sum += a * a;
+        n++;
+      }
+    }
+    const rms = Math.sqrt(sum / Math.max(1, n));
+    if (peak < 0.001 || rms < 0.0005) return 0;
+    return Math.min(CLIP_TARGET_RMS / rms, CLIP_MAX_PEAK / peak, 24);
+  }
+  function loadClip(src) {
+    const url = clipUrl(src);
+    if (!url || !ctx || typeof fetch !== "function") return Promise.resolve(null);
+    const known = clipLoads.get(url);
+    if (known) {
+      clipLoads.delete(url);
+      clipLoads.set(url, known);
+      return known;
+    }
+    const load = new Promise((resolve) => {
+      let settled = false;
+      const done = (clip) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(clip);
+      };
+      const timer = setTimeout(() => { log("clip timed out:", url); done(null); }, CLIP_FETCH_MS);
+      fetch(url, { credentials: "same-origin" })
+        .then((r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.arrayBuffer();
+        })
+        .then(decode)
+        .then((buffer) => {
+          const gain = levelFor(buffer);
+          if (!gain) throw new Error("clip is silent");
+          if (buffer.duration > MAX_CLIP_S) throw new Error("clip too long (" + buffer.duration.toFixed(1) + "s)");
+          log("clip ready:", url, buffer.duration.toFixed(2) + "s", "gain " + gain.toFixed(2));
+          done({ buffer, gain });
+        })
+        .catch((e) => { log("clip unavailable:", url, (e && e.message) || e); done(null); });
+    });
+    // Remember successes. A failure is remembered briefly (so a preload and
+    // the play right after it don't both hit the network) and then
+    // forgotten, so a later try - back online, say - can work.
+    load.then((clip) => {
+      if (!clip) setTimeout(() => { if (clipLoads.get(url) === load) clipLoads.delete(url); }, 15000);
+    });
+    clipLoads.set(url, load);
+    while (clipLoads.size > CLIP_CACHE_MAX) clipLoads.delete(clipLoads.keys().next().value);
+    return load;
+  }
+
+  function startClip(clip, opts, handle) {
+    if (!ready(handle)) return false;
+    // A clip is rarer and more important than any synth voice: make room.
+    if (voices.size >= MAX_VOICES) stopVoice(voices.values().next().value, 30);
+    let v = null;
+    try {
+      v = newVoice("clip", Object.assign({}, opts, { gain: clip.gain }));
+      const s = ctx.createBufferSource();
+      s.buffer = clip.buffer;
+      const rate = Math.max(0.5, Math.min(2, +opts.rate || 1));
+      s.playbackRate.value = rate;
+      s.connect(v.out);
+      const offset = Math.max(0, Math.min(clip.buffer.duration, (opts.from || 0) / 1000));
+      let dur = (clip.buffer.duration - offset) / rate;
+      if (opts.dur) dur = Math.min(dur, opts.dur);
+      if (opts.dur || opts.fadeOut) {
+        // end on a short fade rather than a click
+        const f = (opts.fadeOut || 60) / 1000;
+        v.out.gain.setValueAtTime(v.out.gain.value, v.t0 + Math.max(0, dur - f));
+        v.out.gain.linearRampToValueAtTime(0, v.t0 + dur);
+      }
+      s.start(v.t0, offset, dur * rate + 0.01);
+      v.srcs.push(s);
+      track(v, dur, handle);
+      return true;
+    } catch (e) {
+      log("clip playback failed:", (e && e.message) || e);
+      if (v) stopVoice(v, 10);
+      return false;
+    }
+  }
+
+  // Resolves once the context is running (or gives up quietly).
+  function whenRunning(fn) {
+    if (ctx.state === "running") return fn();
+    const asked = performance.now();
+    const p = resume();
+    if (p && p.then) p.then(() => { if (performance.now() - asked < RESUME_GRACE_MS) fn(); }, () => {});
+  }
+
+  function makeHandle() {
+    const handle = {
+      cancelled: false,
+      voice: null,
+      stop(ms) {
+        handle.cancelled = true;
+        if (handle.voice) stopVoice(handle.voice, ms);
+      },
+      get playing() {
+        return !!(handle.voice && !handle.voice.ended);
+      }
+    };
+    return handle;
+  }
+
+  // play("clip", { src, fallback: "sting", fallbackOpts }) - a recorded clip;
+  // when it can't be had in time (missing, offline, undecodable, slow),
+  // the named synthesized sound plays in its place.
+  function playClip(opts, handle) {
+    let decided = false;
+    const fallback = () => {
+      if (opts.fallback && R[opts.fallback]) whenRunning(() => start(opts.fallback, Object.assign({ vol: opts.vol }, opts.fallbackOpts), handle));
+    };
+    // Past this point the clip would be out of step with the visuals.
+    const late = setTimeout(() => {
+      if (decided) return;
+      decided = true;
+      log("clip not ready in time, using fallback:", opts.src);
+      fallback();
+    }, opts.maxDelay || CLIP_LATE_MS);
+    loadClip(opts.src).then((clip) => {
+      if (decided) return;
+      decided = true;
+      clearTimeout(late);
+      if (handle.cancelled || !enabled || !ctx) return;
+      if (!clip) return fallback();
+      whenRunning(() => {
+        if (!startClip(clip, opts, handle)) fallback();
+      });
+    });
   }
 
   function play(name, opts) {
     try {
       opts = opts || {};
-      if (!enabled || !R[name] || !ctx) return NOOP;
-      const handle = {
-        cancelled: false,
-        voice: null,
-        stop(ms) {
-          handle.cancelled = true;
-          if (handle.voice) stopVoice(handle.voice, ms);
-        },
-        get playing() {
-          return !!(handle.voice && !handle.voice.ended);
-        }
-      };
-      if (ctx.state === "running") start(name, opts, handle);
-      else {
-        const asked = performance.now();
-        const p = resume();
-        if (p && p.then) p.then(() => { if (performance.now() - asked < RESUME_GRACE_MS) start(name, opts, handle); }, () => {});
-      }
+      if (!enabled || !ctx || (name !== "clip" && !R[name])) return NOOP;
+      const handle = makeHandle();
+      if (name === "clip") playClip(opts, handle);
+      else whenRunning(() => start(name, opts, handle));
       return handle;
     } catch (e) {
       return NOOP;
     }
+  }
+
+  // Starts fetching/decoding a clip ahead of time (no sound).
+  function preload(src) {
+    try {
+      if (enabled && ctx) loadClip(src);
+    } catch (e) {}
   }
 
   function stopAll(ms) {
@@ -729,6 +925,7 @@
 
   window.MachineSound = {
     play,
+    preload,
     stopAll,
     has: (name) => !!R[name],
     get active() {

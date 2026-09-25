@@ -31,6 +31,10 @@
    Sound: cues call fx.sfx(name, opts) / fx.sfxSeq(steps), which play
    from the synthesized library in fx/sound.js (MachineSound). Sound is
    deliberately rare - most cues are silent.
+   fx.sfx("clip:1", { fallback: "sting" }) plays this movie's recorded
+   clip fx/clips/<tmdb id>-1.mp3 instead (or the fallback sound when the
+   clip can't be played). A cue that uses clips lists them as
+   clips: ["1"] so they're fetched while the cue is still waiting to start.
 
    A cue fires every time its movie is added. fx.stats.adds says how
    many times that movie has been added on this device, for cues that
@@ -57,6 +61,10 @@
   const scriptSrc = (document.currentScript && document.currentScript.src) || "fx/engine.js";
   const PACK_BASE = scriptSrc.replace(/[^/]*$/, "");
   const PACK_VERSION = (/[?&]v=([^&]+)/.exec(scriptSrc) || [])[1] || "";
+  // Recorded clips live in fx/clips/, named by TMDB id: fx/clips/<id>-<key>.mp3.
+  // Clip files are never edited in place (a new take gets a new key), so their
+  // URLs carry no version and stay cached across app updates.
+  const clipSrc = (id, key) => PACK_BASE + "clips/" + Number(id) + "-" + String(key).replace(/[^\w-]/g, "") + ".mp3";
 
   const prefersReduced = () =>
     !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -489,6 +497,10 @@
         opts = opts || {};
         const S = window.MachineSound;
         if (!S || aborted) return NO_SOUND;
+        if (/^clip:/.test(name)) {
+          opts = Object.assign({}, opts, { src: clipSrc(movie && movie.id, name.slice(5)) });
+          name = "clip";
+        }
         const h = {
           inner: null,
           stopped: false,
@@ -671,6 +683,7 @@
       mem[id] = { a: adds };
       saveMemory(mem);
       const fx = makeFx(movie, slotIndex, { adds });
+      if (cue.clips && window.MachineSound) [].concat(cue.clips).forEach((k) => window.MachineSound.preload(clipSrc(id, k)));
       // Let the slot finish rendering its new poster first.
       setTimeout(() => play(cue, fx), cue.delay != null ? cue.delay : 250);
     } catch (e) {

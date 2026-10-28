@@ -531,7 +531,26 @@ h1 .h1-small {
   pointer-events: none;
   z-index: 1;
 }
-.slot .num { display: none; }
+.slot .num {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-type);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--paper-hi);
+  background: var(--ink);
+  border-radius: 4px 5px 4px 5px;
+  pointer-events: none;
+}
 .slot.empty::before {
   content: "+";
   position: relative;
@@ -3273,7 +3292,7 @@ btn.onclick = () => handleSlotClick(i);
 
 const num = document.createElement("div");
 num.className = "num";
-num.textContent = String.fromCharCode(65 + Math.floor(i / 4)) + ((i % 4) + 1);
+num.textContent = i + 1;
 btn.appendChild(num);
 
 if (movie) {

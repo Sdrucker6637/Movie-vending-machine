@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="fx/fx.css?v=16">
-<link rel="stylesheet" href="yt/yt.css?v=1">
+<link rel="stylesheet" href="yt/yt.css?v=2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f1b16">
@@ -2075,6 +2075,7 @@ one. Nothing is assumed - only what you check shows as yours.
 <button class="key-btn" id="ytKeySave">Save</button>
 </div>
 <button class="synopsis-toggle" id="ytRecheckAll">Recheck all movies on YouTube</button>
+<button class="synopsis-toggle hidden-block" id="ytUnhide">Show hidden uploads again</button>
 </div>
 
 <div class="curated-field">
@@ -2195,8 +2196,8 @@ one. Nothing is assumed - only what you check shows as yours.
 </div>
 </div>
 
-<script src="yt/check.js?v=2"></script>
-<script src="yt/panel.js?v=2"></script>
+<script src="yt/check.js?v=3"></script>
+<script src="yt/panel.js?v=3"></script>
 <script>
 const SLOT_COUNT = 16;
 const STORAGE_KEY = "movie-machine-slots";
@@ -2508,6 +2509,10 @@ document.getElementById("ytKeyStatusText").textContent = ytConnected ? "API key 
 document.getElementById("ytKeyStatusDot").classList.toggle("on", ytConnected);
 document.getElementById("ytKeySave").textContent = ytConnected ? "Remove" : "Save";
 document.getElementById("ytKeyField").classList.toggle("hidden-block", ytConnected);
+const ytHidden = window.YTFree ? window.YTFree.hiddenCount() : 0;
+const unhideBtn = document.getElementById("ytUnhide");
+unhideBtn.textContent = "Show " + ytHidden + " hidden upload" + (ytHidden === 1 ? "" : "s") + " again";
+unhideBtn.classList.toggle("hidden-block", !ytHidden);
 
 const mine = getMyServices();
 serviceChecklist.innerHTML = "";
@@ -2579,6 +2584,13 @@ field.value = "";
 // Retry anything that failed before the key was added.
 window.YTFree.clearErrors();
 }
+renderSettingsPanel();
+};
+
+document.getElementById("ytUnhide").onclick = () => {
+if (!window.YTFree) return;
+window.YTFree.unhideAll();
+slots.forEach((m) => { if (m && m.title) window.YTFree.ensure(m, { force: true }); });
 renderSettingsPanel();
 };
 

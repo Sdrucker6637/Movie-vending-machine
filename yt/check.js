@@ -23,7 +23,8 @@
 (function (root) {
   "use strict";
 
-  const CACHE_STORAGE = "yt-free-cache-v2"; // v2: stricter commentary/review filtering
+  const CACHE_STORAGE = "yt-free-cache-v3"; // bumped whenever the filtering rules change
+  const HIDDEN_STORAGE = "yt-free-hidden-v1";
   const YT_KEY_STORAGE = "youtube-api-key";
   const INSTANCE_STORAGE = "yt-free-instances-v1";
   const CACHE_MAX = 300;
@@ -87,7 +88,12 @@
   // tracks often run as long as the movie itself, so the runtime check
   // can't catch them - these words can. Tested against the title (minus
   // the movie's own name) and the channel name.
-  const COMMENTARY_TITLE = /\b(reviews?|reviewed|reviewing|critique|reacts?|reaction|reactions|reacting|watch ?(along|alongs|party|with me|with us)|watchalong|watchparty|let'?s watch|lets watch|we watch\w*|i watch\w*|watching|watched|rewatch\w*|re watch\w*|first time|1st time|never seen|blind|commentary|commentaries|podcast|pod|episode|ep|discuss\w*|discussion|talk\w*|chat|hangout|stream|streams|streamed|streaming|livestream|live|vod|explained|explain\w*|recap\w*|breakdown|analysis|analy[sz]ing|ranking|ranked|retrospective|deep dive|thoughts|opinion|opinions|honest|spoilers?|spoiler free|in depth|vs|versus|movie night|riff\w*|roast\w*|mst3k|rifftrax|pitch meeting|everything wrong|honest trailer|how it should have ended|cinemasins|sins)\b/;
+  const COMMENTARY_TITLE = /\b(reviews?|reviewed|reviewing|critique|reacts?|reaction|reactions|reacting|watch ?(along|alongs|party|with me|with us)|watchalong|watchparty|let'?s watch|lets watch|we watch\w*|i watch\w*|watching|watched|rewatch\w*|re watch\w*|first time|1st time|never seen|blind|commentary|commentaries|podcast|pod|episode|ep|discuss\w*|discussion|talk\w*|chat|hangout|stream|streams|streamed|streaming|livestream|live|vod|explained|explain\w*|recap\w*|breakdown|analysis|analy[sz]ing|ranking|ranked|retrospective|deep dive|thoughts|opinion|opinions|honest|spoilers?|spoiler free|in depth|vs|versus|movie night|riff\w*|roast\w*|mst3k|rifftrax|pitch meeting|everything wrong|honest trailer|how it should have ended|cinemasins|sins|but|game|games|gameplay|cutscenes?|playthrough|longplay|walkthrough|ps[2-5]|xbox|nintendo|switch|pc|no commentary|audiobook|audio|radio|lux|screenplay|script|novel|book|edit|edits|fanedit|supercut|remake|ai|fandub|abridged|cosplay|lyrics|asmr|karaoke|cover|mashup|meme|memes|tiktok|unboxing|toy|toys|stop motion|vr|360)\b/;
+  // Tags/keywords the uploader set, and YouTube categories, that mark a
+  // video as being about a movie rather than the movie.
+  const COMMENTARY_TAGS = /\b(reaction|reactions|reacts?|reacting|review|reviews|watch ?along|watchalong|watch party|commentary|podcast|livestream|live stream|first time watching|movie night|gameplay|walkthrough|lets play|let's play)\b/;
+  const NON_MOVIE_CATEGORY = /^(gaming|news & politics|sports|howto & style|science & technology|autos & vehicles|pets & animals|travel & events)$/i;
+  const NON_MOVIE_CATEGORY_ID = new Set(["2", "15", "17", "19", "20", "25", "26", "28"]);
   const COMMENTARY_CHANNEL = /(react|reaction|review|critic|podcast|\bpod\b|commentary|watch ?along|rewatch|riff|\bsins\b|cinema therapy|\bshow\b|\bcast\b|\bstream(s|ing|er|ers)?\b|\blive\b|\btv\b reacts)/i;
   const COMMENTARY_DESC = /(watch ?-?along|watch party|reaction video|my reaction|our reaction|full reaction|uncut reaction|reaction to|reacting to|react to|first time watching|first time seeing|commentary track|our commentary|my commentary|audio commentary|this review|my review|our review|movie review|film review|podcast|episode \d|press play|sync (up )?(your|with|it)|start your (copy|movie|own|dvd|blu)|pause (here|it)|play along|follow along|join (us|me) (as|for|while|in)|live ?stream|streamed live|was live|twitch\.tv|patreon\.com\/\S*react|full (reaction|version) (on|at) patreon|watch the full (reaction|movie) on patreon|unedited reaction)/;
 
@@ -255,7 +261,6 @@
     if (/[:\-–—]/.test(movieTitle)) {
       const head = norm(String(movieTitle).split(/[:\-–—]/)[0]);
       const tail = norm(String(movieTitle).split(/[:\-–—]/).pop());
-      if (head.split(" ").length >= 2 && new RegExp("(^| )" + escapeRegex(head) + "( |$)").test(vt)) return { level: 1 };
       if (tail.split(" ").length >= 2 && new RegExp("(^| )" + escapeRegex(tail) + "( |$)").test(vt)) return { level: 1 };
     }
     return { level: 0 };
@@ -312,6 +317,11 @@
     const tm = titleMatch(ctx.title, title);
     if (tm.level === 0) return null;
     if (video.isLive || video.isUpcoming) return null;
+    // Watch-alongs and reaction streams are nearly always recordings of a
+    // livestream; real movie uploads never are.
+    if (video.wasLive) return null;
+    if (video.tags && COMMENTARY_TAGS.test(norm(video.tags.join(" ")))) return null;
+    if (video.category && (NON_MOVIE_CATEGORY.test(video.category) || NON_MOVIE_CATEGORY_ID.has(String(video.category)))) return null;
     if (video.isShort) return null;
 
     const fullPhrase = FULL_PHRASE.test(lowerTitle);
@@ -328,6 +338,9 @@
     if (isCommentary(otherWords, video.channel, desc)) return null;
     if (BAIT.test(lowerTitle) || BAIT.test(desc.slice(0, 600))) return null;
     const extras = extraWords(otherWords, ctx);
+    // A real upload's title is the movie's name plus labels ("Full Movie",
+    // year, HD, cast). Anything wordier is about the movie, not the movie.
+    if (extras.length > 2) return null;
 
     const dur = video.durationSec || 0;
     const part = partInfo(ctx.title, title);
@@ -351,6 +364,9 @@
     const ys = yearsIn(title);
     const yearMatch = !!(ctx.year && ys.some((y) => Math.abs(y - ctx.year) <= 1));
     const yearConflict = !!(ctx.year && ys.length && !yearMatch);
+    // An off-length upload is only worth showing if it at least claims to
+    // be the full movie or names the right year.
+    if (fit === "near" && !fullPhrase && !yearMatch) return null;
     const descYear = !!(ctx.year && yearsIn(desc.slice(0, 1500)).some((y) => Math.abs(y - ctx.year) <= 1));
     const dubbed = DUB.test(lowerTitle) && !DUB.test(String(ctx.title).toLowerCase());
     const channel = video.channel || "";
@@ -521,14 +537,15 @@
         return vids.map((v) => {
           const d = info.get(v.id);
           if (!d) return null;
-          return { ...v, durationSec: d.durationSec, description: d.description || v.description, views: d.views, _info: d };
+          return { ...v, durationSec: d.durationSec, description: d.description || v.description, views: d.views,
+            wasLive: d.wasLive, tags: d.tags, category: d.category, _info: d };
         }).filter(Boolean);
       },
       async details(ids) {
         const out = new Map();
         for (let i = 0; i < ids.length; i += 50) {
           const chunk = ids.slice(i, i + 50);
-          const url = base + "videos?part=snippet,contentDetails,status,statistics&id=" + chunk.join(",") + "&key=" + encodeURIComponent(key);
+          const url = base + "videos?part=snippet,contentDetails,status,statistics,liveStreamingDetails&id=" + chunk.join(",") + "&key=" + encodeURIComponent(key);
           const r = await fetchJson(url);
           if (!r.ok) throw new Error("YouTube API " + r.status);
           ((r.body && r.body.items) || []).forEach((it) => {
@@ -543,6 +560,9 @@
               ageRestricted: !!(cd.contentRating && cd.contentRating.ytRating === "ytAgeRestricted"),
               regionBlocked: !!regionBlocked,
               licensed: !!cd.licensedContent,
+              wasLive: !!it.liveStreamingDetails,
+              tags: (it.snippet && it.snippet.tags) || [],
+              category: it.snippet && it.snippet.categoryId,
               views: it.statistics ? +it.statistics.viewCount || 0 : 0
             });
           });
@@ -620,6 +640,7 @@
       views: it.viewCount || 0,
       isLive: !!it.liveNow,
       isUpcoming: !!it.isUpcoming,
+      wasLive: /^streamed/i.test(it.publishedText || ""),
       paid: !!it.paid,
       premium: !!it.premium
     });
@@ -635,7 +656,7 @@
         for (const v of videos) {
           try {
             const info = await call(
-              "/api/v1/videos/" + v.id + "?fields=videoId,lengthSeconds,allowedRegions,paid,premium,isListed,liveNow,isUpcoming,description,error",
+              "/api/v1/videos/" + v.id + "?fields=videoId,lengthSeconds,allowedRegions,paid,premium,isListed,liveNow,isUpcoming,description,genre,keywords,publishedText,error",
               (r) => {
                 if (r.body && r.body.videoId) return r.body;
                 if (r.body && r.body.error) {
@@ -654,7 +675,10 @@
                 durationSec: +info.lengthSeconds || v.durationSec,
                 description: info.description || "",
                 regionBlocked: allowed.length > 0 && !allowed.includes(region),
-                paid: !!(info.paid || info.premium)
+                paid: !!(info.paid || info.premium),
+                wasLive: /^streamed/i.test(info.publishedText || ""),
+                tags: info.keywords || [],
+                category: info.genre || null
               });
             }
           } catch (e) {
@@ -684,7 +708,8 @@
             published: it.uploaded > 0 ? new Date(it.uploaded).toISOString() : null,
             views: it.views || 0,
             isShort: !!it.isShort,
-            isLive: it.duration === -1
+            isLive: it.duration === -1,
+            wasLive: /streamed/i.test(it.uploadedDate || "")
           }));
         });
       },
@@ -701,7 +726,7 @@
               return undefined;
             });
             if (info.error) out.set(v.id, classifyError(info.error));
-            else out.set(v.id, { state: "ok", durationSec: info.duration || v.durationSec, description: info.description || "" });
+            else out.set(v.id, { state: "ok", durationSec: info.duration || v.durationSec, description: info.description || "", tags: info.tags || [], category: info.category || null });
           } catch (e) {
             out.set(v.id, { state: "unknown" });
           }
@@ -763,6 +788,9 @@
   function applyVerification(c, info) {
     if (!info) return c;
     if (info.state === "removed") return null;
+    if (info.wasLive) return null;
+    if (info.tags && info.tags.length && COMMENTARY_TAGS.test(norm(info.tags.join(" ")))) return null;
+    if (info.category && (NON_MOVIE_CATEGORY.test(info.category) || NON_MOVIE_CATEGORY_ID.has(String(info.category)))) return null;
     const out = { ...c, notes: c.notes.slice() };
     if (info.durationSec && !out.parts) out.durationSec = info.durationSec;
     if (info.state === "ok" && out.playable !== false) out.playable = true;
@@ -796,12 +824,14 @@
         errors.push(backend.name + ": " + (s.lastErr ? s.lastErr.message : "no response"));
         continue;
       }
-      let cands = s.cands.filter((c) => c.fit === "full" || c.fit === "near");
-      const combined = combineParts(s.cands, ctx);
+      const hidden = readHidden();
+      const shown = s.cands.filter((c) => !hidden.videos.includes(c.id) && !(c.channelId && hidden.channels.includes(c.channelId)) && !hidden.channelNames.includes(norm(c.channel)));
+      let cands = shown.filter((c) => c.fit === "full" || c.fit === "near");
+      const combined = combineParts(shown, ctx);
       cands.sort(rank);
 
       // Verify the most promising single uploads, plus part 1 of any sets.
-      const toVerify = cands.slice(0, 6);
+      const toVerify = cands.slice(0, 10);
       let verified = new Map();
       try { verified = await backend.verify(toVerify.concat(combined.map((c) => ({ ...c, raw: {} })))); } catch (e) { /* stays unknown */ }
       cands = cands.map((c) => (toVerify.includes(c) ? applyVerification(c, verified.get(c.id)) : c)).filter(Boolean);
@@ -846,6 +876,7 @@
       url: c.url,
       title: c.title,
       channel: c.channel,
+      channelId: c.channelId || null,
       durationSec: c.durationSec,
       published: c.published,
       fit: c.fit,
@@ -865,6 +896,42 @@
         c.playable === "unknown" ? ["Couldn't confirm it plays"] : []
       )
     };
+  }
+
+  // ---------- uploads the user marked "Not the movie" ----------
+
+  function readHidden() {
+    const h = readJson(HIDDEN_STORAGE, null) || {};
+    return { videos: h.videos || [], channels: h.channels || [], channelNames: h.channelNames || [] };
+  }
+
+  // Hides that upload, and everything from its channel, from all future
+  // checks - channels that post watch-alongs and reviews do it a lot.
+  function hideUpload(movie, result) {
+    const h = readHidden();
+    if (result.id && !h.videos.includes(result.id)) h.videos.push(result.id);
+    if (result.channelId && !h.channels.includes(result.channelId)) h.channels.push(result.channelId);
+    const cn = norm(result.channel);
+    if (cn && !h.channelNames.includes(cn)) h.channelNames.push(cn);
+    writeJson(HIDDEN_STORAGE, h);
+    // Update every cached movie straight away, then search again for this
+    // one so a real upload can take its place.
+    const all = readCache();
+    Object.keys(all).forEach((k) => {
+      const rec = all[k];
+      const before = (rec.results || []).length;
+      rec.results = (rec.results || []).filter((r) => r.id !== result.id && !(result.channelId && r.channelId === result.channelId) && norm(r.channel) !== cn);
+      if (rec.results.length !== before) {
+        const conf = rec.results.find((r) => r.confirmed);
+        rec.status = conf ? (conf.ads ? "free_ads" : "free") : rec.results.some((r) => r.playable !== false) ? "possible" : "unavailable";
+      }
+    });
+    writeJson(CACHE_STORAGE, all);
+    return ensure(movie, { force: true });
+  }
+
+  function unhideAll() {
+    writeJson(HIDDEN_STORAGE, { videos: [], channels: [], channelNames: [] });
   }
 
   // ---------- cache & scheduling ----------
@@ -960,6 +1027,9 @@
     ensure,
     check,
     setEnricher(fn) { enrich = fn; },
+    hideUpload,
+    unhideAll,
+    hiddenCount() { const h = readHidden(); return h.videos.length; },
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     hasApiKey() { return !!readKey(); },
     setApiKey(k) {

@@ -230,10 +230,32 @@ test("genuine uploads with cast, genre and quality words still count", () => {
   assert.ok(sw);
 });
 
-test("lots of unexplained extra title text -> Possibly, not Free", async () => {
-  const b = fakeBackend([vid("a", "Alien 1979 full movie but every time someone says alien it gets faster", 117)]);
+test("lots of unexplained extra title text -> dropped", async () => {
+  const b = fakeBackend([vid("a", "Alien 1979 full movie every single time someone says alien it gets faster", 117)]);
   const r = await _.check(ALIEN, { backends: [b] });
-  assert.equal(r.status, "possible");
+  assert.equal(r.status, "unavailable");
+});
+
+test("livestream recordings, commentary tags and gaming videos are rejected", () => {
+  const ctx = { title: "Alien", year: 1979, runtimeMin: 117 };
+  assert.equal(_.assess(vid("a", "ALIEN (1979)", 121, { wasLive: true }), ctx), null);
+  assert.equal(_.assess(vid("b", "ALIEN (1979)", 121, { tags: ["alien", "movie reaction", "sci fi"] }), ctx), null);
+  assert.equal(_.assess(vid("c", "ALIEN (1979)", 121, { category: "20" }), ctx), null);
+  assert.equal(_.assess(vid("d", "Alien Isolation - The Game Movie (All Cutscenes)", 117), ctx), null);
+  assert.equal(_.assess(vid("e", "Alien 1979 Lux Radio Theatre", 117), ctx), null);
+  assert.equal(_.assess(vid("f", "Alien 1979 full movie", 116, { tags: ["alien", "full movie", "sci-fi"], category: "1" }), ctx).fit, "full");
+});
+
+test("verification drops livestream recordings found only in video details", async () => {
+  const b = fakeBackend([vid("a", "Alien 1979 full movie", 116)], { a: { state: "ok", wasLive: true } });
+  assert.equal((await _.check(ALIEN, { backends: [b] })).status, "unavailable");
+});
+
+test("other films in a franchise and vague off-length uploads aren't shown", () => {
+  const fotr = { title: "The Lord of the Rings: The Fellowship of the Ring", year: 2001, runtimeMin: 179 };
+  assert.equal(_.assess(vid("a", "The Lord of the Rings The Two Towers Extended", 235), fotr), null);
+  assert.equal(_.assess(vid("b", "Alien", 95), { title: "Alien", year: 1979, runtimeMin: 117 }), null);
+  assert.ok(_.assess(vid("c", "Alien 1979", 95), { title: "Alien", year: 1979, runtimeMin: 117 }));
 });
 
 test("a commentary description found only on verification drops the video", async () => {

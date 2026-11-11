@@ -116,7 +116,7 @@
     YT.ensure(movie).then(() => { if (current === movie) renderBody(); });
   }
 
-  function resultHtml(r, runtimeMin) {
+  function resultHtml(r, runtimeMin, idx) {
     const rt = runtimeMin ? " <span class=\"yt-dim\">(movie runs " + runtimeMin + " min)</span>" : "";
     let parts = "";
     if (r.parts && r.parts.length) {
@@ -132,8 +132,10 @@
       '<div class="yt-meta">Length ' + YT.formatDuration(r.durationSec) + rt + "</div>" +
       (r.notes && r.notes.length ? '<ul class="yt-notes">' + r.notes.map((n) => "<li>" + esc(n) + "</li>").join("") + "</ul>" : "") +
       parts +
+      '<div class="yt-actions">' +
       '<a class="yt-watch" href="' + esc(r.url) + '" target="_blank" rel="noopener">▶ Watch on YouTube</a>' +
-      "</li>";
+      '<button type="button" class="yt-hide" data-idx="' + idx + '" title="Hide this upload and everything else from ' + esc(r.channel || "this channel") + '">✕ Not the movie</button>' +
+      "</div></li>";
   }
 
   function renderBody() {
@@ -155,15 +157,23 @@
       '<p class="small yt-explain">' + esc(EXPLAIN[rec.status]) + "</p>";
     if (rec.results && rec.results.length) {
       html += '<div class="watch-label left">' + (rec.results.length > 1 ? "Best " + rec.results.length + " uploads" : "Best upload") + "</div>";
-      html += '<ul class="yt-results">' + rec.results.map((r) => resultHtml(r, rec.runtimeMin)).join("") + "</ul>";
+      html += '<ul class="yt-results">' + rec.results.map((r, i) => resultHtml(r, rec.runtimeMin, i)).join("") + "</ul>";
     }
     html += '<p class="yt-checked">Last checked ' + esc(fmtDate(rec.checkedAt)) +
       (rec.source ? " via " + esc(rec.source) : "") +
       (st.checking ? " · rechecking now…" : "") + "</p>";
     if (rec.lastError) html += '<p class="yt-checked">Latest recheck failed; showing the previous result.</p>';
     if (rec.status === "error" && rec.error) html += '<p class="yt-checked">' + esc(rec.error) + "</p>";
-    html += '<p class="yt-fine">Includes uploads from anyone, not just studios. Uploads can vanish or get blocked at any time; results are rechecked every few days.</p>';
+    html += '<p class="yt-fine">Includes uploads from anyone, not just studios. If one turns out to be a review, watch-along or clip, tap &ldquo;Not the movie&rdquo; and that channel is skipped from then on. Results are rechecked every few days.</p>';
     body.innerHTML = html;
+    body.querySelectorAll(".yt-hide").forEach((b) => {
+      b.onclick = () => {
+        const r = rec.results[+b.dataset.idx];
+        if (!r || !current) return;
+        YT.hideUpload(current, r);
+        renderBody();
+      };
+    });
   }
 
   // ---------- inline summary (used in the slot's dialog) ----------

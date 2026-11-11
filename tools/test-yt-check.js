@@ -192,6 +192,55 @@ test("ISO durations and error classification", () => {
   assert.equal(_.classifyError("Sign in to confirm you're not a bot").state, "unknown");
 });
 
+test("watch-alongs, reactions, reviews, podcasts and commentary are rejected even at full length", () => {
+  const ctx = { title: "Alien", year: 1979, runtimeMin: 117, people: ["Sigourney Weaver", "Ridley Scott"] };
+  const rejected = [
+    vid("1", "Alien (1979) Watch Along | Live Commentary", 125),
+    vid("2", "ALIEN (1979) | FIRST TIME WATCHING | Movie Reaction", 118),
+    vid("3", "Alien 1979 Full Movie Review", 117),
+    vid("4", "Alien Watchalong - Movie Night", 120),
+    vid("5", "Alien (1979) Full Movie", 117, { channel: "Cinema Reacts" }),
+    vid("6", "Alien (1979)", 117, { channel: "The Rewatchables Podcast" }),
+    vid("7", "Alien (1979) full movie", 117, { description: "Grab your copy and press play when I say go!" }),
+    vid("8", "Episode 112: Alien (1979)", 117),
+    vid("9", "Let's watch Alien 1979 full movie", 119),
+    vid("10", "Alien (1979) full movie watch party", 119),
+    vid("11", "We Watched ALIEN For The First Time", 117),
+    vid("12", "Alien (1979) RiffTrax full movie", 117),
+    vid("13", "Alien 1979 full movie", 117, { description: "Full uncut reaction on patreon! Thanks for watching my reaction to Alien" }),
+    vid("14", "Alien (1979) | Full Movie Live Stream", 130)
+  ];
+  rejected.forEach((v) => assert.equal(_.assess(v, ctx), null, "should reject: " + v.title + " / " + v.channel));
+});
+
+test("genuine uploads with cast, genre and quality words still count", () => {
+  const ctx = { title: "Alien", year: 1979, runtimeMin: 117, people: ["Sigourney Weaver", "Ridley Scott"] };
+  const kept = [
+    vid("a", "Alien | Ridley Scott | Sigourney Weaver | Full Movie", 117),
+    vid("b", "Alien (1979) - Sci-Fi Horror Classic Full Movie HD", 117),
+    vid("c", "ALIEN 1979 Director's Cut 1080p", 116, { channel: "Talking Pictures TV" })
+  ];
+  kept.forEach((v) => {
+    const c = _.assess(v, ctx);
+    assert.ok(c && c.extras.length <= 2, "should keep: " + v.title + " extras=" + (c && c.extras));
+  });
+  const live = _.assess(vid("d", "Live and Let Die (1973) Full Movie", 121), { title: "Live and Let Die", year: 1973, runtimeMin: 121 });
+  assert.ok(live);
+  const sw = _.assess(vid("e", "Star Wars Episode IV A New Hope 1977 Full Movie", 121), { title: "Star Wars: Episode IV - A New Hope", year: 1977, runtimeMin: 121 });
+  assert.ok(sw);
+});
+
+test("lots of unexplained extra title text -> Possibly, not Free", async () => {
+  const b = fakeBackend([vid("a", "Alien 1979 full movie but every time someone says alien it gets faster", 117)]);
+  const r = await _.check(ALIEN, { backends: [b] });
+  assert.equal(r.status, "possible");
+});
+
+test("a commentary description found only on verification drops the video", async () => {
+  const b = fakeBackend([vid("a", "Alien 1979 full movie", 116)], { a: { state: "ok", description: "Welcome to our watch along! Sync up your copy." } });
+  assert.equal((await _.check(ALIEN, { backends: [b] })).status, "unavailable");
+});
+
 setTimeout(() => {
   if (failures) { console.log(failures + " failed"); process.exit(1); }
   console.log("all passed");

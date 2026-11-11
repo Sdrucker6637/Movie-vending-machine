@@ -2195,8 +2195,8 @@ one. Nothing is assumed - only what you check shows as yours.
 </div>
 </div>
 
-<script src="yt/check.js?v=1"></script>
-<script src="yt/panel.js?v=1"></script>
+<script src="yt/check.js?v=2"></script>
+<script src="yt/panel.js?v=2"></script>
 <script>
 const SLOT_COUNT = 16;
 const STORAGE_KEY = "movie-machine-slots";
@@ -4123,12 +4123,19 @@ const hit = (d.results || [])[0];
 if (!hit) return {};
 id = hit.id;
 }
-const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?api_key=" + key);
+const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?append_to_response=credits&api_key=" + key);
 if (!r.ok) return {};
 const d = await r.json();
+// Cast and director names are normal in real upload titles
+// ("Charade (1963) Cary Grant, Audrey Hepburn"), so the checker
+// doesn't count them as suspicious extra text.
+const credits = d.credits || {};
+const people = (credits.cast || []).slice(0, 8).map((c) => c.name)
+.concat((credits.crew || []).filter((c) => c.job === "Director").map((c) => c.name));
 return {
 year: movie.year || (d.release_date ? +d.release_date.slice(0, 4) : null),
-runtime: d.runtime || null
+runtime: d.runtime || null,
+people
 };
 } catch (e) {
 return {};

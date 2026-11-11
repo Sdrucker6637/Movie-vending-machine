@@ -23,7 +23,7 @@
 (function (root) {
   "use strict";
 
-  const CACHE_STORAGE = "yt-free-cache-v1";
+  const CACHE_STORAGE = "yt-free-cache-v2"; // v2: stricter commentary/review filtering
   const YT_KEY_STORAGE = "youtube-api-key";
   const INSTANCE_STORAGE = "yt-free-instances-v1";
   const CACHE_MAX = 300;
@@ -82,6 +82,26 @@
   // "Full movie" uploads that are really a still image pointing at an
   // off-site streaming/download link.
   const BAIT = /(link in (the )?(description|desc|bio|comments?)|watch (the )?(full )?movie (here|at|on|online)|download (link|here|now|free)|click (the )?link|streaming link|free download|\b123 ?movies\b|\bputlocker\b|\bfmovies\b|\bsolarmovie\b|full movie (link|in description)|watch online free|telegram)/;
+
+  // Watch-alongs, reaction streams, reviews, podcasts and commentary
+  // tracks often run as long as the movie itself, so the runtime check
+  // can't catch them - these words can. Tested against the title (minus
+  // the movie's own name) and the channel name.
+  const COMMENTARY_TITLE = /\b(reviews?|reviewed|reviewing|critique|reacts?|reaction|reactions|reacting|watch ?(along|alongs|party|with me|with us)|watchalong|watchparty|let'?s watch|lets watch|we watch\w*|i watch\w*|watching|watched|rewatch\w*|re watch\w*|first time|1st time|never seen|blind|commentary|commentaries|podcast|pod|episode|ep|discuss\w*|discussion|talk\w*|chat|hangout|stream|streams|streamed|streaming|livestream|live|vod|explained|explain\w*|recap\w*|breakdown|analysis|analy[sz]ing|ranking|ranked|retrospective|deep dive|thoughts|opinion|opinions|honest|spoilers?|spoiler free|in depth|vs|versus|movie night|riff\w*|roast\w*|mst3k|rifftrax|pitch meeting|everything wrong|honest trailer|how it should have ended|cinemasins|sins)\b/;
+  const COMMENTARY_CHANNEL = /(react|reaction|review|critic|podcast|\bpod\b|commentary|watch ?along|rewatch|riff|\bsins\b|cinema therapy|\bshow\b|\bcast\b|\bstream(s|ing|er|ers)?\b|\blive\b|\btv\b reacts)/i;
+  const COMMENTARY_DESC = /(watch ?-?along|watch party|reaction video|my reaction|our reaction|full reaction|uncut reaction|reaction to|reacting to|react to|first time watching|first time seeing|commentary track|our commentary|my commentary|audio commentary|this review|my review|our review|movie review|film review|podcast|episode \d|press play|sync (up )?(your|with|it)|start your (copy|movie|own|dvd|blu)|pause (here|it)|play along|follow along|join (us|me) (as|for|while|in)|live ?stream|streamed live|was live|twitch\.tv|patreon\.com\/\S*react|full (reaction|version) (on|at) patreon|watch the full (reaction|movie) on patreon|unedited reaction)/;
+
+  // Words that may surround the movie's name in a genuine full-movie
+  // upload. Anything else left in the title counts as "extra" text.
+  const PLAIN_WORDS = new Set((
+    "full movie movies film films complete entire whole length feature official free with ads hd hq sd uhd 4k 8k 1080p 720p 480p 360p " +
+    "english eng subtitles subtitle subtitled subs sub cc closed captions captioned version cut directors director extended theatrical " +
+    "uncut unrated remastered restored restoration colorized colourized color colour black white bw b w widescreen classic classics " +
+    "starring stars by from presents presented best quality original new old rare public domain silent talkie " +
+    "horror comedy drama thriller sci fi scifi science fiction action western westerns adventure romance romantic family crime mystery " +
+    "war animated animation cartoon documentary musical noir fantasy suspense spy martial arts kung fu christmas holiday kids biopic biography " +
+    "the a an of and in on to for at by with from is it its movie's 1 2 3 4 5 6 7 8 9 0 hd1080 dvdrip bluray brrip web dl rip"
+  ).split(" "));
 
   const DUB = /\b(hindi|tamil|telugu|malayalam|kannada|bengali|urdu|dubbed|dublado|doblad[ao]|latino|castellano|espa[nñ]ol|türkçe|turkce|deutsch|german|fran[cç]ais|french|italiano|portugu[eê]s|русск\S*|russian|polski|arabic|عربي|vietsub|thuyết minh|indonesia|sub indo)\b/;
 
@@ -268,6 +288,23 @@
 
   // Turns a raw search hit into a scored candidate, or null if it is clearly
   // not this movie / not a full movie. `ctx` = { title, year, runtimeMin }.
+  function isCommentary(leftoverTitle, channel, desc) {
+    if (COMMENTARY_TITLE.test(leftoverTitle)) return true;
+    if (COMMENTARY_CHANNEL.test(norm(channel))) return true;
+    return COMMENTARY_DESC.test(String(desc || "").toLowerCase().slice(0, 2000));
+  }
+
+  // Title words that are neither the movie's name, its cast/crew, a year,
+  // nor ordinary upload labels ("Full Movie", "HD", "Western"...). A real
+  // upload is mostly just the movie's name; lots of extra text usually
+  // means it's something about the movie rather than the movie.
+  function extraWords(leftoverTitle, ctx) {
+    const known = new Set(significantWords(ctx.title));
+    (ctx.people || []).forEach((n) => significantWords(n).forEach((w) => known.add(w)));
+    return leftoverTitle.split(" ").filter((w) =>
+      w && !PLAIN_WORDS.has(w) && !known.has(w) && !/^\d+$/.test(w) && !/^\d{3,4}p$/.test(w) && w.length > 1);
+  }
+
   function assess(video, ctx) {
     const title = video.title || "";
     const lowerTitle = title.toLowerCase();
@@ -283,8 +320,14 @@
     const leftover = norm(title).replace(new RegExp("(^| )" + escapeRegex(norm(ctx.title)) + "( |$)"), " ");
     const notMovie = NOT_A_MOVIE.test(leftover);
     if (notMovie && !fullPhrase) return null;
-    if (/\b(reacts?|reaction|reacting|review|explained|recap|trailer)\b/.test(leftover)) return null;
+    if (/\b(trailers?|teasers?|clips?|scenes?)\b/.test(leftover)) return null;
+    // Every word of the movie's name removed, so "Live and Let Die" or
+    // "Star Wars: Episode IV" don't trip the commentary words.
+    const movieWords = new Set(norm(ctx.title).split(" "));
+    const otherWords = norm(title).split(" ").filter((w) => !movieWords.has(w)).join(" ");
+    if (isCommentary(otherWords, video.channel, desc)) return null;
     if (BAIT.test(lowerTitle) || BAIT.test(desc.slice(0, 600))) return null;
+    const extras = extraWords(otherWords, ctx);
 
     const dur = video.durationSec || 0;
     const part = partInfo(ctx.title, title);
@@ -298,7 +341,7 @@
       fit = "part";
     } else if (ratio !== null) {
       if (ratio >= 0.85 && ratio <= 1.25) fit = "full";
-      else if (ratio >= 0.7 && ratio <= 1.6) fit = "near";
+      else if (ratio >= 0.7 && ratio <= 1.35) fit = "near";
     } else if (dur >= 60 * 60 && dur <= 4.5 * 3600) {
       // Runtime unknown: a 1-4.5h upload is plausible but unconfirmed.
       fit = "near";
@@ -326,6 +369,7 @@
     if (fullPhrase) match += 1;
     if (dubbed) match -= 2;
     if (notMovie) match -= 2;
+    if (extras.length > 2) match -= 2;
 
     return {
       id: video.id,
@@ -344,6 +388,7 @@
       yearConflict,
       dubbed,
       fullPhrase,
+      extras,
       ads: adText || knownAdChannel || video.licensed === true,
       paidRisk,
       match,
@@ -417,7 +462,8 @@
   // right movie that is playable for this viewer without payment.
   function isConfirmed(c) {
     return c.kind !== "parts" && c.fit === "full" && c.playable === true &&
-      c.titleLevel === 2 && !c.yearConflict && !c.dubbed && !c.paidRisk;
+      c.titleLevel === 2 && !c.yearConflict && !c.dubbed && !c.paidRisk &&
+      (c.extras || []).length <= 2;
   }
 
   function decideStatus(top) {
@@ -683,7 +729,7 @@
   // ---------- the check itself ----------
 
   function strongCount(cands) {
-    return cands.filter((c) => c.fit === "full" && c.titleLevel === 2 && !c.yearConflict && !c.dubbed).length;
+    return cands.filter((c) => c.fit === "full" && c.titleLevel === 2 && !c.yearConflict && !c.dubbed && c.extras.length <= 2).length;
   }
 
   // Runs the query variations on one backend. Stops early once three
@@ -725,7 +771,10 @@
     if (info.regionNote) out.notes.push("May be region-restricted");
     if (info.paid) { out.playable = false; out.notes.push("Requires payment or membership"); }
     if (info.licensed) out.ads = true;
-    if (info.description && BAIT.test(String(info.description).slice(0, 600).toLowerCase())) return null;
+    if (info.description) {
+      const d = String(info.description).toLowerCase();
+      if (BAIT.test(d.slice(0, 600)) || COMMENTARY_DESC.test(d.slice(0, 2000))) return null;
+    }
     return out;
   }
 
@@ -734,7 +783,8 @@
     const ctx = {
       title: movie.title,
       year: movie.year ? +String(movie.year).slice(0, 4) : null,
-      runtimeMin: movie.runtime || null
+      runtimeMin: movie.runtime || null,
+      people: movie.people || []
     };
     const list = opts.backends || (await backends());
     const errors = [];
@@ -810,6 +860,7 @@
         c.dubbed ? ["Looks dubbed or not in the original language"] : [],
         c.yearConflict ? ["Title names a different year - may be another version"] : [],
         c.paidRisk ? ["YouTube Movies listing - may be a rental"] : [],
+        (c.extras || []).length > 2 ? ["Title has extra text - may not be the movie itself"] : [],
         c.fit === "near" && !c.parts ? ["Length differs from the movie's runtime"] : [],
         c.playable === "unknown" ? ["Couldn't confirm it plays"] : []
       )

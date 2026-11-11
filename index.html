@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="fx/fx.css?v=16">
-<link rel="stylesheet" href="yt/yt.css?v=2">
+<link rel="stylesheet" href="yt/yt.css?v=3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1f1b16">
@@ -2019,14 +2019,11 @@ then paste it in via Settings. Everything works without it -
 Curated just falls back to plainer matching.
 </p>
 <p>
-<strong>YouTube (optional key)</strong> &mdash; powers the
-&ldquo;Free on YouTube?&rdquo; badge on each slot: Free, Free&nbsp;&middot;&nbsp;ads,
-Maybe, or No. It searches every uploader (not just studios), checks each
-video's length against the movie's runtime, and skips trailers, clips,
-reviews and paid rentals. Works without a key through public YouTube
-search mirrors; a YouTube Data API v3 key from
-<a class="key-link" href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">console.cloud.google.com</a>
-makes it more reliable. Tap a badge to see the best uploads and open them.
+<strong>Free on YouTube?</strong> &mdash; each slot's badge shows
+whether the movie is free in YouTube's official Movies &amp; TV catalog
+(US): Free&nbsp;&middot;&nbsp;ads, $ (rent or buy only), or No. It uses
+the same TMDB where-to-watch data as above, so no extra key is needed and
+user uploads are never counted. Tap a badge to open it on YouTube.
 </p>
 </div>
 
@@ -2067,15 +2064,9 @@ one. Nothing is assumed - only what you check shows as yours.
 </div>
 
 <div class="curated-field">
-<label>Free on YouTube? (optional key)</label>
-<p class="small">Each movie gets a &ldquo;Free on YouTube?&rdquo; badge. It searches all of YouTube, any uploader, using public search mirrors. A free YouTube Data API key (console.cloud.google.com &rarr; enable &ldquo;YouTube Data API v3&rdquo;) makes checks faster and more reliable.</p>
-<div class="conn-status"><span class="conn-dot" id="ytKeyStatusDot"></span><span id="ytKeyStatusText">Not connected</span></div>
-<div class="yt-key-row">
-<input type="text" id="ytKeyField" placeholder="Paste YouTube API key" autocomplete="off" spellcheck="false">
-<button class="key-btn" id="ytKeySave">Save</button>
-</div>
-<button class="synopsis-toggle" id="ytRecheckAll">Recheck all movies on YouTube</button>
-<button class="synopsis-toggle hidden-block" id="ytUnhide">Show hidden uploads again</button>
+<label>Free on YouTube?</label>
+<p class="small">Badges show whether each movie is free in YouTube's official Movies &amp; TV catalog (US), using your TMDB connection. Rechecked every couple of days.</p>
+<button class="synopsis-toggle" id="ytRecheckAll">Recheck all movies now</button>
 </div>
 
 <div class="curated-field">
@@ -2196,8 +2187,8 @@ one. Nothing is assumed - only what you check shows as yours.
 </div>
 </div>
 
-<script src="yt/check.js?v=3"></script>
-<script src="yt/panel.js?v=3"></script>
+<script src="yt/check.js?v=4"></script>
+<script src="yt/panel.js?v=4"></script>
 <script>
 const SLOT_COUNT = 16;
 const STORAGE_KEY = "movie-machine-slots";
@@ -2504,15 +2495,6 @@ const geminiConnected = !!getStoredGeminiKey();
 geminiKeyStatusText.textContent = geminiConnected ? "Connected" : "Not connected";
 geminiKeyStatusDot.classList.toggle("on", geminiConnected);
 
-const ytConnected = !!(window.YTFree && window.YTFree.hasApiKey());
-document.getElementById("ytKeyStatusText").textContent = ytConnected ? "API key connected" : "Using public search mirrors";
-document.getElementById("ytKeyStatusDot").classList.toggle("on", ytConnected);
-document.getElementById("ytKeySave").textContent = ytConnected ? "Remove" : "Save";
-document.getElementById("ytKeyField").classList.toggle("hidden-block", ytConnected);
-const ytHidden = window.YTFree ? window.YTFree.hiddenCount() : 0;
-const unhideBtn = document.getElementById("ytUnhide");
-unhideBtn.textContent = "Show " + ytHidden + " hidden upload" + (ytHidden === 1 ? "" : "s") + " again";
-unhideBtn.classList.toggle("hidden-block", !ytHidden);
 
 const mine = getMyServices();
 serviceChecklist.innerHTML = "";
@@ -2568,29 +2550,6 @@ renderSettingsPanel();
 changeGeminiKeyBtn.onclick = async () => {
 localStorage.removeItem(GEMINI_KEY_STORAGE);
 await promptForGeminiKey();
-renderSettingsPanel();
-};
-
-document.getElementById("ytKeySave").onclick = () => {
-if (!window.YTFree) return;
-const field = document.getElementById("ytKeyField");
-if (window.YTFree.hasApiKey()) {
-window.YTFree.setApiKey(null);
-} else {
-const v = field.value.trim();
-if (!v) return;
-window.YTFree.setApiKey(v);
-field.value = "";
-// Retry anything that failed before the key was added.
-window.YTFree.clearErrors();
-}
-renderSettingsPanel();
-};
-
-document.getElementById("ytUnhide").onclick = () => {
-if (!window.YTFree) return;
-window.YTFree.unhideAll();
-slots.forEach((m) => { if (m && m.title) window.YTFree.ensure(m, { force: true }); });
 renderSettingsPanel();
 };
 
@@ -4120,43 +4079,37 @@ if (window.YTFree) window.YTFree.ensure(slots[i]);
 }
 
 // --- Free on YouTube? ---
-// The checker needs the movie's year (to tell remakes apart) and runtime
-// (to tell a full upload from a trailer or clip). This reads them from
-// TMDB quietly - it never pops the key dialog from a background check.
-async function fetchMovieFactsQuietly(movie) {
+// Reads the movie's TMDB where-to-watch listings (plus year and runtime)
+// for the YouTube checker. Quiet: it never pops the key dialog from a
+// background check.
+async function fetchYouTubeFacts(movie) {
 const key = getStoredKey();
-if (!key) return {};
+if (!key) return { error: "TMDB isn't connected" };
 try {
 let id = movie.id;
 if (!id) {
 const r = await fetch("https://api.themoviedb.org/3/search/movie?api_key=" + key + "&query=" + encodeURIComponent(movie.title));
 const d = await r.json();
 const hit = (d.results || [])[0];
-if (!hit) return {};
+if (!hit) return { error: "Couldn't find this movie on TMDB" };
 id = hit.id;
 }
-const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?append_to_response=credits&api_key=" + key);
-if (!r.ok) return {};
+const r = await fetch("https://api.themoviedb.org/3/movie/" + id + "?append_to_response=watch/providers&api_key=" + key);
+if (!r.ok) return { error: "TMDB error " + r.status };
 const d = await r.json();
-// Cast and director names are normal in real upload titles
-// ("Charade (1963) Cary Grant, Audrey Hepburn"), so the checker
-// doesn't count them as suspicious extra text.
-const credits = d.credits || {};
-const people = (credits.cast || []).slice(0, 8).map((c) => c.name)
-.concat((credits.crew || []).filter((c) => c.job === "Director").map((c) => c.name));
 return {
-year: movie.year || (d.release_date ? +d.release_date.slice(0, 4) : null),
+year: d.release_date ? +d.release_date.slice(0, 4) : null,
 runtime: d.runtime || null,
-people
+providers: (d["watch/providers"] && d["watch/providers"].results) || {}
 };
 } catch (e) {
-return {};
+return { error: "Couldn't reach TMDB" };
 }
 }
 
 function setupYouTubeChecks() {
 if (!window.YTFree || !window.YTFreeUI) return;
-window.YTFree.setEnricher(fetchMovieFactsQuietly);
+window.YTFree.setFetcher(fetchYouTubeFacts);
 window.YTFreeUI.startScheduler(() => slots);
 }
 

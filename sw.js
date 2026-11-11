@@ -1,4 +1,4 @@
-const CACHE = "movie-machine-v17";
+const CACHE = "movie-machine-v18";
 // Recorded clips (fx/clips/*) get their own cache. It is not tied to the app
 // version, so clips survive app updates; clip files never change in place,
 // and the cache is trimmed to the most recent CLIP_MAX files.
@@ -14,7 +14,10 @@ const FILES = [
   "./fx/sound.js",
   "./fx/engine.js",
   "./fx/art.js",
-  "./fx/index.js"
+  "./fx/index.js",
+  "./yt/check.js",
+  "./yt/panel.js",
+  "./yt/yt.css"
 ];
 
 self.addEventListener("install", (e) => {
@@ -38,7 +41,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== self.location.origin) return;
   // fx packs (fx/cues-*.js) aren't precached - they load on demand and are
   // cached here the first time they're fetched.
-  const isAppFile = url.pathname.endsWith("/") || url.pathname.includes("/fx/") ||
+  const isAppFile = url.pathname.endsWith("/") || url.pathname.includes("/fx/") || url.pathname.includes("/yt/") ||
     FILES.some((f) => f !== "./" && url.pathname.endsWith(f.slice(1)));
   if (!isAppFile) return;
 

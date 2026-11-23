@@ -1,13 +1,13 @@
 {
  "user": "sdrucker66",
- "lastAttemptAt": "2026-11-23T12:53:15.882Z",
- "lastSuccessAt": "2026-11-23T12:53:15.882Z",
+ "lastAttemptAt": "2026-11-23T15:28:16.064Z",
+ "lastSuccessAt": "2026-11-23T15:28:16.064Z",
  "ok": true,
  "errors": [],
  "warnings": [],
  "rss": {
   "ok": true,
-  "at": "2026-11-23T12:53:15.882Z",
+  "at": "2026-11-23T15:28:16.064Z",
   "items": 50,
   "added": 0,
   "updated": 0,
@@ -15,26 +15,47 @@
   "filmsAdded": 0,
   "edited": []
  },
- "import": null,
+ "import": {
+  "at": "2026-11-23T15:28:16.064Z",
+  "files": [
+   "watched.csv",
+   "ratings.csv",
+   "diary.csv",
+   "reviews.csv",
+   "watchlist.csv",
+   "likes/films.csv"
+  ],
+  "filmsAdded": 158,
+  "viewingsAdded": 21,
+  "viewingsMatched": 50,
+  "reviewsAttached": 0,
+  "ratingsSet": 157,
+  "likes": 99,
+  "watchlist": 63
+ },
  "tmdb": {
-  "resolved": 0,
+  "resolved": 221,
   "unresolved": 0,
-  "fetched": 0,
+  "fetched": 154,
   "failed": 0,
   "pending": 0,
-  "requests": 0
+  "requests": 1386
  },
- "candidates": null,
+ "candidates": {
+  "count": 1305,
+  "described": 1305,
+  "pending": 0
+ },
  "counts": {
-  "films": 50,
-  "viewings": 50,
+  "films": 208,
+  "viewings": 71,
   "reviews": 50,
-  "rated": 50,
-  "watchlist": 0,
-  "withTmdb": 50,
-  "meta": 1119,
-  "candidates": 1069
+  "rated": 207,
+  "watchlist": 63,
+  "withTmdb": 208,
+  "meta": 1558,
+  "candidates": 1305
  },
  "nextScheduledHint": "every 6 hours",
- "lastChangeAt": "2026-11-23T00:57:06.882Z"
+ "lastChangeAt": "2026-11-23T15:28:16.064Z"
 }

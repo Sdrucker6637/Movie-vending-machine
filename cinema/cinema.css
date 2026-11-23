@@ -286,7 +286,9 @@ button.col:hover .col-bar { background-color: var(--mustard); }
 .learned { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .learned li { border-left: 5px solid var(--red); padding: 2px 0 2px 12px; }
 .learned p { margin: 0 0 6px; font-size: 15px; }
-.examples { display: grid; grid-template-columns: repeat(auto-fill, 84px); gap: 8px; }
+.examples { display: grid; grid-template-columns: repeat(auto-fill, 96px); gap: 8px 10px; }
+.examples .fc-meta { white-space: nowrap; font-size: 10.5px; }
+.examples .fc-meta .stars { letter-spacing: -1.5px; }
 .axis { margin: 10px 0 16px; }
 .axis-ends { display: flex; justify-content: space-between; font-family: var(--font-deco); font-size: 14px; letter-spacing: .04em; }
 .axis-track { position: relative; height: 22px; margin: 4px 0; border: 3px solid var(--ink); border-radius: 999px; background: linear-gradient(90deg, var(--teal) 0%, var(--paper-hi) 50%, var(--mustard) 100%); }

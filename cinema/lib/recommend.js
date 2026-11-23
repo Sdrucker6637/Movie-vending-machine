@@ -119,7 +119,7 @@ export function explain(profile, cand, scored, mode) {
   const out = [];
   const lib = profile.lib;
   const favs = (cand.sources || []).filter((s) => s.type === "fav")
-    .map((s) => lib.films.find((f) => f.tmdbId === s.from)).filter(Boolean)
+    .map((s) => lib.films.find((f) => f.tmdbId === s.from)).filter((f) => f && f.rating !== null && f.rating >= Math.max(3.5, profile.mean + 0.25))
     .sort((a, b) => (b.rating || 0) - (a.rating || 0));
   if (favs.length) out.push(`TMDB pairs it with films you loved: ${favs.slice(0, 2).map((f) => `${f.title} (${fmtStar(f.rating)})`).join(" and ")}.`);
 

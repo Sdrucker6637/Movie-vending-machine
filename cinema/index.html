@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Cinema · Movie Vending Machine</title>
+<meta name="description" content="A little vintage picture house built around your Letterboxd history.">
+<link rel="manifest" href="../manifest.json">
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<meta name="theme-color" content="#1f1b16">
+<link rel="stylesheet" href="cinema.css?v=1">
+</head>
+<body>
+
+<!-- Shared ink, same as the vending machine: line-boil filters, gloves, reel -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<filter id="boilA"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="1"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="boilB"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="8"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="boilC"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="15"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+<symbol id="glove" viewBox="0 0 30 30">
+<path d="M8.6 21 C4.6 19.4 3.6 14.6 6 11.6 C4.8 7.6 8.4 5.4 10.6 7.6 C10.4 3.4 14.6 2.4 15.6 6 C16.4 2.2 20.8 2.6 21 6.6 C23.6 4.6 27 7 25.4 10.6 C27.6 13.6 25.8 19.4 21.4 21 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M15.6 7 V13 M21 7.4 L20 13 M10.8 8.4 L11.6 13" stroke="#1f1b16" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+<path d="M8.2 20.6 H21.8 L22.8 27.4 H7.2 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M9.6 23.6 H20.4" stroke="#1f1b16" stroke-width="1.2" stroke-linecap="round"/>
+</symbol>
+<symbol id="glove-point" viewBox="0 0 42 26">
+<path d="M1.5 6.5 H9.5 V20.5 H1.5 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M4 10 V17" stroke="#1f1b16" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M9.5 6 C14 3.4 18.6 4 21 7.4 H37 C40.6 7.4 40.6 13 37 13 H23.4 C25.6 13.6 25.8 16.8 23.6 17.6 C25 18.8 24 22.4 20.6 22.4 H12 C10.4 22.4 9.5 21.6 9.5 20.6 Z" fill="#fbf4e2" stroke="#1f1b16" stroke-width="2" stroke-linejoin="round"/>
+<path d="M22.6 13 H15.6 M22.8 17.6 H15.6" stroke="#1f1b16" stroke-width="1.3" stroke-linecap="round"/>
+</symbol>
+<symbol id="reel-icon" viewBox="0 0 40 40">
+<circle cx="20" cy="20" r="17.5" fill="#d9a13a" stroke="#1f1b16" stroke-width="3"/>
+<circle cx="20" cy="20" r="3.4" fill="#1f1b16"/>
+<circle cx="20" cy="9.5" r="4.4" fill="#1f1b16"/>
+<circle cx="30" cy="16.8" r="4.4" fill="#1f1b16"/>
+<circle cx="26.2" cy="28.5" r="4.4" fill="#1f1b16"/>
+<circle cx="13.8" cy="28.5" r="4.4" fill="#1f1b16"/>
+<circle cx="10" cy="16.8" r="4.4" fill="#1f1b16"/>
+</symbol>
+</defs>
+</svg>
+
+<div class="iris-intro" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div class="film-grain" aria-hidden="true"></div>
+
+<nav class="site-nav" aria-label="Sections">
+<a href="../index.html" class="site-tab">The Machine</a>
+<a href="./" class="site-tab active" aria-current="page">My Cinema</a>
+</nav>
+
+<header class="cinema-header">
+<div class="facade">
+<button type="button" class="marquee" id="marquee" aria-label="My Cinema marquee">
+<span class="marquee-kicker">The</span>
+<span class="marquee-title">My Cinema</span>
+<span class="marquee-sub">A picture house for one &middot; est. 1936</span>
+</button>
+<div class="header-right"><span class="sync-pill" id="syncPill">Loading…</span></div>
+</div>
+<nav class="cinema-nav" id="cinemaNav" aria-label="My Cinema"></nav>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<footer class="cinema-footer">
+<button type="button" class="secret-stub" id="secretStub" title="Ticket No. 1936" aria-label="Ticket number 1936">No. 1936</button>
+<span>Diary &amp; ratings from <a href="https://letterboxd.com/" target="_blank" rel="noopener">Letterboxd</a> RSS + your export. Film data from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.</span>
+<span class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
+<span class="credit">&#10022; A Vending Machine Picture &#10022;</span>
+</footer>
+
+<div class="overlay hidden" id="filmDialog" role="dialog" aria-modal="true" aria-label="Details">
+<div class="dialog wide">
+<button type="button" class="close-x" id="dialogClose" aria-label="Close">✕</button>
+<div id="dialogBody"></div>
+</div>
+</div>
+
+<noscript><p class="noscript">My Cinema needs JavaScript to run the projector.</p></noscript>
+<script type="module" src="app.js?v=1"></script>
+</body>
+</html>

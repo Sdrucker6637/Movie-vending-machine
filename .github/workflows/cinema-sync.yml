@@ -1,0 +1,80 @@
+# My Cinema: keeps the Letterboxd history, TMDB metadata and recommendation
+# candidates up to date. Runs every 6 hours on GitHub's servers, so it works
+# whether or not anyone has the site open. Data is committed to the
+# `cinema-data` branch (never to main), which the site reads.
+name: My Cinema sync
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      refresh_candidates:
+        description: "Rebuild recommendation candidates now"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths: ["cinema-import/**"]
+
+permissions:
+  contents: write   # push to the cinema-data branch
+  actions: write    # keep this scheduled workflow from being auto-disabled
+
+concurrency:
+  group: cinema-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check out the data branch
+        run: |
+          if git ls-remote --exit-code --heads origin cinema-data >/dev/null; then
+            git fetch --depth=1 origin cinema-data:refs/remotes/origin/cinema-data
+            git worktree add -B cinema-data data origin/cinema-data
+          else
+            git worktree add --orphan -b cinema-data data
+            printf '# My Cinema data\n\nWritten by .github/workflows/cinema-sync.yml on main. Put Letterboxd import bundles in import/.\n' > data/README.md
+          fi
+
+      - name: Sync Letterboxd + TMDB
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.refresh_candidates }}" = "true" ]; then ARGS="--refresh-candidates"; fi
+          node tools/cinema/sync.mjs --data data $ARGS
+
+      - name: Commit data
+        working-directory: data
+        run: |
+          git config user.name "my-cinema-sync[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Nothing changed."; exit 0; fi
+          git commit -q -m "Sync $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3 4; do
+            if git push origin cinema-data; then exit 0; fi
+            # An import may have been uploaded meanwhile: replay on top of it.
+            git pull --rebase -q origin cinema-data || true
+            sleep $((i * 5))
+          done
+          exit 1
+
+      - name: Keep the schedule alive
+        # GitHub pauses scheduled workflows in repos with no activity for 60
+        # days; re-enabling on every run resets that clock.
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/cinema-sync.yml/enable" || true

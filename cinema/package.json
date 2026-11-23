@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Marks cinema/ as ES modules so the same lib files run in the browser and in Node (tools/cinema)."
+}

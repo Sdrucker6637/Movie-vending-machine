@@ -1,0 +1,9 @@
+{
+  "letterboxdUser": "sdrucker66",
+  "repoOwner": "Sdrucker6637",
+  "repoName": "Movie-vending-machine",
+  "dataBranch": "cinema-data",
+  "workflowFile": "cinema-sync.yml",
+  "workflowRef": "main",
+  "syncEveryHours": 6
+}

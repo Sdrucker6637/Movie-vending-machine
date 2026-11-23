@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:letterboxd="https://letterboxd.com" xmlns:tmdb="https://themoviedb.org" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>Letterboxd - Test Member</title>
+<link>https://letterboxd.com/testmember/</link>
+<description>Letterboxd - Test Member</description>
+<atom:link rel="self" href="https://letterboxd.com/testmember/rss/" type="application/rss+xml"/>
+<item>
+<title>Alpha Film, 2001 - ★★★★½</title>
+<link>https://letterboxd.com/testmember/film/alpha-film/</link>
+<guid isPermaLink="false">letterboxd-review-1001</guid>
+<pubDate>Sat, 1 Jun 2024 01:30:00 +1200</pubDate>
+<letterboxd:watchedDate>2024-05-31</letterboxd:watchedDate>
+<letterboxd:rewatch>No</letterboxd:rewatch>
+<letterboxd:filmTitle>Alpha Film</letterboxd:filmTitle>
+<letterboxd:filmYear>2001</letterboxd:filmYear>
+<letterboxd:memberRating>4.5</letterboxd:memberRating>
+<letterboxd:memberLike>Yes</letterboxd:memberLike>
+<tmdb:movieId>101</tmdb:movieId>
+<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/alpha.jpg"/></p> <p>Heartbreaking &amp; tender.</p><p>The performances are moving.</p> ]]></description>
+<dc:creator>Test Member</dc:creator>
+</item>
+<item>
+<title>Beta Movie, 1975 - ★★</title>
+<link>https://letterboxd.com/testmember/film/beta-movie/</link>
+<guid isPermaLink="false">letterboxd-watch-1002</guid>
+<pubDate>Sun, 2 Jun 2024 20:00:00 +1200</pubDate>
+<letterboxd:watchedDate>2024-06-02</letterboxd:watchedDate>
+<letterboxd:rewatch>Yes</letterboxd:rewatch>
+<letterboxd:filmTitle>Beta Movie</letterboxd:filmTitle>
+<letterboxd:filmYear>1975</letterboxd:filmYear>
+<letterboxd:memberRating>2.0</letterboxd:memberRating>
+<letterboxd:memberLike>No</letterboxd:memberLike>
+<tmdb:movieId>102</tmdb:movieId>
+<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/beta.jpg"/></p> <p>Watched on Sunday June 2, 2024.</p> ]]></description>
+<dc:creator>Test Member</dc:creator>
+</item>
+<item>
+<title>Gamma, 2019</title>
+<link>https://letterboxd.com/testmember/film/gamma/</link>
+<guid isPermaLink="false">letterboxd-review-1003</guid>
+<pubDate>Mon, 3 Jun 2024 12:00:00 +1200</pubDate>
+<letterboxd:watchedDate>2024-06-03</letterboxd:watchedDate>
+<letterboxd:rewatch>No</letterboxd:rewatch>
+<letterboxd:filmTitle>Gamma</letterboxd:filmTitle>
+<letterboxd:filmYear>2019</letterboxd:filmYear>
+<tmdb:movieId>103</tmdb:movieId>
+<description><![CDATA[ <p><img src="https://a.ltrbxd.com/resized/gamma.jpg"/></p> <p><em>This review may contain spoilers.</em></p> <p>The twist ending got me.</p> ]]></description>
+<dc:creator>Test Member</dc:creator>
+</item>
+<item>
+<title>My Favourite Things</title>
+<link>https://letterboxd.com/testmember/list/my-favourite-things/</link>
+<guid isPermaLink="false">letterboxd-list-555</guid>
+<pubDate>Tue, 4 Jun 2024 12:00:00 +1200</pubDate>
+<description><![CDATA[ <ul><li>Alpha Film</li></ul> ]]></description>
+<dc:creator>Test Member</dc:creator>
+</item>
+</channel>
+</rss>

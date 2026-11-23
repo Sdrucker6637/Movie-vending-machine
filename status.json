@@ -1,0 +1,44 @@
+{
+ "user": "sdrucker66",
+ "lastAttemptAt": "2026-11-23T00:57:06.882Z",
+ "lastSuccessAt": "2026-11-23T00:57:06.882Z",
+ "ok": true,
+ "errors": [],
+ "warnings": [],
+ "rss": {
+  "ok": true,
+  "at": "2026-11-23T00:57:06.882Z",
+  "items": 50,
+  "added": 50,
+  "updated": 0,
+  "unchanged": 0,
+  "filmsAdded": 50,
+  "edited": []
+ },
+ "import": null,
+ "tmdb": {
+  "resolved": 0,
+  "unresolved": 0,
+  "fetched": 50,
+  "failed": 0,
+  "pending": 0,
+  "requests": 1186
+ },
+ "candidates": {
+  "count": 1069,
+  "described": 1069,
+  "pending": 0
+ },
+ "counts": {
+  "films": 50,
+  "viewings": 50,
+  "reviews": 50,
+  "rated": 50,
+  "watchlist": 0,
+  "withTmdb": 50,
+  "meta": 1119,
+  "candidates": 1069
+ },
+ "nextScheduledHint": "every 6 hours",
+ "lastChangeAt": "2026-11-23T00:57:06.882Z"
+}
